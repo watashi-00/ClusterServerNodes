@@ -5,4 +5,7 @@ public interface ImplServer {
     void start(int port, String host,  boolean isExternal);
     void stop(int port);
     void stop();
+    void stopAll();
+    void startAll();
+    void setInterval(int interval);
 }
