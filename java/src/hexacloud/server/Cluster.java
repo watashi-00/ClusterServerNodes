@@ -1,9 +1,15 @@
 package hexacloud.server;
 
+import hexacloud.server.check.SchedulerPing;
+
 public class Cluster implements ImplServer {
     static ServerNode[] cluster = new ServerNode[4];
     String baseUrl = "http://localhost:";
     private short qtd = 0;
+
+    private ServerNode[] tempCluster;
+
+    SchedulerPing schedulerPing = new SchedulerPing();
 
     @Override
     public void start(int port, boolean isExternal) {
@@ -29,6 +35,36 @@ public class Cluster implements ImplServer {
         System.out.println("Stopping server");
         removeClusterNode();
     }
+    
+    @Override
+    public void stopAll() {
+        this.schedulerPing.stopPingScheduler();
+        tempCluster = cluster.clone();
+        for(ServerNode node : cluster) {
+            if(node != null) {
+                System.out.println("Stopping server on host: " + node.host() + ", port: " + node.port());
+                removeClusterNode(node);
+            }
+        }
+    }
+
+    @Override
+    public void startAll() {
+        for(ServerNode node : tempCluster) {
+            if(node != null) {
+                System.out.println("Starting server on host: " + node.host() + ", port: " + node.port());
+                addClusterNode(node);
+            }
+        }
+        this.schedulerPing.startPingScheduler(cluster);
+        tempCluster = null;
+    }
+
+    @Override
+    public void setInterval(int interval) {
+
+    }
+
 
     private void addClusterNode(ServerNode node) {
         if (!validServer(node)) {return;}
@@ -70,20 +106,26 @@ public class Cluster implements ImplServer {
     }
 
     private String validHost(String host) {
-        if(host == null || host.isEmpty()) {
-            host = "http://localhost";
-        }
-        if(!host.startsWith("http://") && !host.startsWith("https://")) {
-            host = "http://" + host;
-        }
-        if(host.endsWith("/")) {
-            host = host.substring(0, host.length() - 1);
-        }
-        if(!host.endsWith(":")) {
-            host = host + ":";
-        }
-        return host;
+        StringBuilder sb = new StringBuilder(host);
 
+        if(sb == null || sb.length() == 0) {
+            System.err.println("Invalid host: null or empty");
+            return null;
+        }
+
+        if(sb.indexOf("http://") != 0 && sb.indexOf("https://") != 0) {
+            sb.insert(0, "http://");
+        }
+
+        if(sb.charAt(sb.length() - 1) == '/') {
+            sb.deleteCharAt(sb.length() - 1);
+        }
+
+        if(sb.charAt(sb.length() - 1) != ':') {
+            sb.append(':');
+        }
+
+        return sb.toString();
     }
 
     private boolean validServer(ServerNode node) {
