@@ -1,9 +1,9 @@
-package hexacloud.server.check;
+package hexacloud.gateway.scheduler;
 
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
-import hexacloud.server.ServerNode;
+import hexacloud.gateway.cluster.ServerNode;
 
 public class SchedulerPing {
 

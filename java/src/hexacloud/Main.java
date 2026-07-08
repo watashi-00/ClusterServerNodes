@@ -1,6 +1,6 @@
 package hexacloud;
 
-import hexacloud.server.Cluster;
+import hexacloud.gateway.cluster.Cluster;
 
 public class Main {
     

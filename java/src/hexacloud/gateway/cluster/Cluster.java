@@ -1,9 +1,7 @@
-package hexacloud.server;
+package hexacloud.gateway.cluster;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import hexacloud.server.check.SchedulerPing;
 
 public class Cluster implements ImplServer {
     private final int MAX_CLUSTER_SIZE = 10;
@@ -13,9 +11,6 @@ public class Cluster implements ImplServer {
     private String clusterUri = "http://localhost:";
 
     private List<ServerNode> tempCluster;
-
-    SchedulerPing schedulerPing = new SchedulerPing();
-    boolean schedulerStarted = false;
 
     @Override
     public void start(int port, boolean isExternal) {
@@ -41,18 +36,12 @@ public class Cluster implements ImplServer {
     
     @Override
     public void stopAll() {
-        stopScheduler();
         toggleAllServers(false);
     }
 
     @Override
     public void startAll() {
         toggleAllServers(true);
-    }
-
-    @Override
-    public void setInterval(int interval) {
-        this.schedulerPing.setPingInterval(interval);
     }
 
     public void listClusterNodes() {
@@ -103,7 +92,6 @@ public class Cluster implements ImplServer {
         System.out.println("Starting server on host: " + host + ", port: " + port);
         host = validHost(host);
         addClusterNode(new ServerNode(host, port, false, isExternal));
-        startScheduler();
     }
 
     private void addClusterNode(ServerNode node) {
@@ -181,20 +169,6 @@ public class Cluster implements ImplServer {
         }
 
         return true;
-    }
-
-    private void startScheduler() {
-        if(!schedulerStarted) {
-            this.schedulerPing.startPingScheduler(cluster);
-            schedulerStarted = true;
-        }
-    }
-
-    private void stopScheduler() {
-        if(schedulerStarted) {
-            this.schedulerPing.stopPingScheduler();
-            schedulerStarted = false;
-        }
     }
 
     public String getClusterName() {

@@ -1,4 +1,4 @@
-package hexacloud.server;
+package hexacloud.gateway.cluster;
 
 public interface ImplServer {
     void start(int port,  boolean isExternal);
@@ -7,6 +7,4 @@ public interface ImplServer {
     void stop();
     void stopAll();
     void startAll();
-    void setInterval(int interval);
-
 }
