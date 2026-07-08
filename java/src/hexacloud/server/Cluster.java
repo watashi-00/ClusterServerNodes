@@ -1,117 +1,148 @@
 package hexacloud.server;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import hexacloud.server.check.SchedulerPing;
 
 public class Cluster implements ImplServer {
-    static ServerNode[] cluster = new ServerNode[4];
-    String baseUrl = "http://localhost:";
-    private short qtd = 0;
+    private final int MAX_CLUSTER_SIZE = 10;
+    private final List<ServerNode> cluster = new ArrayList<>(MAX_CLUSTER_SIZE);
 
-    private ServerNode[] tempCluster;
+    private String clusterName = "DefaultCluster";
+    private String clusterUri = "http://localhost:";
+
+    private List<ServerNode> tempCluster;
 
     SchedulerPing schedulerPing = new SchedulerPing();
+    boolean schedulerStarted = false;
 
     @Override
     public void start(int port, boolean isExternal) {
-        System.out.println("Starting server on port: " + port);
-        addClusterNode(new ServerNode(baseUrl, port, false));
+        centralizedStart(port, clusterUri, isExternal);
     }
 
     @Override
     public void start(int port, String host,  boolean isExternal) {
-        System.out.println("Starting server on host: " + host + ", port: " + port);
-        host = validHost(host);
-        addClusterNode(new ServerNode(host, port, false));
+        centralizedStart(port, host, isExternal);
     }
 
     @Override
     public void stop(int port) {
         System.out.println("Stopping server on port: " + port);
-        removeClusterNode(new ServerNode(null, port, false));
+        removeClusterNode(port);
     }
 
     @Override
     public void stop() {
-        System.out.println("Stopping server");
+        System.out.println("Stopping last server in the cluster");
         removeClusterNode();
     }
     
     @Override
     public void stopAll() {
-        this.schedulerPing.stopPingScheduler();
-        tempCluster = cluster.clone();
-        for(ServerNode node : cluster) {
-            if(node != null) {
-                System.out.println("Stopping server on host: " + node.host() + ", port: " + node.port());
-                removeClusterNode(node);
-            }
-        }
+        stopScheduler();
+        toggleAllServers(false);
     }
 
     @Override
     public void startAll() {
-        for(ServerNode node : tempCluster) {
-            if(node != null) {
-                System.out.println("Starting server on host: " + node.host() + ", port: " + node.port());
-                addClusterNode(node);
-            }
-        }
-        this.schedulerPing.startPingScheduler(cluster);
-        tempCluster = null;
+        toggleAllServers(true);
     }
 
     @Override
     public void setInterval(int interval) {
-
-    }
-
-
-    private void addClusterNode(ServerNode node) {
-        if (!validServer(node)) {return;}
-        for (int i = 0; i < cluster.length; i++) {
-            if(cluster[i] == null) {
-                cluster[i] = node;
-                System.out.println("Added cluster node: " + node.host());
-                return;
-            }
-        }
-    }
-    private void removeClusterNode() {
-        for (int i = cluster.length - 1; i >= 0; i--) {
-            if(cluster[i] != null) {
-                System.out.println("Removed cluster node: " + cluster[i].host());
-                cluster[i] = null;
-                return;
-            }
-        }
-    }
-
-    private void removeClusterNode(ServerNode node) {
-        for (int i = 0; i < cluster.length; i++) {
-            if(cluster[i] != null && cluster[i].port() == node.port()) {
-                System.out.println("Removed cluster node: " + cluster[i].host());
-                cluster[i] = null;
-                return;
-            }
-        }
+        this.schedulerPing.setPingInterval(interval);
     }
 
     public void listClusterNodes() {
         System.out.println("Current cluster nodes:");
         for (ServerNode node : cluster) {
             if(node != null) {
-                System.out.println(node.host());
+                System.out.println(node);
+            }
+        }
+    }
+
+    private void toggleAllServers(boolean start) {
+        if(!start) {
+            this.tempCluster = new ArrayList<>(cluster);
+        }
+
+        if(start && (this.tempCluster == null || this.tempCluster.isEmpty())) {
+            System.err.println("All servers are already running or no existing servers to start.");
+            return;
+        }
+
+        if(!start && (cluster.isEmpty())) {
+            System.err.println("All servers are already stopped or no existing servers to stop.");
+            return;
+        }
+
+        for(ServerNode node : start ? tempCluster : cluster) {
+            if(node != null) {
+                if(start) {
+                    start(node.port(), node.host(), node.isExternal());
+                } else {
+                    stop(node.port());
+                }
+            }
+        }
+
+        if(start) {
+            this.tempCluster = null;
+        }
+        
+    }
+
+    private void centralizedStart(int port, String host, boolean isExternal) {
+        if(this.tempCluster != null && !this.tempCluster.isEmpty()) {
+            System.err.println("Cannot start a new server while there are stopped servers in the cluster. Please start all stopped servers first.");
+            return;
+        }
+        System.out.println("Starting server on host: " + host + ", port: " + port);
+        host = validHost(host);
+        addClusterNode(new ServerNode(host, port, false, isExternal));
+        startScheduler();
+    }
+
+    private void addClusterNode(ServerNode node) {
+        if (!validServer(node)) {return;}
+
+        if(cluster.size() >= MAX_CLUSTER_SIZE) {
+            System.err.println("Cluster is full. Cannot add more nodes.");
+            return;
+        }
+
+        cluster.add(node);
+
+    }
+    
+    private void removeClusterNode() {
+        if(cluster.isEmpty()) {
+            System.err.println("Cluster is empty. No nodes to remove.");
+            return;
+        }
+        cluster.removeLast();
+    }
+
+    private void removeClusterNode(int port) {
+        for (int i = 0; i < cluster.size(); i++) {
+            if(cluster.get(i) != null && cluster.get(i).port() == port) {
+                System.out.println("Removed cluster node: " + cluster.get(i));
+                cluster.remove(i);
+                return;
             }
         }
     }
 
     private String validHost(String host) {
-        StringBuilder sb = new StringBuilder(host);
-
-        if(sb == null || sb.length() == 0) {
+        if(host == null || host.isEmpty()) {
             System.err.println("Invalid host: null or empty");
             return null;
         }
+
+        StringBuilder sb = new StringBuilder(host);
 
         if(sb.indexOf("http://") != 0 && sb.indexOf("https://") != 0) {
             sb.insert(0, "http://");
@@ -149,11 +180,28 @@ public class Cluster implements ImplServer {
             }
         }
 
-        if(qtd >= cluster.length) {
-            System.err.println("Invalid server node: cluster is full");
-            return false;
-        }
-
         return true;
+    }
+
+    private void startScheduler() {
+        if(!schedulerStarted) {
+            this.schedulerPing.startPingScheduler(cluster);
+            schedulerStarted = true;
+        }
+    }
+
+    private void stopScheduler() {
+        if(schedulerStarted) {
+            this.schedulerPing.stopPingScheduler();
+            schedulerStarted = false;
+        }
+    }
+
+    public String getClusterName() {
+        return clusterName;
+    }
+
+    public void setClusterName(String clusterName) {
+        this.clusterName = clusterName;
     }
 }

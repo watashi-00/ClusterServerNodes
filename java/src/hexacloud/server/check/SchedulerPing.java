@@ -1,5 +1,6 @@
 package hexacloud.server.check;
 
+import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
 import hexacloud.server.ServerNode;
@@ -10,7 +11,7 @@ public class SchedulerPing {
     private int pingInterval = 5; // Default ping interval in seconds
     
     
-    public void startPingScheduler(ServerNode[] cluster) {
+    public void startPingScheduler(List<ServerNode> cluster) {
         if(scheduler == null || scheduler.isShutdown()) {
             scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);
             scheduler.scheduleAtFixedRate(() -> {
@@ -33,4 +34,14 @@ public class SchedulerPing {
         // Implement the logic to ping the cluster node
         System.out.println("Pinging node: " + node.host() + node.port());
     }
+
+    public int getPingInterval() {
+        return pingInterval;
+    }
+
+    public void setPingInterval(int pingInterval) {
+        this.pingInterval = pingInterval;
+    }
+
+    
 }

@@ -8,4 +8,5 @@ public interface ImplServer {
     void stopAll();
     void startAll();
     void setInterval(int interval);
+
 }
