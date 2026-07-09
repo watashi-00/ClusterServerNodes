@@ -1,10 +1,10 @@
-package hexacloud.gateway.contracts;
+package hexacloud.core.ports;
 
 import java.util.List;
 
-import hexacloud.gateway.cluster.ServerNode;
+import hexacloud.core.model.ServerNode;
 
-public interface ImplGateway {
+public interface GatewayPort {
     // Cluster
     void addServer(ServerNode node);
     

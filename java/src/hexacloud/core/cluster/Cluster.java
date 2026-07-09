@@ -1,7 +1,9 @@
-package hexacloud.gateway.cluster;
+package hexacloud.core.cluster;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import hexacloud.core.model.ServerNode;
 
 public class Cluster {
     private final int MAX_CLUSTER_SIZE = 10;

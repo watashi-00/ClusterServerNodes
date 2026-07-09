@@ -1,20 +1,20 @@
-package hexacloud.gateway;
+package hexacloud.infra.gateway;
 
 import java.util.List;
 
-import hexacloud.gateway.cluster.Cluster;
-import hexacloud.gateway.cluster.ServerNode;
-import hexacloud.gateway.contracts.ImplGateway;
-import hexacloud.gateway.scheduler.SchedulerPing;
+import hexacloud.core.cluster.Cluster;
+import hexacloud.core.model.ServerNode;
+import hexacloud.core.ports.GatewayPort;
+import hexacloud.infra.network.ThreadPingScheduler;
 
-class Gateway implements ImplGateway {
+class LocalGatewayAdapter implements GatewayPort {
 
     private final Cluster cluster;
-    private final SchedulerPing schedulerPing;
+    private final ThreadPingScheduler schedulerPing;
 
-    public Gateway() {
+    public LocalGatewayAdapter() {
         this.cluster = new Cluster();
-        this.schedulerPing = new SchedulerPing();
+        this.schedulerPing = new ThreadPingScheduler();
     }
 
     @Override

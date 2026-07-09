@@ -1,4 +1,4 @@
-package hexacloud.gateway.cluster;
+package hexacloud.core.model;
 
 public record ServerNode(String host, int port, boolean isOnline, boolean isExternal) {
     @Override

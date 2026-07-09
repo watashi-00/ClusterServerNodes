@@ -1,11 +1,11 @@
-package hexacloud.gateway.scheduler;
+package hexacloud.infra.network;
 
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
-import hexacloud.gateway.cluster.ServerNode;
+import hexacloud.core.model.ServerNode;
 
-public class SchedulerPing {
+public class ThreadPingScheduler {
 
     private ScheduledExecutorService scheduler;
     private int pingInterval = 5; // Default ping interval in seconds

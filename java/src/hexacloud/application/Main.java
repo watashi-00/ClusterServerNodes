@@ -1,7 +1,7 @@
-package hexacloud;
+package hexacloud.application;
 
-import hexacloud.gateway.GatewayFactory;
-import hexacloud.gateway.contracts.ImplGateway;
+import hexacloud.core.ports.GatewayPort;
+import hexacloud.infra.gateway.GatewayFactory;
 
 public class Main {
     
@@ -10,7 +10,7 @@ public class Main {
     }
 
     public void start() {
-        ImplGateway gateway = GatewayFactory.createGateway();
+        GatewayPort gateway = GatewayFactory.createGateway();
         gateway.addServer(8080);
         gateway.startPingScheduler(1);
     }
