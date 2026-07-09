@@ -3,7 +3,7 @@ package hexacloud.gateway.cluster;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Cluster implements ImplServer {
+public class Cluster {
     private final int MAX_CLUSTER_SIZE = 10;
     private final List<ServerNode> cluster = new ArrayList<>(MAX_CLUSTER_SIZE);
 
@@ -12,34 +12,28 @@ public class Cluster implements ImplServer {
 
     private List<ServerNode> tempCluster;
 
-    @Override
     public void start(int port, boolean isExternal) {
         centralizedStart(port, clusterUri, isExternal);
     }
 
-    @Override
     public void start(int port, String host,  boolean isExternal) {
         centralizedStart(port, host, isExternal);
     }
 
-    @Override
     public void stop(int port) {
         System.out.println("Stopping server on port: " + port);
         removeClusterNode(port);
     }
 
-    @Override
     public void stop() {
         System.out.println("Stopping last server in the cluster");
         removeClusterNode();
     }
-    
-    @Override
+
     public void stopAll() {
         toggleAllServers(false);
     }
 
-    @Override
     public void startAll() {
         toggleAllServers(true);
     }

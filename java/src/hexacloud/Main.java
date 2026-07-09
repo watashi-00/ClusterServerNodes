@@ -5,7 +5,6 @@ import hexacloud.gateway.cluster.Cluster;
 public class Main {
     
     public static void main(String[] args) {
-        System.out.println("hello from Main");
         new Main().start();
     }
 
