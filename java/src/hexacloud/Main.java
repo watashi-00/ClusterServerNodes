@@ -1,6 +1,7 @@
 package hexacloud;
 
-import hexacloud.gateway.cluster.Cluster;
+import hexacloud.gateway.GatewayFactory;
+import hexacloud.gateway.contracts.ImplGateway;
 
 public class Main {
     
@@ -9,8 +10,8 @@ public class Main {
     }
 
     public void start() {
-        Cluster c1 = new Cluster();
-        c1.setClusterName("Cluster1");
-        c1.start(8080, false);
+        ImplGateway gateway = GatewayFactory.createGateway();
+        gateway.addServer(8080);
+        gateway.startPingScheduler(1);
     }
 }

@@ -12,6 +12,14 @@ public class Cluster {
 
     private List<ServerNode> tempCluster;
 
+    public void start(ServerNode node) {
+        centralizedStart(node.port(), node.host(), node.isExternal());
+    }
+
+    public void start(int port) {
+        centralizedStart(port, clusterUri, false);
+    }
+
     public void start(int port, boolean isExternal) {
         centralizedStart(port, clusterUri, isExternal);
     }
@@ -45,6 +53,10 @@ public class Cluster {
                 System.out.println(node);
             }
         }
+    }
+
+    public List<ServerNode> getCluster() {
+        return new ArrayList<>(cluster);
     }
 
     private void toggleAllServers(boolean start) {

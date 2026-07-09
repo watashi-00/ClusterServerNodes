@@ -10,7 +10,6 @@ public class SchedulerPing {
     private ScheduledExecutorService scheduler;
     private int pingInterval = 5; // Default ping interval in seconds
     
-    
     public void startPingScheduler(List<ServerNode> cluster) {
         if(scheduler == null || scheduler.isShutdown()) {
             scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);
@@ -35,13 +34,8 @@ public class SchedulerPing {
         System.out.println("Pinging node: " + node.host() + node.port());
     }
 
-    public int getPingInterval() {
-        return pingInterval;
-    }
-
     public void setPingInterval(int pingInterval) {
         this.pingInterval = pingInterval;
     }
 
-    
 }
