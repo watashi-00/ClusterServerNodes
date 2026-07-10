@@ -1,12 +1,12 @@
 package hexacloud.core.model;
 
-public record ServerNode(String host, int port, NodeStatus isOnline, boolean isExternal) {
+public record ServerNode(String host, int port, NodeStatus status, boolean isExternal) {
     @Override
     public String toString() {
         return "ServerNode{" +
                 "host='" + host + '\'' +
                 ", port=" + port +
-                ", isOnline=" + isOnline +
+                ", isOnline=" + status +
                 ", isExternal=" + isExternal +
                 '}';
     }

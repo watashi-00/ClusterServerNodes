@@ -1,3 +1,5 @@
 package hexacloud.core.cluster.event;
 
-public record NodeStatusChanged(String host, boolean status) implements ClusterEvent {}
+import hexacloud.core.model.NodeStatus;
+
+public record NodeStatusChanged(String host, NodeStatus status) implements ClusterEvent {}

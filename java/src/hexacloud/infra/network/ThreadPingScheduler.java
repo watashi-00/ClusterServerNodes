@@ -2,8 +2,11 @@ package hexacloud.infra.network;
 
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Supplier;
 
 import hexacloud.core.cluster.event.ClusterEventBusManager;
+import hexacloud.core.cluster.event.NodeStatusChanged;
+import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 
 public class ThreadPingScheduler {
@@ -19,12 +22,12 @@ public class ThreadPingScheduler {
         this.httpcli = new HttpCli();
     }
     
-    public void startPingScheduler(List<ServerNode> cluster) {
+    public void startPingScheduler(Supplier<List<ServerNode>> clusterSupplier) {
 
         if(scheduler == null || scheduler.isShutdown()) {
             scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);
             scheduler.scheduleAtFixedRate(() -> {
-                for(ServerNode node : cluster) {
+                for(ServerNode node : clusterSupplier.get()) {
                     if(node != null) {
                         pingClusterNode(node);
                     }
@@ -45,7 +48,12 @@ public class ThreadPingScheduler {
 
     private void pingClusterNode(ServerNode node) {
         var host = node.isExternal() ? node.host() : node.host() + node.port();
-        httpcli.fetchPing(host);
+        NodeStatus res = httpcli.fetchPing(host);
+        
+        if(node.status() != res) {
+            System.out.println("[PingScheduler] new status");
+            eventManager.dispatch(new NodeStatusChanged(node.host(), res));
+        }
     }
 
 }

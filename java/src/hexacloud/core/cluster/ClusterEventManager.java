@@ -2,10 +2,14 @@ package hexacloud.core.cluster;
 
 import java.util.List;
 
+import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
+import hexacloud.core.cluster.event.ClusterListener;
+import hexacloud.core.cluster.event.NodeStatusChanged;
+import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 
-public class ClusterEventManager {
+public class ClusterEventManager implements ClusterListener {
 
     private final Cluster cluster;
     private final ClusterEventBusManager eventManager;
@@ -13,6 +17,8 @@ public class ClusterEventManager {
     public ClusterEventManager(Cluster cluster, ClusterEventBusManager eventManager) {
         this.cluster = cluster;
         this.eventManager = eventManager;
+
+        this.eventManager.sub(NodeStatusChanged.class, this);
     }
 
     public List<ServerNode> getCluster() {
@@ -35,6 +41,10 @@ public class ClusterEventManager {
         this.cluster.start(port, isExternal);
 	}
 
+    public void start(int port, NodeStatus status) {
+        this.cluster.start(port, status);
+    }
+
 	public void start(int port, String host, boolean isExternal) {
         this.cluster.start(port, host, isExternal);
 	}
@@ -55,5 +65,11 @@ public class ClusterEventManager {
         this.cluster.listClusterNodes();
 	}
 
+    @Override
+    public void onClusterEvent(ClusterEvent event) {
+        if(event instanceof NodeStatusChanged statusEvent) {
+            System.out.println("[Received] " + statusEvent);
+        }
+    }
 
 }

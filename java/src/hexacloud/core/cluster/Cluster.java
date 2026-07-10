@@ -27,19 +27,23 @@ public class Cluster {
     }
 
     public void start(ServerNode node) {
-        centralizedStart(node.port(), node.host(), node.isExternal());
+        centralizedStart(node.port(), node.host(), node.status(), node.isExternal());
     }
 
     public void start(int port) {
-        centralizedStart(port, clusterUri, false);
+        centralizedStart(port, clusterUri, NodeStatus.OFFLINE, false);
     }
 
     public void start(int port, boolean isExternal) {
-        centralizedStart(port, clusterUri, isExternal);
+        centralizedStart(port, clusterUri, NodeStatus.OFFLINE, isExternal);
     }
 
     public void start(int port, String host,  boolean isExternal) {
-        centralizedStart(port, host, isExternal);
+        centralizedStart(port, host, NodeStatus.OFFLINE,isExternal);
+    }
+
+    public void start(int port, NodeStatus status) {
+        centralizedStart(port, clusterUri, status, false);
     }
 
     public void stop(int port) {
@@ -104,14 +108,14 @@ public class Cluster {
         
     }
 
-    private void centralizedStart(int port, String host, boolean isExternal) {
+    private void centralizedStart(int port, String host, NodeStatus status, boolean isExternal) {
         if(this.tempCluster != null && !this.tempCluster.isEmpty()) {
             System.err.println("Cannot start a new server while there are stopped servers in the cluster. Please start all stopped servers first.");
             return;
         }
         System.out.println("Starting server on host: " + host + ", port: " + port);
         host = validHost(host);
-        addClusterNode(new ServerNode(host, port, NodeStatus.OFFLINE, isExternal));
+        addClusterNode(new ServerNode(host, port, status, isExternal));
     }
 
     private void addClusterNode(ServerNode node) {
@@ -122,7 +126,7 @@ public class Cluster {
             return;
         }
 
-        cluster.keySet();
+        cluster.put(node.port(), node);
 
     }
     

@@ -2,6 +2,7 @@ package hexacloud.core.ports;
 
 import java.util.List;
 
+import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 
 public interface GatewayPort {
@@ -10,6 +11,7 @@ public interface GatewayPort {
     
     void startAllServers();
     void addServer(int port);
+    void addServer(int port, NodeStatus status);
     void addServer(int port, boolean isExternal);
     void addServer(int port, String host, boolean isExternal);
     

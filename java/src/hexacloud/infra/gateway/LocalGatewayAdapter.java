@@ -5,6 +5,7 @@ import java.util.List;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterEventManager;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
+import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.GatewayPort;
 import hexacloud.infra.network.ThreadPingScheduler;
@@ -23,19 +24,25 @@ class LocalGatewayAdapter implements GatewayPort {
 
     @Override
     public void startPingScheduler() {
-        schedulerPing.startPingScheduler(this.clusterManager.getCluster());
+        schedulerPing.startPingScheduler(() -> this.clusterManager.getCluster());
     }
-
+    
     @Override
     public void startPingScheduler(int intervalInSeconds) {
         schedulerPing.setInterval(intervalInSeconds);
-        schedulerPing.startPingScheduler(this.clusterManager.getCluster());
+        schedulerPing.startPingScheduler(() -> this.clusterManager.getCluster());
     }
-
+    
     @Override
     public void startPingScheduler(List<ServerNode> cluster) {
-        schedulerPing.startPingScheduler(cluster);
+        schedulerPing.startPingScheduler(() -> cluster);
     }
+    
+    @Override
+	public void startPingScheduler(int intervalInSeconds, List<ServerNode> cluster) {
+        schedulerPing.setInterval(intervalInSeconds);
+        schedulerPing.startPingScheduler(() -> cluster);
+	}
 
 	@Override
 	public void startAllServers() {
@@ -45,6 +52,11 @@ class LocalGatewayAdapter implements GatewayPort {
     @Override
     public void addServer(int port) {
         clusterManager.start(port);
+    }
+
+    @Override
+    public void addServer(int port, NodeStatus status) {
+        clusterManager.start(port, status);
     }
 
     @Override
@@ -80,12 +92,6 @@ class LocalGatewayAdapter implements GatewayPort {
 	@Override
 	public void listClusterNodes() {
         clusterManager.listClusterNodes();
-	}
-
-	@Override
-	public void startPingScheduler(int intervalInSeconds, List<ServerNode> cluster) {
-        schedulerPing.setInterval(intervalInSeconds);
-        schedulerPing.startPingScheduler(cluster);
 	}
 
 	@Override
