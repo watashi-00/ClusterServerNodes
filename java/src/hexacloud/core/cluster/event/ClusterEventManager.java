@@ -1,18 +1,26 @@
 package hexacloud.core.cluster.event;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ClusterEventManager {
-    private final List<ClusterListener> listeners = new ArrayList<>();
+    private final Map<Class<? extends ClusterEvent>, List<ClusterListener>> channels = new HashMap<>();
 
-    public void sub(ClusterListener listener) {
-        listeners.add(listener);
-    }    
+    public <T extends ClusterEvent> void sub(Class<T> eventType, ClusterListener listener) {
+        channels.computeIfAbsent(eventType, k -> new ArrayList<>()).add(listener);
+    } 
 
     public void dispatch(ClusterEvent event) {
-        for (var listener : listeners) {
-            listener.onClusterEvent(event);
+        
+        Class<? extends ClusterEvent> eventType = event.getClass();
+        List<ClusterListener> listeners = channels.get(eventType);
+
+        if(listeners != null) {
+            for(var listener : listeners) {
+                listener.onClusterEvent(event);
+            }
         }
     }
 }
