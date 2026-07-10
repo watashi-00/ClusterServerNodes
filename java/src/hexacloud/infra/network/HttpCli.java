@@ -5,6 +5,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 
 import hexacloud.core.model.NodeStatus;
 
@@ -12,28 +13,28 @@ class HttpCli {
 
     public HttpCli() {}
 
-    NodeStatus fetchPing(String host) {
-        try {
-            HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(2))
-                .version(HttpClient.Version.HTTP_1_1)
-                .build();
-            HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(host))
-                .timeout(Duration.ofSeconds(2))
-                .GET()
-                .build();
+    CompletableFuture<NodeStatus> fetchPingAsync(String host) {
+        HttpClient client = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(2))
+            .version(HttpClient.Version.HTTP_1_1)
+            .build();
 
-            HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-            
-            if(res.statusCode() >= 200 && res.statusCode() < 300) {
-                return NodeStatus.ONLINE;
-            } else {
-                return NodeStatus.UNSTABLE;
-            }
+        HttpRequest req = HttpRequest.newBuilder()
+            .uri(URI.create(host))
+            .timeout(Duration.ofSeconds(2))
+            .GET()
+            .build();
 
-        } catch(Exception e) {
-            return NodeStatus.OFFLINE;
-        }
+        return client.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+            .thenApply(res -> {
+                if(res.statusCode() >= 200 && res.statusCode() < 300) {
+                    return NodeStatus.ONLINE;
+                } else {
+                    return NodeStatus.UNSTABLE;
+                }
+            })
+            .exceptionally(ex -> {
+                return NodeStatus.OFFLINE;
+            });
     }
 }

@@ -1,6 +1,7 @@
 package hexacloud.infra.network;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
@@ -47,12 +48,13 @@ public class ThreadPingScheduler {
     }
 
     private void pingClusterNode(ServerNode node) {
-        NodeStatus res = httpcli.fetchPing(node.getFullHost());
-        
-        if(node.status() != res) {
-            // event dispatch NodeStatusChanged
-            eventManager.dispatch(new NodeStatusChanged(node.getFullHost(), res));
-        }
-    }
+        CompletableFuture<NodeStatus> response = httpcli.fetchPingAsync(node.getFullHost());
 
+        response.thenAccept(status -> {
+            if(node.status() != status) {
+                // event dispatch NodeStatusChanged
+                eventManager.dispatch(new NodeStatusChanged(node.getFullHost(), status));
+            }
+        });
+    }
 }
