@@ -45,48 +45,48 @@ class LocalGatewayAdapter implements GatewayPort {
 	}
 
 	@Override
-	public void startAllServers() {
-        clusterManager.startAll();
+	public void registerAllServers() {
+        clusterManager.registerAllServers();
 	}
 
     @Override
-    public void addServer(int port) {
-        clusterManager.start(port);
+    public void registerServer(int port) {
+        clusterManager.registerServer(port);
     }
 
     @Override
-    public void addServer(int port, NodeStatus status) {
-        clusterManager.start(port, status);
+    public void registerServer(int port, NodeStatus status) {
+        clusterManager.registerServer(port, status);
     }
 
     @Override
-    public void addServer(ServerNode node) {
-        clusterManager.start(node);
+    public void registerServer(ServerNode node) {
+        clusterManager.registerServer(node);
     }
 
 	@Override
-	public void addServer(int port, boolean isExternal) {
-        clusterManager.start(port, isExternal);
+	public void registerServer(int port, boolean isExternal) {
+        clusterManager.registerServer(port, isExternal);
 	}
 
 	@Override
-	public void addServer(int port, String host, boolean isExternal) {
-        clusterManager.start(port, host, isExternal);
+	public void registerServer(int port, String host, boolean isExternal) {
+        clusterManager.registerServer(port, host, isExternal);
 	}
 
 	@Override
-	public void stopAllServers() {
-        clusterManager.stopAll();
+	public void deregisterAllServers() {
+        clusterManager.deregisterAllServers();
 	}
 
 	@Override
-	public void stopServer(String fullHost) {
-        clusterManager.stop(fullHost);
+	public void deregisterServer(String fullHost) {
+        clusterManager.deregisterServer(fullHost);
 	}
 
 	@Override
-	public void stopLastServer() {
-        clusterManager.stop();
+	public void deregisterLastServer() {
+        clusterManager.deregisterLastServer();
 	}
 
 	@Override

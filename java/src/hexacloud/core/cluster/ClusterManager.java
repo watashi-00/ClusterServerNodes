@@ -6,11 +6,12 @@ import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.cluster.event.ClusterListener;
 import hexacloud.core.cluster.event.NodeStatusChanged;
+import hexacloud.core.contracts.ImplCluster;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 
-public class ClusterManager implements ClusterListener {
+public class ClusterManager implements ClusterListener, ImplCluster {
 
     private final Cluster cluster;
     private final ClusterEventBusManager eventManager;
@@ -25,43 +26,53 @@ public class ClusterManager implements ClusterListener {
     public List<ServerNode> getCluster() {
         return this.cluster.getCluster();
     }
-
-    public void startAll() {
-        this.cluster.startAll();
+    
+    @Override
+    public void registerAllServers() {
+        this.cluster.registerAllServers();
     }
 
-    public void start(int port) {
-        this.cluster.start(port);
+    @Override
+    public void registerServer(int port) {
+        this.cluster.registerServer(port);
     }
 
-    public void start(ServerNode node) {
-        this.cluster.start(node);
+    @Override
+    public void registerServer(ServerNode node) {
+        this.cluster.registerServer(node);
     }
 
-	public void start(int port, boolean isExternal) {
-        this.cluster.start(port, isExternal);
+    @Override
+	public void registerServer(int port, boolean isExternal) {
+        this.cluster.registerServer(port, isExternal);
 	}
 
-    public void start(int port, NodeStatus status) {
-        this.cluster.start(port, status);
+    @Override
+    public void registerServer(int port, NodeStatus status) {
+        this.cluster.registerServer(port, status);
     }
 
-	public void start(int port, String host, boolean isExternal) {
-        this.cluster.start(port, host, isExternal);
+    @Override
+	public void registerServer(int port, String host, boolean isExternal) {
+        this.cluster.registerServer(port, host, isExternal);
 	}
 
-	public void stopAll() {
-        this.cluster.stopAll();
+    @Override
+	public void deregisterAllServers() {
+        this.cluster.deregisterAllServers();
 	}
 
-	public void stop(String fullHost) {
-        this.cluster.stop(fullHost);
+    @Override
+	public void deregisterServer(String fullHost) {
+        this.cluster.deregisterServer(fullHost);
 	}
 
-	public void stop() {
-        this.cluster.stop();
+    @Override
+	public void deregisterLastServer() {
+        this.cluster.deregisterLastServer();
 	}
 
+    @Override
 	public void listClusterNodes() {
         this.cluster.listClusterNodes();
 	}

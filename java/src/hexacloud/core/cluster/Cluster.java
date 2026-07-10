@@ -13,7 +13,7 @@ public class Cluster {
     private final ConcurrentHashMap<String, ServerNode> cluster;
 
     private String clusterName = "DefaultCluster";
-    private String clusterUri = "http://localhost:";
+    private String clusterUri = "http://localhost";
 
     private List<ServerNode> tempCluster;
 
@@ -26,41 +26,41 @@ public class Cluster {
         this.clusterName = clusterName;
     }
 
-    public void start(ServerNode node) {
-        centralizedStart(node.port(), node.host(), node.status(), node.isExternal());
+    public void registerServer(ServerNode node) {
+        centralizedRegister(node.port(), node.host(), node.status(), node.isExternal());
     }
 
-    public void start(int port) {
-        centralizedStart(port, clusterUri, NodeStatus.OFFLINE, false);
+    public void registerServer(int port) {
+        centralizedRegister(port, clusterUri, NodeStatus.OFFLINE, false);
     }
 
-    public void start(int port, boolean isExternal) {
-        centralizedStart(port, clusterUri, NodeStatus.OFFLINE, isExternal);
+    public void registerServer(int port, boolean isExternal) {
+        centralizedRegister(port, clusterUri, NodeStatus.OFFLINE, isExternal);
     }
 
-    public void start(int port, String host,  boolean isExternal) {
-        centralizedStart(port, host, NodeStatus.OFFLINE,isExternal);
+    public void registerServer(int port, String host,  boolean isExternal) {
+        centralizedRegister(port, host, NodeStatus.OFFLINE,isExternal);
     }
 
-    public void start(int port, NodeStatus status) {
-        centralizedStart(port, clusterUri, status, false);
+    public void registerServer(int port, NodeStatus status) {
+        centralizedRegister(port, clusterUri, status, false);
     }
 
-    public void stop(String fullHost) {
-        System.out.println("Stopping server" + fullHost);
+    public void deregisterServer(String fullHost) {
+        System.out.println("Deregistering server " + fullHost);
         removeClusterNode(fullHost);
     }
 
-    public void stop() {
-        System.out.println("Stopping last server in the cluster");
+    public void deregisterLastServer() {
+        System.out.println("Deregistering last server in the cluster");
         removeClusterNode();
     }
 
-    public void stopAll() {
+    public void deregisterAllServers() {
         toggleAllServers(false);
     }
 
-    public void startAll() {
+    public void registerAllServers() {
         toggleAllServers(true);
     }
 
@@ -98,9 +98,9 @@ public class Cluster {
         for(ServerNode node : start ? tempCluster : cluster.values()) {
             if(node != null) {
                 if(start) {
-                    start(node.port(), node.host(), node.isExternal());
+                    registerServer(node.port(), node.host(), node.isExternal());
                 } else {
-                    stop(node.getFullHost());
+                    deregisterServer(node.getFullHost());
                 }
             }
         }
@@ -111,12 +111,12 @@ public class Cluster {
         
     }
 
-    private void centralizedStart(int port, String host, NodeStatus status, boolean isExternal) {
+    private void centralizedRegister(int port, String host, NodeStatus status, boolean isExternal) {
         if(this.tempCluster != null && !this.tempCluster.isEmpty()) {
-            System.err.println("Cannot start a new server while there are stopped servers in the cluster. Please start all stopped servers first.");
+            System.err.println("Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
             return;
         }
-        System.out.println("Starting server on host: " + host + ", port: " + port);
+        System.out.println("Registering server on host: " + host + ", port: " + port);
         host = validHost(host);
         addClusterNode(new ServerNode(host, port, status, isExternal));
     }
