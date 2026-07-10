@@ -2,17 +2,22 @@ package hexacloud.core.cluster;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 import hexacloud.core.model.ServerNode;
 
 public class Cluster {
     private final int MAX_CLUSTER_SIZE = 10;
-    private final List<ServerNode> cluster = new ArrayList<>(MAX_CLUSTER_SIZE);
+    private final ConcurrentHashMap<Integer, ServerNode> cluster;
 
     private String clusterName = "DefaultCluster";
     private String clusterUri = "http://localhost:";
 
     private List<ServerNode> tempCluster;
+
+    public Cluster() {
+        this.cluster = new ConcurrentHashMap<>();
+    }
 
     public void start(ServerNode node) {
         centralizedStart(node.port(), node.host(), node.isExternal());
@@ -50,7 +55,7 @@ public class Cluster {
 
     public void listClusterNodes() {
         System.out.println("Current cluster nodes:");
-        for (ServerNode node : cluster) {
+        for (ServerNode node : cluster.values()) {
             if(node != null) {
                 System.out.println(node);
             }
@@ -58,12 +63,12 @@ public class Cluster {
     }
 
     public List<ServerNode> getCluster() {
-        return new ArrayList<>(cluster);
+        return new ArrayList<>(cluster.values());
     }
 
     private void toggleAllServers(boolean start) {
         if(!start) {
-            this.tempCluster = new ArrayList<>(cluster);
+            this.tempCluster = new ArrayList<>(cluster.values());
         }
 
         if(start && (this.tempCluster == null || this.tempCluster.isEmpty())) {
@@ -76,7 +81,7 @@ public class Cluster {
             return;
         }
 
-        for(ServerNode node : start ? tempCluster : cluster) {
+        for(ServerNode node : start ? tempCluster : cluster.values()) {
             if(node != null) {
                 if(start) {
                     start(node.port(), node.host(), node.isExternal());
@@ -110,7 +115,7 @@ public class Cluster {
             return;
         }
 
-        cluster.add(node);
+        cluster.keySet();
 
     }
     
@@ -119,7 +124,9 @@ public class Cluster {
             System.err.println("Cluster is empty. No nodes to remove.");
             return;
         }
-        cluster.removeLast();
+        cluster.keySet().stream()
+            .reduce((first, second) -> second)
+            .ifPresent(lastKey -> cluster.remove(lastKey));
     }
 
     private void removeClusterNode(int port) {
@@ -169,7 +176,7 @@ public class Cluster {
             return false;
         }
 
-        for(ServerNode n : cluster) {
+        for(ServerNode n : cluster.values()) {
             if(n != null && n.port() == node.port()) {
                 System.err.println("Invalid server node: port is already in use");
                 return false;
