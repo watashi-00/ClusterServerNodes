@@ -76,6 +76,10 @@ public class Cluster {
         return new ArrayList<>(cluster.values());
     }
 
+    public void updateStatusServer(String host, NodeStatus status) {
+        this.cluster.computeIfPresent(host, (key, serverNode) -> serverNode.withStatus(status));
+    }
+
     private void toggleAllServers(boolean start) {
         if(!start) {
             this.tempCluster = new ArrayList<>(cluster.values());

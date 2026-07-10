@@ -10,12 +10,12 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 
-public class ClusterEventManager implements ClusterListener {
+public class ClusterManager implements ClusterListener {
 
     private final Cluster cluster;
     private final ClusterEventBusManager eventManager;
 
-    public ClusterEventManager(Cluster cluster, ClusterEventBusManager eventManager) {
+    public ClusterManager(Cluster cluster, ClusterEventBusManager eventManager) {
         this.cluster = cluster;
         this.eventManager = eventManager;
 
@@ -70,6 +70,7 @@ public class ClusterEventManager implements ClusterListener {
     public void onClusterEvent(ClusterEvent event) {
         if(event instanceof NodeStatusChanged statusEvent) {
             DebugUtils.log("Received " + statusEvent);
+            this.cluster.updateStatusServer(statusEvent.host(), statusEvent.status());
         }
     }
 

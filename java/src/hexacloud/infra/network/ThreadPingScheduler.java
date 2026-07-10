@@ -50,6 +50,7 @@ public class ThreadPingScheduler {
         NodeStatus res = httpcli.fetchPing(node.getFullHost());
         
         if(node.status() != res) {
+            // event dispatch NodeStatusChanged
             eventManager.dispatch(new NodeStatusChanged(node.getFullHost(), res));
         }
     }
