@@ -21,10 +21,10 @@ public interface GatewayPort {
 
     // SchedulerPing
     void startPingScheduler();
-    void startPingScheduler(int pingInterval);
+    void startPingScheduler(int intervalInSeconds);
     void startPingScheduler(List<ServerNode> cluster);
-    void startPingScheduler(int pingInterval, List<ServerNode> cluster);
-    void setPingInterval(int pingInterval);
+    void startPingScheduler(int intervalInSeconds, List<ServerNode> cluster);
+    void setPingInterval(int intervalInSeconds);
     void stopPingScheduler();
     
 }

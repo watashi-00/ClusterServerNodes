@@ -9,7 +9,7 @@ public class ThreadPingScheduler {
 
     private ScheduledExecutorService scheduler;
     private HttpCli httpcli;
-    private int pingInterval = 5; // Default ping interval in seconds
+    private int interval = 5; // Default ping interval in seconds
     
     public void startPingScheduler(List<ServerNode> cluster) {
         if(httpcli == null) {
@@ -24,7 +24,7 @@ public class ThreadPingScheduler {
                         pingClusterNode(node);
                     }
                 }
-            }, 0, this.pingInterval, java.util.concurrent.TimeUnit.SECONDS);
+            }, 0, this.interval, java.util.concurrent.TimeUnit.SECONDS);
         }
     }
 
@@ -34,8 +34,8 @@ public class ThreadPingScheduler {
         }
     }
 
-    public void setPingInterval(int pingInterval) {
-        this.pingInterval = pingInterval;
+    public void setInterval(int intervalInSeconds) {
+        this.interval = intervalInSeconds;
     }
 
     private void pingClusterNode(ServerNode node) {

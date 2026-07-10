@@ -23,8 +23,8 @@ class LocalGatewayAdapter implements GatewayPort {
     }
 
     @Override
-    public void startPingScheduler(int pingInterval) {
-        schedulerPing.setPingInterval(pingInterval);
+    public void startPingScheduler(int intervalInSeconds) {
+        schedulerPing.setInterval(intervalInSeconds);
         schedulerPing.startPingScheduler(this.cluster.getCluster());
     }
 
@@ -79,14 +79,14 @@ class LocalGatewayAdapter implements GatewayPort {
 	}
 
 	@Override
-	public void startPingScheduler(int pingInterval, List<ServerNode> cluster) {
-        schedulerPing.setPingInterval(pingInterval);
+	public void startPingScheduler(int intervalInSeconds, List<ServerNode> cluster) {
+        schedulerPing.setInterval(intervalInSeconds);
         schedulerPing.startPingScheduler(cluster);
 	}
 
 	@Override
 	public void setPingInterval(int pingInterval) {
-        schedulerPing.setPingInterval(pingInterval);
+        schedulerPing.setInterval(pingInterval);
 	}
 
     @Override
