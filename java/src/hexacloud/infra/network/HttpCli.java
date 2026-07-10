@@ -13,7 +13,7 @@ class HttpCli {
     void fetchPing(String host) {
         try {
             HttpClient client = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(1))
+                .connectTimeout(Duration.ofSeconds(2))
                 .build();
             HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(host))
@@ -23,13 +23,13 @@ class HttpCli {
             HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
 
             if(res.statusCode() >= 200 && res.statusCode() < 300) {
-                System.out.println(host + "ok");
+                System.out.println(host + " online " + res.statusCode());
             } else {
-                System.out.println(host + "not ok: ");
+                System.out.println(host + " online, but instable " + res.statusCode());
             }
 
         } catch(Exception e) {
-            
+            System.out.println(host +" "+ e.getMessage());
         }
     }
 }
