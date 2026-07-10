@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import hexacloud.core.utils.DebugUtils;
+
 public class ClusterEventBusManager {
     private final Map<Class<? extends ClusterEvent>, List<ClusterListener>> channels = new HashMap<>();
 
@@ -16,6 +18,8 @@ public class ClusterEventBusManager {
         
         Class<? extends ClusterEvent> eventType = event.getClass();
         List<ClusterListener> listeners = channels.get(eventType);
+
+        DebugUtils.log("Dispatch " + event);
 
         if(listeners != null) {
             for(var listener : listeners) {

@@ -16,7 +16,7 @@ public interface GatewayPort {
     void addServer(int port, String host, boolean isExternal);
     
     void stopAllServers();
-    void stopServer(int port);
+    void stopServer(String fullHost);
     void stopLastServer();
 
     void listClusterNodes();

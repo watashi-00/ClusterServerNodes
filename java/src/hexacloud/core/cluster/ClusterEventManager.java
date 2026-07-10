@@ -8,6 +8,7 @@ import hexacloud.core.cluster.event.ClusterListener;
 import hexacloud.core.cluster.event.NodeStatusChanged;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.utils.DebugUtils;
 
 public class ClusterEventManager implements ClusterListener {
 
@@ -53,8 +54,8 @@ public class ClusterEventManager implements ClusterListener {
         this.cluster.stopAll();
 	}
 
-	public void stop(int port) {
-        this.cluster.stop(port);
+	public void stop(String fullHost) {
+        this.cluster.stop(fullHost);
 	}
 
 	public void stop() {
@@ -68,7 +69,7 @@ public class ClusterEventManager implements ClusterListener {
     @Override
     public void onClusterEvent(ClusterEvent event) {
         if(event instanceof NodeStatusChanged statusEvent) {
-            System.out.println("[Received] " + statusEvent);
+            DebugUtils.log("Received " + statusEvent);
         }
     }
 

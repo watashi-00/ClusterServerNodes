@@ -80,8 +80,8 @@ class LocalGatewayAdapter implements GatewayPort {
 	}
 
 	@Override
-	public void stopServer(int port) {
-        clusterManager.stop(port);
+	public void stopServer(String fullHost) {
+        clusterManager.stop(fullHost);
 	}
 
 	@Override

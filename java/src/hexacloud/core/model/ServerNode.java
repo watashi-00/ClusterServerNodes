@@ -15,4 +15,8 @@ public record ServerNode(String host, int port, NodeStatus status, boolean isExt
         return new ServerNode(this.host, this.port, newStatus, this.isExternal);
     }
 
+    public String getFullHost() {
+        return this.host + ":" + this.port;
+    }
+
 }

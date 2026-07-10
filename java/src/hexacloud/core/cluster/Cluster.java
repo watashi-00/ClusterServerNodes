@@ -10,7 +10,7 @@ import hexacloud.core.model.ServerNode;
 public class Cluster {
 
     private final int MAX_CLUSTER_SIZE = 10;
-    private final ConcurrentHashMap<Integer, ServerNode> cluster;
+    private final ConcurrentHashMap<String, ServerNode> cluster;
 
     private String clusterName = "DefaultCluster";
     private String clusterUri = "http://localhost:";
@@ -46,9 +46,9 @@ public class Cluster {
         centralizedStart(port, clusterUri, status, false);
     }
 
-    public void stop(int port) {
-        System.out.println("Stopping server on port: " + port);
-        removeClusterNode(port);
+    public void stop(String fullHost) {
+        System.out.println("Stopping server" + fullHost);
+        removeClusterNode(fullHost);
     }
 
     public void stop() {
@@ -97,7 +97,7 @@ public class Cluster {
                 if(start) {
                     start(node.port(), node.host(), node.isExternal());
                 } else {
-                    stop(node.port());
+                    stop(node.getFullHost());
                 }
             }
         }
@@ -126,7 +126,7 @@ public class Cluster {
             return;
         }
 
-        cluster.put(node.port(), node);
+        cluster.put(node.getFullHost(), node);
 
     }
     
@@ -140,13 +140,9 @@ public class Cluster {
             .ifPresent(lastKey -> cluster.remove(lastKey));
     }
 
-    private void removeClusterNode(int port) {
-        for (int i = 0; i < cluster.size(); i++) {
-            if(cluster.get(i) != null && cluster.get(i).port() == port) {
-                System.out.println("Removed cluster node: " + cluster.get(i));
-                cluster.remove(i);
-                return;
-            }
+    private void removeClusterNode(String fullHost) {
+        if(cluster.containsKey(fullHost)) {
+            cluster.remove(fullHost);
         }
     }
 
@@ -166,8 +162,8 @@ public class Cluster {
             sb.deleteCharAt(sb.length() - 1);
         }
 
-        if(sb.charAt(sb.length() - 1) != ':') {
-            sb.append(':');
+        if(sb.charAt(sb.length() - 1) == ':') {
+            sb.deleteCharAt(sb.length() -1);
         }
 
         return sb.toString();
