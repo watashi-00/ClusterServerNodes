@@ -1,4 +1,4 @@
-package hexacloud.messages.cluster;
+package hexacloud.core.cluster.event;
 
 @FunctionalInterface
 public interface ClusterListener {
