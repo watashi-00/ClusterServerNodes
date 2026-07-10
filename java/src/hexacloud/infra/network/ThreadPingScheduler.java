@@ -34,13 +34,13 @@ public class ThreadPingScheduler {
         }
     }
 
-    public void pingClusterNode(ServerNode node) {
-        var host = node.isExternal() ? node.host() : node.host() + node.port();
-        httpcli.fetchPing(host);
-    }
-
     public void setPingInterval(int pingInterval) {
         this.pingInterval = pingInterval;
+    }
+
+    private void pingClusterNode(ServerNode node) {
+        var host = node.isExternal() ? node.host() : node.host() + node.port();
+        httpcli.fetchPing(host);
     }
 
 }
