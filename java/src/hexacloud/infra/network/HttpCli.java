@@ -6,11 +6,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+import hexacloud.core.model.NodeStatus;
+
 class HttpCli {
 
     public HttpCli() {}
 
-    void fetchPing(String host) {
+    NodeStatus fetchPing(String host) {
         try {
             HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2))
@@ -21,15 +23,15 @@ class HttpCli {
                 .build();
 
             HttpResponse<String> res = client.send(req, HttpResponse.BodyHandlers.ofString());
-
+            
             if(res.statusCode() >= 200 && res.statusCode() < 300) {
-                System.out.println(host + " online " + res.statusCode());
+                return NodeStatus.ONLINE;
             } else {
-                System.out.println(host + " online, but instable " + res.statusCode());
+                return NodeStatus.UNSTABLE;
             }
 
         } catch(Exception e) {
-            System.out.println(host +" "+ e.getMessage());
+            return NodeStatus.OFFLINE;
         }
     }
 }

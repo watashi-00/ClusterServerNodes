@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ClusterEventManager {
+public class ClusterEventBusManager {
     private final Map<Class<? extends ClusterEvent>, List<ClusterListener>> channels = new HashMap<>();
 
     public <T extends ClusterEvent> void sub(Class<T> eventType, ClusterListener listener) {

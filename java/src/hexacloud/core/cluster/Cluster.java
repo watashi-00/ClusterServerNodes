@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
+import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 
 public class Cluster {
+
     private final int MAX_CLUSTER_SIZE = 10;
     private final ConcurrentHashMap<Integer, ServerNode> cluster;
 
@@ -17,6 +19,11 @@ public class Cluster {
 
     public Cluster() {
         this.cluster = new ConcurrentHashMap<>();
+    }
+
+    public Cluster(String clusterName) {
+        this.cluster = new ConcurrentHashMap<>();
+        this.clusterName = clusterName;
     }
 
     public void start(ServerNode node) {
@@ -104,7 +111,7 @@ public class Cluster {
         }
         System.out.println("Starting server on host: " + host + ", port: " + port);
         host = validHost(host);
-        addClusterNode(new ServerNode(host, port, false, isExternal));
+        addClusterNode(new ServerNode(host, port, NodeStatus.OFFLINE, isExternal));
     }
 
     private void addClusterNode(ServerNode node) {

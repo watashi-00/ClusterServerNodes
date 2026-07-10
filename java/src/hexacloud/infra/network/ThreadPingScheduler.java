@@ -3,18 +3,23 @@ package hexacloud.infra.network;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
+import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.model.ServerNode;
 
 public class ThreadPingScheduler {
 
     private ScheduledExecutorService scheduler;
-    private HttpCli httpcli;
     private int interval = 5; // Default ping interval in seconds
+
+    private final HttpCli httpcli;
+    private final ClusterEventBusManager eventManager;
+
+    public ThreadPingScheduler(ClusterEventBusManager eventManager) {
+        this.eventManager = eventManager;
+        this.httpcli = new HttpCli();
+    }
     
     public void startPingScheduler(List<ServerNode> cluster) {
-        if(httpcli == null) {
-            this.httpcli = new HttpCli();
-        }
 
         if(scheduler == null || scheduler.isShutdown()) {
             scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);

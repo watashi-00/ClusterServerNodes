@@ -3,29 +3,33 @@ package hexacloud.infra.gateway;
 import java.util.List;
 
 import hexacloud.core.cluster.Cluster;
+import hexacloud.core.cluster.ClusterEventManager;
+import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.GatewayPort;
 import hexacloud.infra.network.ThreadPingScheduler;
 
 class LocalGatewayAdapter implements GatewayPort {
 
-    private final Cluster cluster;
+    private final ClusterEventManager clusterManager;
+    private final ClusterEventBusManager clusterEventManager;
     private final ThreadPingScheduler schedulerPing;
 
     public LocalGatewayAdapter() {
-        this.cluster = new Cluster();
-        this.schedulerPing = new ThreadPingScheduler();
+        this.clusterEventManager = new ClusterEventBusManager();
+        this.clusterManager = new ClusterEventManager(new Cluster("watashi-00"), this.clusterEventManager);
+        this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
     }
 
     @Override
     public void startPingScheduler() {
-        schedulerPing.startPingScheduler(this.cluster.getCluster());
+        schedulerPing.startPingScheduler(this.clusterManager.getCluster());
     }
 
     @Override
     public void startPingScheduler(int intervalInSeconds) {
         schedulerPing.setInterval(intervalInSeconds);
-        schedulerPing.startPingScheduler(this.cluster.getCluster());
+        schedulerPing.startPingScheduler(this.clusterManager.getCluster());
     }
 
     @Override
@@ -35,47 +39,47 @@ class LocalGatewayAdapter implements GatewayPort {
 
 	@Override
 	public void startAllServers() {
-        cluster.startAll();
+        clusterManager.startAll();
 	}
 
     @Override
     public void addServer(int port) {
-        cluster.start(port);
+        clusterManager.start(port);
     }
 
     @Override
     public void addServer(ServerNode node) {
-        cluster.start(node);
+        clusterManager.start(node);
     }
 
 	@Override
 	public void addServer(int port, boolean isExternal) {
-        cluster.start(port, isExternal);
+        clusterManager.start(port, isExternal);
 	}
 
 	@Override
 	public void addServer(int port, String host, boolean isExternal) {
-        cluster.start(port, host, isExternal);
+        clusterManager.start(port, host, isExternal);
 	}
 
 	@Override
 	public void stopAllServers() {
-        cluster.stopAll();
+        clusterManager.stopAll();
 	}
 
 	@Override
 	public void stopServer(int port) {
-        cluster.stop(port);
+        clusterManager.stop(port);
 	}
 
 	@Override
 	public void stopLastServer() {
-        cluster.stop();
+        clusterManager.stop();
 	}
 
 	@Override
 	public void listClusterNodes() {
-        cluster.listClusterNodes();
+        clusterManager.listClusterNodes();
 	}
 
 	@Override
