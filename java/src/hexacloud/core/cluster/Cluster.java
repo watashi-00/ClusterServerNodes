@@ -65,7 +65,6 @@ public class Cluster {
     }
 
     public void listClusterNodes() {
-        System.out.println("Current cluster nodes:");
         for (ServerNode node : cluster.values()) {
             if(node != null) {
                 System.out.println(node);

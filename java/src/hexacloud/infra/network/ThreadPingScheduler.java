@@ -47,11 +47,10 @@ public class ThreadPingScheduler {
     }
 
     private void pingClusterNode(ServerNode node) {
-        var host = node.isExternal() ? node.host() : node.host() + node.port();
-        NodeStatus res = httpcli.fetchPing(host);
+        NodeStatus res = httpcli.fetchPing(node.getFullHost());
         
         if(node.status() != res) {
-            eventManager.dispatch(new NodeStatusChanged(node.host(), res));
+            eventManager.dispatch(new NodeStatusChanged(node.getFullHost(), res));
         }
     }
 

@@ -16,9 +16,11 @@ class HttpCli {
         try {
             HttpClient client = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2))
+                .version(HttpClient.Version.HTTP_1_1)
                 .build();
             HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(host))
+                .timeout(Duration.ofSeconds(2))
                 .GET()
                 .build();
 
