@@ -9,6 +9,7 @@ import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.cluster.event.NodeStatusChanged;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.utils.DebugUtils;
 
 public class ThreadPingScheduler {
 
@@ -28,10 +29,14 @@ public class ThreadPingScheduler {
         if(scheduler == null || scheduler.isShutdown()) {
             scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);
             scheduler.scheduleAtFixedRate(() -> {
-                for(ServerNode node : clusterSupplier.get()) {
-                    if(node != null) {
-                        pingClusterNode(node);
+                try {
+                    for(ServerNode node : clusterSupplier.get()) {
+                        if(node != null) {
+                            pingClusterNode(node);
+                        }
                     }
+                } catch (Exception e) {
+                    DebugUtils.error("Unexpected error in ping scheduler execution", e);
                 }
             }, 0, this.interval, java.util.concurrent.TimeUnit.SECONDS);
         }

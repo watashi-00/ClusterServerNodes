@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 import hexacloud.core.model.NodeStatus;
+import hexacloud.core.utils.DebugUtils;
 
 class HttpCli {
 
@@ -34,6 +35,7 @@ class HttpCli {
                 }
             })
             .exceptionally(ex -> {
+                DebugUtils.error("Ping connection failed for host: " + host, ex);
                 return NodeStatus.OFFLINE;
             });
     }

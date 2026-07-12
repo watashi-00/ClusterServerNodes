@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.utils.DebugUtils;
 
 public class Cluster {
 
@@ -47,12 +48,12 @@ public class Cluster {
     }
 
     public void deregisterServer(String fullHost) {
-        System.out.println("Deregistering server " + fullHost);
+        DebugUtils.log("Deregistering server " + fullHost);
         removeClusterNode(fullHost);
     }
 
     public void deregisterLastServer() {
-        System.out.println("Deregistering last server in the cluster");
+        DebugUtils.log("Deregistering last server in the cluster");
         removeClusterNode();
     }
 
@@ -67,7 +68,7 @@ public class Cluster {
     public void listClusterNodes() {
         for (ServerNode node : cluster.values()) {
             if(node != null) {
-                System.out.println(node);
+                DebugUtils.log(node.toString());
             }
         }
     }
@@ -77,6 +78,10 @@ public class Cluster {
     }
 
     public void updateStatusServer(String host, NodeStatus status) {
+        if (!this.cluster.containsKey(host)) {
+            DebugUtils.error("Cannot update status: Server host '" + host + "' is not registered in the cluster.");
+            return;
+        }
         this.cluster.computeIfPresent(host, (key, serverNode) -> serverNode.withStatus(status));
     }
 
@@ -86,12 +91,12 @@ public class Cluster {
         }
 
         if(start && (this.tempCluster == null || this.tempCluster.isEmpty())) {
-            System.err.println("All servers are already running or no existing servers to start.");
+            DebugUtils.error("All servers are already running or no existing servers to start.");
             return;
         }
 
         if(!start && (cluster.isEmpty())) {
-            System.err.println("All servers are already stopped or no existing servers to stop.");
+            DebugUtils.error("All servers are already stopped or no existing servers to stop.");
             return;
         }
 
@@ -113,10 +118,10 @@ public class Cluster {
 
     private void centralizedRegister(int port, String host, NodeStatus status, boolean isExternal) {
         if(this.tempCluster != null && !this.tempCluster.isEmpty()) {
-            System.err.println("Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
+            DebugUtils.error("Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
             return;
         }
-        System.out.println("Registering server on host: " + host + ", port: " + port);
+        DebugUtils.log("Registering server on host: " + host + ", port: " + port);
         host = validHost(host);
         addClusterNode(new ServerNode(host, port, status, isExternal));
     }
@@ -125,7 +130,7 @@ public class Cluster {
         if (!validServer(node)) {return;}
 
         if(cluster.size() >= MAX_CLUSTER_SIZE) {
-            System.err.println("Cluster is full. Cannot add more nodes.");
+            DebugUtils.error("Cluster is full. Cannot add more nodes.");
             return;
         }
 
@@ -135,7 +140,7 @@ public class Cluster {
     
     private void removeClusterNode() {
         if(cluster.isEmpty()) {
-            System.err.println("Cluster is empty. No nodes to remove.");
+            DebugUtils.error("Cluster is empty. No nodes to remove.");
             return;
         }
         cluster.keySet().stream()
@@ -151,7 +156,7 @@ public class Cluster {
 
     private String validHost(String host) {
         if(host == null || host.isEmpty()) {
-            System.err.println("Invalid host: null or empty");
+            DebugUtils.error("Invalid host: null or empty");
             return null;
         }
 
@@ -174,21 +179,21 @@ public class Cluster {
 
     private boolean validServer(ServerNode node) {
         if(node == null) {
-            System.err.println("Invalid server node: null");
+            DebugUtils.error("Invalid server node: null");
             return false;
         }
         if(node.host() == null || node.host().isEmpty()) {
-            System.err.println("Invalid server node: host is null or empty");
+            DebugUtils.error("Invalid server node: host is null or empty");
             return false;
         }
         if(node.port() <= 0 || node.port() > 65535) {
-            System.err.println("Invalid server node: port is out of range");
+            DebugUtils.error("Invalid server node: port is out of range");
             return false;
         }
 
         for(ServerNode n : cluster.values()) {
             if(n != null && n.port() == node.port()) {
-                System.err.println("Invalid server node: port is already in use");
+                DebugUtils.error("Invalid server node: port is already in use");
                 return false;
             }
         }
