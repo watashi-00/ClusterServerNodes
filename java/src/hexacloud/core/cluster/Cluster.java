@@ -42,7 +42,7 @@ public class Cluster {
         this.rateLimitDurationSeconds = EnvLoader.getInt(clusterName, "rateLimitDurationSeconds", 60);
         this.rateLimiter = new RateLimiter(this.rateLimitRequests, this.rateLimitDurationSeconds);
         
-        DebugUtils.log("Cluster '" + clusterName + "' initialized settings -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "], rateLimit: " + rateLimitRequests + "/" + rateLimitDurationSeconds + "s");
+        DebugUtils.info("Cluster '" + clusterName + "' initialized settings -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "], rateLimit: " + rateLimitRequests + "/" + rateLimitDurationSeconds + "s");
     }
 
     public void registerServer(ServerNode node) {

@@ -29,7 +29,7 @@ public class TelnetTransport implements ServerTransport {
         try {
             serverSocket = new ServerSocket(port);
             running = true;
-            DebugUtils.log("Telnet Transport successfully bound and listening on port " + port);
+            DebugUtils.info("Telnet Transport successfully bound and listening on port " + port);
             while(clusterActive) {
                 Socket socket = serverSocket.accept();
                 DebugUtils.log("Telnet Transport accepted new connection from " + socket.getRemoteSocketAddress());

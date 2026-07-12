@@ -97,7 +97,7 @@ public class HttpTransport implements ServerTransport {
             new Thread(() -> {
                 server.start();
                 running = true;
-                DebugUtils.log("HTTP Transport successfully bound and listening on port " + port);
+                DebugUtils.info("HTTP Transport successfully bound and listening on port " + port);
             }, "HttpServer-Listener-" + port).start();
             
         } catch(IOException e) {

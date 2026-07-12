@@ -12,7 +12,7 @@ public class Main {
     }
 
     public void start() {
-        DebugUtils.setDebugEnabled(true);
+        DebugUtils.setDebugEnabled(false);
         
         GatewayPort hexacloud = GatewayFactory.createGateway("watashi-00")
             .port(3000)
