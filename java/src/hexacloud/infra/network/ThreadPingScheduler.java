@@ -10,6 +10,7 @@ import hexacloud.core.cluster.event.NodeStatusChanged;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.ThreadManager;
 import hexacloud.core.config.ClusterConfig;
 
 public class ThreadPingScheduler {
@@ -28,7 +29,7 @@ public class ThreadPingScheduler {
     public void startPingScheduler(Supplier<List<ServerNode>> clusterSupplier) {
 
         if(scheduler == null || scheduler.isShutdown()) {
-            scheduler = java.util.concurrent.Executors.newScheduledThreadPool(ClusterConfig.SCHEDULER_THREAD_POOL_SIZE);
+            scheduler = ThreadManager.newScheduledThreadPool(ClusterConfig.SCHEDULER_THREAD_POOL_SIZE, "ping-scheduler-");
             scheduler.scheduleAtFixedRate(() -> {
                 try {
                     for(ServerNode node : clusterSupplier.get()) {

@@ -7,18 +7,17 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-import hexacloud.core.config.ClusterConfig;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.ThreadManager;
 
 public class TelnetTransport implements ServerTransport {
 
     private boolean clusterActive = true;
     private ServerSocket serverSocket;
     private boolean running = false;
-    private final ExecutorService threadPool = Executors.newFixedThreadPool(ClusterConfig.MAX_WORKERS);
+    private final ExecutorService threadPool = ThreadManager.newVirtualThreadPool();
 
     @Override
     public void listen(int port, RouteRegistry registry) {

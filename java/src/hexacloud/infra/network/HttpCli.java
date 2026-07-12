@@ -8,18 +8,22 @@ import java.util.concurrent.CompletableFuture;
 
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.ThreadManager;
 import hexacloud.core.config.ClusterConfig;
 
 class HttpCli {
 
-    public HttpCli() {}
+    private final HttpClient client;
 
-    CompletableFuture<NodeStatus> fetchPingAsync(String host) {
-        HttpClient client = HttpClient.newBuilder()
+    public HttpCli() {
+        this.client = HttpClient.newBuilder()
             .connectTimeout(ClusterConfig.HTTP_CONNECT_TIMEOUT)
             .version(ClusterConfig.HTTP_VERSION)
+            .executor(ThreadManager.newVirtualThreadPool())
             .build();
+    }
 
+    CompletableFuture<NodeStatus> fetchPingAsync(String host) {
         HttpRequest req = HttpRequest.newBuilder()
             .uri(URI.create(host))
             .timeout(ClusterConfig.HTTP_REQUEST_TIMEOUT)

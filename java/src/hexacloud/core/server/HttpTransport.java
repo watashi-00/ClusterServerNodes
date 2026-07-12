@@ -11,6 +11,7 @@ import java.net.InetSocketAddress;
 
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.ThreadManager;
 
 public class HttpTransport implements ServerTransport {
 
@@ -21,14 +22,12 @@ public class HttpTransport implements ServerTransport {
     public void listen(int port, RouteRegistry registry) {
         try {
             server = HttpServer.create(new InetSocketAddress(port), 0);
+            server.setExecutor(ThreadManager.newVirtualThreadPool());
             server.createContext("/", new HttpHandler() {
                 @Override
                 public void handle(HttpExchange exchange) throws IOException {
                     String path = exchange.getRequestURI().getPath().substring(1).toUpperCase();
-                    if(path.isEmpty()) {
-                        path = "GET_NODES";
-                    }
-                    
+
                     var handler = registry.getRoutes().get(path);
                     if(handler != null) {
                         exchange.getResponseHeaders().set("Content-Type", "text/plain");
