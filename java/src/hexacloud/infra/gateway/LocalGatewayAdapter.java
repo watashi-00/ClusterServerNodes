@@ -8,29 +8,41 @@ import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.server.ServerManager;
 import hexacloud.infra.network.ThreadPingScheduler;
+import hexacloud.core.utils.DebugUtils;
 
 class LocalGatewayAdapter implements GatewayPort {
 
     private final ClusterManager clusterManager;
     private final ClusterEventBusManager clusterEventManager;
     private final ThreadPingScheduler schedulerPing;
+    private ServerManager serverManager;
 
-    public LocalGatewayAdapter() {
+    public LocalGatewayAdapter(String clusterName) {
+        DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
         this.clusterEventManager = new ClusterEventBusManager();
-        this.clusterManager = new ClusterManager(new Cluster("watashi-00"), this.clusterEventManager);
+        this.clusterManager = new ClusterManager(new Cluster(clusterName), this.clusterEventManager);
         this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
+    }
+
+    public LocalGatewayAdapter(String clusterName, int port) {
+        DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName + " with pre-configured server port " + port);
+        this.clusterEventManager = new ClusterEventBusManager();
+        this.clusterManager = new ClusterManager(new Cluster(clusterName), this.clusterEventManager);
+        this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
+        this.serverManager = new ServerManager(port, this.clusterManager.getCluster());
     }
 
     @Override
     public void startPingScheduler() {
-        schedulerPing.startPingScheduler(() -> this.clusterManager.getCluster());
+        schedulerPing.startPingScheduler(() -> this.clusterManager.getClusterList());
     }
     
     @Override
     public void startPingScheduler(int intervalInSeconds) {
         schedulerPing.setInterval(intervalInSeconds);
-        schedulerPing.startPingScheduler(() -> this.clusterManager.getCluster());
+        schedulerPing.startPingScheduler(() -> this.clusterManager.getClusterList());
     }
     
     @Override
@@ -102,6 +114,16 @@ class LocalGatewayAdapter implements GatewayPort {
     @Override
     public void stopPingScheduler() {
         schedulerPing.stopPingScheduler();
+    }
+
+    @Override
+    public void listen(int port) {
+        if(this.serverManager == null){
+            DebugUtils.log("LocalGatewayAdapter: Lazy-initializing ServerManager for port " + port);
+            this.serverManager = new ServerManager(port, this.clusterManager.getCluster());
+        }
+        DebugUtils.log("LocalGatewayAdapter: Starting server listener on port " + port);
+        this.serverManager.listen(port);
     }
 
 }

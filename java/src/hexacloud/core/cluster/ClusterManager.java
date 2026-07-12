@@ -23,8 +23,12 @@ public class ClusterManager implements ClusterListener, ImplCluster {
         this.eventManager.sub(NodeStatusChanged.class, this);
     }
 
-    public List<ServerNode> getCluster() {
+    public List<ServerNode> getClusterList() {
         return this.cluster.getCluster();
+    }
+    
+    public Cluster getCluster() {
+        return this.cluster;
     }
     
     @Override
