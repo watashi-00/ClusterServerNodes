@@ -6,12 +6,12 @@ import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.cluster.event.ClusterListener;
 import hexacloud.core.cluster.event.NodeStatusChanged;
-import hexacloud.core.contracts.ImplCluster;
+import hexacloud.core.contracts.ClusterOperations;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 
-public class ClusterManager implements ClusterListener, ImplCluster {
+public class ClusterManager implements ClusterListener, ClusterOperations {
 
     private final Cluster cluster;
     private final ClusterEventBusManager eventManager;
@@ -32,43 +32,51 @@ public class ClusterManager implements ClusterListener, ImplCluster {
     }
     
     @Override
-    public void registerAllServers() {
+    public ClusterManager registerAllServers() {
         this.cluster.registerAllServers();
+        return this;
     }
 
     @Override
-    public void registerServer(int port) {
+    public ClusterManager registerServer(int port) {
         this.cluster.registerServer(port);
+        return this;
     }
 
     @Override
-    public void registerServer(ServerNode node) {
+    public ClusterManager registerServer(ServerNode node) {
         this.cluster.registerServer(node);
+        return this;
     }
 
     @Override
-    public void registerServer(int port, NodeStatus status) {
+    public ClusterManager registerServer(int port, NodeStatus status) {
         this.cluster.registerServer(port, status);
+        return this;
     }
 
     @Override
-	public void deregisterAllServers() {
+	public ClusterManager deregisterAllServers() {
         this.cluster.deregisterAllServers();
+        return this;
 	}
 
     @Override
-	public void deregisterServer(String fullHost) {
+	public ClusterManager deregisterServer(String fullHost) {
         this.cluster.deregisterServer(fullHost);
+        return this;
 	}
 
     @Override
-	public void deregisterLastServer() {
+	public ClusterManager deregisterLastServer() {
         this.cluster.deregisterLastServer();
+        return this;
 	}
 
     @Override
-	public void listClusterNodes() {
+	public ClusterManager listClusterNodes() {
         this.cluster.listClusterNodes();
+        return this;
 	}
 
     @Override

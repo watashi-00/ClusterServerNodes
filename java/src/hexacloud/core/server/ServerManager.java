@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import hexacloud.core.cluster.Cluster;
-import hexacloud.core.contracts.Implserver;
+import hexacloud.core.contracts.ServerOperations;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
 import hexacloud.core.utils.DebugUtils;
 
-public class ServerManager implements Implserver {
+public class ServerManager implements ServerOperations {
 
     private final RouteRegistry routeRegistry;
     private final List<ServerTransport> activeTransports = new ArrayList<>();
@@ -48,7 +48,7 @@ public class ServerManager implements Implserver {
     }
 
     @Override
-    public void listen(int port) {
+    public ServerManager listen(int port) {
         DebugUtils.log("ServerManager: Starting authorized protocol listeners on base port " + port + "...");
         
         // Stop any running transports before starting new ones
@@ -77,11 +77,13 @@ public class ServerManager implements Implserver {
         if(activeTransports.isEmpty()) {
             DebugUtils.error("ServerManager: Cannot listen. No protocols were authorized! All are disabled.");
         }
+        return this;
     }
 
     @Override
-    public void listen() {
+    public ServerManager listen() {
         listen(this.port);
+        return this;
     }
 
     private void stopTransports() {

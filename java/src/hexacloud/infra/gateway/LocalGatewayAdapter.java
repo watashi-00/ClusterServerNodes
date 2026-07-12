@@ -35,64 +35,88 @@ class LocalGatewayAdapter implements GatewayPort {
     }
 
     @Override
-    public void startPingScheduler() {
+    public GatewayPort port(int port) {
+        this.port = port;
+        return this;
+    }
+
+    @Override
+    public GatewayPort pingInterval(int intervalInSeconds) {
+        schedulerPing.setInterval(intervalInSeconds);
+        return this;
+    }
+
+    @Override
+    public GatewayPort startPingScheduler() {
         schedulerPing.startPingScheduler(() -> this.clusterManager.getClusterList());
+        return this;
     }
     
     @Override
-    public void startPingScheduler(int intervalInSeconds) {
+    public GatewayPort startPingScheduler(int intervalInSeconds) {
         schedulerPing.setInterval(intervalInSeconds);
         schedulerPing.startPingScheduler(() -> this.clusterManager.getClusterList());
+        return this;
     }
     
 	@Override
-	public void registerAllServers() {
+	public GatewayPort registerAllServers() {
         clusterManager.registerAllServers();
+        return this;
 	}
 
     @Override
-    public void registerServer(int port) {
+    public GatewayPort registerServer(int port) {
         clusterManager.registerServer(port);
+        return this;
     }
 
     @Override
-    public void registerServer(int port, NodeStatus status) {
+    public GatewayPort registerServer(int port, NodeStatus status) {
         clusterManager.registerServer(port, status);
+        return this;
     }
 
     @Override
-    public void registerServer(ServerNode node) {
+    public GatewayPort registerServer(ServerNode node) {
         clusterManager.registerServer(node);
+        return this;
     }
 
 	@Override
-	public void deregisterAllServers() {
+	public GatewayPort deregisterAllServers() {
         clusterManager.deregisterAllServers();
+        return this;
 	}
 
 	@Override
-	public void deregisterServer(String fullHost) {
+	public GatewayPort deregisterServer(String fullHost) {
         clusterManager.deregisterServer(fullHost);
+        return this;
 	}
 
 	@Override
-	public void deregisterLastServer() {
+	public GatewayPort deregisterLastServer() {
         clusterManager.deregisterLastServer();
+        return this;
 	}
 
 	@Override
-	public void listClusterNodes() {
+	public GatewayPort listClusterNodes() {
         clusterManager.listClusterNodes();
+        return this;
 	}
 
 	@Override
-	public void setPingInterval(int pingInterval) {
+	public GatewayPort setPingInterval(int pingInterval) {
         schedulerPing.setInterval(pingInterval);
+        return this;
 	}
 
     @Override
-    public void stopPingScheduler() {
+    public GatewayPort stopPingScheduler() {
         schedulerPing.stopPingScheduler();
+        return this;
     }
 
     private void ensureServerManagerInitialized() {
@@ -123,16 +147,18 @@ class LocalGatewayAdapter implements GatewayPort {
     }
 
     @Override
-    public void listen(int port) {
+    public GatewayPort listen(int port) {
         this.port = port;
         ensureServerManagerInitialized();
         DebugUtils.log("LocalGatewayAdapter: Starting server listeners on port " + port);
         this.serverManager.listen(port);
+        return this;
     }
 
     @Override
-    public void listen() {
+    public GatewayPort listen() {
         listen(this.port);
+        return this;
     }
 
 }
