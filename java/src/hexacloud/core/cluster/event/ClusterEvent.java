@@ -1,3 +1,5 @@
 package hexacloud.core.cluster.event;
 
-public interface ClusterEvent {}
+import hexacloud.core.event.Event;
+
+public interface ClusterEvent extends Event {}

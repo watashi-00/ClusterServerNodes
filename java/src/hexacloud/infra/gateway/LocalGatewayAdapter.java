@@ -161,4 +161,8 @@ class LocalGatewayAdapter implements GatewayPort {
         return this;
     }
 
+    @Override
+    public ClusterEventBusManager eventManager() {
+        return this.clusterEventManager;
+    }
 }

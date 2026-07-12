@@ -4,6 +4,7 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.ports.GatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.infra.gateway.GatewayFactory;
+import hexacloud.core.event.Event;
 
 public class Main {
     
@@ -28,5 +29,14 @@ public class Main {
             .listClusterNodes()
             .listen()
             .startPingScheduler();
+
+        // Custom event verification
+        record UserCustomEvent(String message) implements Event {}
+
+        hexacloud.eventManager().sub(UserCustomEvent.class, event -> {
+            DebugUtils.info("UserCustomEvent received: " + event.message());
+        });
+
+        hexacloud.eventManager().dispatch(new UserCustomEvent("Hello Hexacloud event system!"));
     }
 }

@@ -5,6 +5,7 @@ import hexacloud.core.contracts.SchedulerOperations;
 import hexacloud.core.contracts.ServerOperations;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.cluster.event.ClusterEventBusManager;
 
 public interface GatewayPort extends SchedulerOperations, ClusterOperations, ServerOperations {
     
@@ -30,4 +31,6 @@ public interface GatewayPort extends SchedulerOperations, ClusterOperations, Ser
 
     @Override GatewayPort listen(int port);
     @Override GatewayPort listen();
+
+    ClusterEventBusManager eventManager();
 }
