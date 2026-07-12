@@ -5,4 +5,8 @@ import hexacloud.core.contracts.ImplSchedueler;
 import hexacloud.core.contracts.Implserver;
 
 
-public interface GatewayPort extends ImplSchedueler, ImplCluster, Implserver{}
+public interface GatewayPort extends ImplSchedueler, ImplCluster, Implserver{
+    GatewayPort enableTelnet(boolean enabled);
+    GatewayPort enableHttp(boolean enabled);
+    GatewayPort enableWs(boolean enabled);
+}

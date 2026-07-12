@@ -14,6 +14,9 @@ public class Main {
     public void start() {
         DebugUtils.setDebugEnabled(true);
         GatewayPort hexacloud = GatewayFactory.createGateway("watashi-00");
+        hexacloud.enableTelnet(true)
+                 .enableHttp(true)
+                 .enableWs(true);
         hexacloud.listen(3000);
         hexacloud.registerServer(3001, NodeStatus.OFFLINE);
         hexacloud.registerServer(3002, NodeStatus.OFFLINE);

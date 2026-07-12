@@ -116,13 +116,37 @@ class LocalGatewayAdapter implements GatewayPort {
         schedulerPing.stopPingScheduler();
     }
 
+    private void ensureServerManagerInitialized() {
+        if(this.serverManager == null) {
+            this.serverManager = new ServerManager(this.clusterManager.getCluster());
+        }
+    }
+
+    @Override
+    public GatewayPort enableTelnet(boolean enabled) {
+        ensureServerManagerInitialized();
+        this.serverManager.enableTelnet(enabled);
+        return this;
+    }
+
+    @Override
+    public GatewayPort enableHttp(boolean enabled) {
+        ensureServerManagerInitialized();
+        this.serverManager.enableHttp(enabled);
+        return this;
+    }
+
+    @Override
+    public GatewayPort enableWs(boolean enabled) {
+        ensureServerManagerInitialized();
+        this.serverManager.enableWs(enabled);
+        return this;
+    }
+
     @Override
     public void listen(int port) {
-        if(this.serverManager == null){
-            DebugUtils.log("LocalGatewayAdapter: Lazy-initializing ServerManager for port " + port);
-            this.serverManager = new ServerManager(port, this.clusterManager.getCluster());
-        }
-        DebugUtils.log("LocalGatewayAdapter: Starting server listener on port " + port);
+        ensureServerManagerInitialized();
+        DebugUtils.log("LocalGatewayAdapter: Starting server listeners on port " + port);
         this.serverManager.listen(port);
     }
 
