@@ -7,14 +7,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.config.ClusterConfig;
 
 public class Cluster {
 
-    private final int MAX_CLUSTER_SIZE = 10;
     private final ConcurrentHashMap<String, ServerNode> cluster;
 
-    private String clusterName = "DefaultCluster";
-    private String clusterUri = "http://localhost";
+    private String clusterName = ClusterConfig.DEFAULT_CLUSTER_NAME;
+    private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
 
     private List<ServerNode> tempCluster;
 
@@ -129,7 +129,7 @@ public class Cluster {
     private void addClusterNode(ServerNode node) {
         if (!validServer(node)) {return;}
 
-        if(cluster.size() >= MAX_CLUSTER_SIZE) {
+        if(cluster.size() >= ClusterConfig.MAX_CLUSTER_SIZE) {
             DebugUtils.error("Cluster is full. Cannot add more nodes.");
             return;
         }
@@ -160,21 +160,16 @@ public class Cluster {
             return null;
         }
 
-        StringBuilder sb = new StringBuilder(host);
-
-        if(sb.indexOf("http://") != 0 && sb.indexOf("https://") != 0) {
-            sb.insert(0, "http://");
+        if(!host.startsWith("http://") && !host.startsWith("https://")) {
+            host = "http://" + host;
         }
-
-        if(sb.charAt(sb.length() - 1) == '/') {
-            sb.deleteCharAt(sb.length() - 1);
+        if(host.endsWith("/")) {
+            host = host.substring(0, host.length() - 1);
         }
-
-        if(sb.charAt(sb.length() - 1) == ':') {
-            sb.deleteCharAt(sb.length() -1);
+        if(host.endsWith(":")) {
+            host = host.substring(0, host.length() - 1);
         }
-
-        return sb.toString();
+        return host;
     }
 
     private boolean validServer(ServerNode node) {
@@ -191,11 +186,10 @@ public class Cluster {
             return false;
         }
 
-        for(ServerNode n : cluster.values()) {
-            if(n != null && n.port() == node.port()) {
-                DebugUtils.error("Invalid server node: port is already in use");
-                return false;
-            }
+        boolean portInUse = cluster.values().stream().anyMatch(n -> n != null && n.port() == node.port());
+        if(portInUse) {
+            DebugUtils.error("Invalid server node: port is already in use");
+            return false;
         }
 
         return true;

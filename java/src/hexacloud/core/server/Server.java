@@ -6,48 +6,37 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.BiConsumer;
 
 import hexacloud.core.cluster.Cluster;
-import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.config.ClusterConfig;
+import hexacloud.core.server.route.RouteRegistry;
+import hexacloud.core.server.route.ClusterController;
 
 class Server {
 
     private boolean clusterActive = true;
-    private final int MAX_WORKERS = 20;
     private final Cluster cluster;
     private final int port; 
-    private final HashMap<String, BiConsumer<String, PrintWriter>> routes;
-    private final ExecutorService threadPool = Executors.newFixedThreadPool(MAX_WORKERS);
+    private final RouteRegistry routeRegistry;
+    private final ExecutorService threadPool = Executors.newFixedThreadPool(ClusterConfig.MAX_WORKERS);
 
     public Server(Cluster cluster) {
-        this.port = 8080;
+        this.port = ClusterConfig.DEFAULT_SERVER_PORT;
         this.cluster = cluster;
-        this.routes = new HashMap<>();
-        DebugUtils.log("Server instance initialized on default port 8080");
-        map();
+        this.routeRegistry = new RouteRegistry();
+        DebugUtils.log("Server instance initialized on default port " + ClusterConfig.DEFAULT_SERVER_PORT);
+        this.routeRegistry.registerController(new ClusterController(this.cluster));
     }
     
     public Server(int port, Cluster cluster) {
         this.port = port;
         this.cluster = cluster;
-        this.routes = new HashMap<>();
+        this.routeRegistry = new RouteRegistry();
         DebugUtils.log("Server instance initialized on port " + port);
-        map();
-    }
-
-    private void map() {
-        routes.put("GET_NODES", (args, out) -> {
-            StringBuilder sb = new StringBuilder();
-            for(ServerNode node : this.cluster.getCluster()) {
-                sb.append(node.getFullHost()).append("=").append(node.status()).append(";");
-            }
-            out.println(sb.toString());
-        });
+        this.routeRegistry.registerController(new ClusterController(this.cluster));
     }
 
     public void listen() {
@@ -90,7 +79,7 @@ class Server {
             String command = tokens[0].toUpperCase();
             String args = tokens.length > 1 ? tokens[1].trim() : "";
 
-            var handler = routes.get(command);
+            var handler = routeRegistry.getRoutes().get(command);
 
             if(handler == null) {
                 DebugUtils.error("Server: Unknown command '" + command + "' received from client.");

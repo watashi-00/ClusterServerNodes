@@ -10,11 +10,12 @@ import hexacloud.core.cluster.event.NodeStatusChanged;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.config.ClusterConfig;
 
 public class ThreadPingScheduler {
 
     private ScheduledExecutorService scheduler;
-    private int interval = 5; // Default ping interval in seconds
+    private int interval = ClusterConfig.DEFAULT_PING_INTERVAL_SECONDS;
 
     private final HttpCli httpcli;
     private final ClusterEventBusManager eventManager;
@@ -27,7 +28,7 @@ public class ThreadPingScheduler {
     public void startPingScheduler(Supplier<List<ServerNode>> clusterSupplier) {
 
         if(scheduler == null || scheduler.isShutdown()) {
-            scheduler = java.util.concurrent.Executors.newScheduledThreadPool(1);
+            scheduler = java.util.concurrent.Executors.newScheduledThreadPool(ClusterConfig.SCHEDULER_THREAD_POOL_SIZE);
             scheduler.scheduleAtFixedRate(() -> {
                 try {
                     for(ServerNode node : clusterSupplier.get()) {
@@ -45,6 +46,14 @@ public class ThreadPingScheduler {
     public void stopPingScheduler() {
         if(scheduler != null && !scheduler.isShutdown()) {
             scheduler.shutdown();
+            try {
+                if(!scheduler.awaitTermination(ClusterConfig.AWAIT_TERMINATION_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+                    scheduler.shutdownNow();
+                }
+            } catch(InterruptedException e) {
+                scheduler.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
