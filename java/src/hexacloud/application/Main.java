@@ -55,5 +55,15 @@ public class Main {
             .startPingScheduler();
 
         hexacloud.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
+
+        // Sleep briefly to let the user review the boot logs before transitioning to interactive TUI
+        try {
+            Thread.sleep(1200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // Launch the JNI interactive TUI monitor in the foreground
+        new MonitorMain().start();
     }
 }

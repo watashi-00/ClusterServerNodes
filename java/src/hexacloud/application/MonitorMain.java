@@ -12,7 +12,6 @@ import hexacloud.core.config.EnvLoader;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import hexacloud.core.model.NodeStatus;
-import hexacloud.core.ports.GatewayPort;
 import hexacloud.infra.gateway.GatewayFactory;
 
 public class MonitorMain {
@@ -115,7 +114,7 @@ public class MonitorMain {
 
     private void fetchNodeStatus() {
         try {
-            URL url = new URL("http://localhost:" + httpPort + "/GET_NODES");
+            URL url = java.net.URI.create("http://localhost:" + httpPort + "/GET_NODES").toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("X-Cluster-Token", secret);
@@ -368,7 +367,7 @@ public class MonitorMain {
 
     private void registerNodeRequest(int port) {
         try {
-            URL url = new URL("http://localhost:" + httpPort + "/REGISTER?" + port);
+            URL url = java.net.URI.create("http://localhost:" + httpPort + "/REGISTER?" + port).toURL();
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("X-Cluster-Token", secret);
