@@ -3,6 +3,12 @@ package hexacloud.application;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.infra.gateway.GatewayFactory;
 
+/**
+ * Example launcher for the GateBridge terminal monitor.
+ *
+ * This class is provided as a sample monitor entry point and is not required
+ * for framework integration.
+ */
 public class MonitorMain {
 
     private final String clusterName;
