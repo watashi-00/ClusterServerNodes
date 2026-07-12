@@ -17,6 +17,7 @@ public class ServerManager implements Implserver {
     private boolean telnetEnabled = false;
     private boolean httpEnabled = false;
     private boolean wsEnabled = false;
+    private int port = 3000;
 
     public ServerManager(Cluster cluster) {
         this.routeRegistry = new RouteRegistry();
@@ -25,6 +26,7 @@ public class ServerManager implements Implserver {
 
     public ServerManager(int port, Cluster cluster) {
         this(cluster);
+        this.port = port;
     }
 
     public ServerManager enableTelnet(boolean enabled) {
@@ -75,6 +77,11 @@ public class ServerManager implements Implserver {
         if(activeTransports.isEmpty()) {
             DebugUtils.error("ServerManager: Cannot listen. No protocols were authorized! All are disabled.");
         }
+    }
+
+    @Override
+    public void listen() {
+        listen(this.port);
     }
 
     private void stopTransports() {

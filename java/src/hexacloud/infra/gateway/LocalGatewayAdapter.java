@@ -16,6 +16,7 @@ class LocalGatewayAdapter implements GatewayPort {
     private final ClusterEventBusManager clusterEventManager;
     private final ThreadPingScheduler schedulerPing;
     private ServerManager serverManager;
+    private int port = 3000;
 
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
@@ -29,6 +30,7 @@ class LocalGatewayAdapter implements GatewayPort {
         this.clusterEventManager = new ClusterEventBusManager();
         this.clusterManager = new ClusterManager(new Cluster(clusterName), this.clusterEventManager);
         this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
+        this.port = port;
         this.serverManager = new ServerManager(port, this.clusterManager.getCluster());
     }
 
@@ -122,9 +124,15 @@ class LocalGatewayAdapter implements GatewayPort {
 
     @Override
     public void listen(int port) {
+        this.port = port;
         ensureServerManagerInitialized();
         DebugUtils.log("LocalGatewayAdapter: Starting server listeners on port " + port);
         this.serverManager.listen(port);
+    }
+
+    @Override
+    public void listen() {
+        listen(this.port);
     }
 
 }
