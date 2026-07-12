@@ -35,14 +35,6 @@ public class Cluster {
         centralizedRegister(port, clusterUri, NodeStatus.OFFLINE, false);
     }
 
-    public void registerServer(int port, boolean isExternal) {
-        centralizedRegister(port, clusterUri, NodeStatus.OFFLINE, isExternal);
-    }
-
-    public void registerServer(int port, String host,  boolean isExternal) {
-        centralizedRegister(port, host, NodeStatus.OFFLINE,isExternal);
-    }
-
     public void registerServer(int port, NodeStatus status) {
         centralizedRegister(port, clusterUri, status, false);
     }
@@ -103,7 +95,7 @@ public class Cluster {
         for(ServerNode node : start ? tempCluster : cluster.values()) {
             if(node != null) {
                 if(start) {
-                    registerServer(node.port(), node.host(), node.isExternal());
+                    registerServer(node);
                 } else {
                     deregisterServer(node.getFullHost());
                 }

@@ -47,19 +47,9 @@ public class ClusterManager implements ClusterListener, ImplCluster {
     }
 
     @Override
-	public void registerServer(int port, boolean isExternal) {
-        this.cluster.registerServer(port, isExternal);
-	}
-
-    @Override
     public void registerServer(int port, NodeStatus status) {
         this.cluster.registerServer(port, status);
     }
-
-    @Override
-	public void registerServer(int port, String host, boolean isExternal) {
-        this.cluster.registerServer(port, host, isExternal);
-	}
 
     @Override
 	public void deregisterAllServers() {

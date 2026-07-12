@@ -1,7 +1,5 @@
 package hexacloud.infra.gateway;
 
-import java.util.List;
-
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterManager;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
@@ -45,17 +43,6 @@ class LocalGatewayAdapter implements GatewayPort {
         schedulerPing.startPingScheduler(() -> this.clusterManager.getClusterList());
     }
     
-    @Override
-    public void startPingScheduler(List<ServerNode> cluster) {
-        schedulerPing.startPingScheduler(() -> cluster);
-    }
-    
-    @Override
-	public void startPingScheduler(int intervalInSeconds, List<ServerNode> cluster) {
-        schedulerPing.setInterval(intervalInSeconds);
-        schedulerPing.startPingScheduler(() -> cluster);
-	}
-
 	@Override
 	public void registerAllServers() {
         clusterManager.registerAllServers();
@@ -75,16 +62,6 @@ class LocalGatewayAdapter implements GatewayPort {
     public void registerServer(ServerNode node) {
         clusterManager.registerServer(node);
     }
-
-	@Override
-	public void registerServer(int port, boolean isExternal) {
-        clusterManager.registerServer(port, isExternal);
-	}
-
-	@Override
-	public void registerServer(int port, String host, boolean isExternal) {
-        clusterManager.registerServer(port, host, isExternal);
-	}
 
 	@Override
 	public void deregisterAllServers() {

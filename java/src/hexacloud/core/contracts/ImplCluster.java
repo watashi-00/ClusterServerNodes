@@ -8,8 +8,6 @@ public interface ImplCluster {
     void registerServer(int port);
     void registerServer(ServerNode serverNode);
     void registerServer(int port, NodeStatus status);
-    void registerServer(int port, boolean isExternal);
-    void registerServer(int port, String host, boolean isExternal);
     
     void deregisterAllServers();
     void deregisterServer(String fullHost);
