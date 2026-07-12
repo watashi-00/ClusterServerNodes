@@ -8,6 +8,7 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
+import hexacloud.core.config.EnvLoader;
 
 public class Cluster {
 
@@ -15,16 +16,26 @@ public class Cluster {
 
     private String clusterName = ClusterConfig.DEFAULT_CLUSTER_NAME;
     private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
+    private String secret;
+    private boolean requireToken;
+    private int timeoutMs;
+    private String allowedIps;
 
     private List<ServerNode> tempCluster;
 
     public Cluster() {
-        this.cluster = new ConcurrentHashMap<>();
+        this(ClusterConfig.DEFAULT_CLUSTER_NAME);
     }
 
     public Cluster(String clusterName) {
         this.cluster = new ConcurrentHashMap<>();
         this.clusterName = clusterName;
+        this.secret = EnvLoader.get(clusterName, "secret", null);
+        this.requireToken = EnvLoader.getBoolean(clusterName, "requireToken", true);
+        this.timeoutMs = EnvLoader.getInt(clusterName, "timeoutMs", 5000);
+        this.allowedIps = EnvLoader.get(clusterName, "allowedIps", "");
+        
+        DebugUtils.log("Cluster '" + clusterName + "' initialized with settings -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "]");
     }
 
     public void registerServer(ServerNode node) {
@@ -193,5 +204,50 @@ public class Cluster {
 
     public void setClusterName(String clusterName) {
         this.clusterName = clusterName;
+    }
+
+    public String getSecret() {
+        return secret;
+    }
+
+    public boolean isRequireToken() {
+        return requireToken;
+    }
+
+    public int getTimeoutMs() {
+        return timeoutMs;
+    }
+
+    public String getAllowedIps() {
+        return allowedIps;
+    }
+
+    public boolean authenticate(String token) {
+        if(!requireToken) {
+            return true;
+        }
+        if(secret == null || secret.isEmpty()) {
+            DebugUtils.error("Cluster '" + clusterName + "' access barred: Token is required but no secret key is configured.");
+            return false;
+        }
+        boolean authorized = secret.equals(token);
+        if(!authorized) {
+            DebugUtils.error("Cluster '" + clusterName + "' access barred: Invalid API token provided.");
+        }
+        return authorized;
+    }
+
+    public boolean isIpAllowed(String ipAddress) {
+        if(allowedIps == null || allowedIps.trim().isEmpty()) {
+            return true;
+        }
+        String[] ips = allowedIps.split(",");
+        for(String ip : ips) {
+            if(ip.trim().equals(ipAddress)) {
+                return true;
+            }
+        }
+        DebugUtils.error("Cluster '" + clusterName + "' access barred: IP '" + ipAddress + "' is not allowed.");
+        return false;
     }
 }
