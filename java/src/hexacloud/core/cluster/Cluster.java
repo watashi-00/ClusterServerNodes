@@ -8,41 +8,36 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
-import hexacloud.core.config.EnvLoader;
-import hexacloud.core.utils.RateLimiter;
+import hexacloud.core.cluster.event.ClusterEventBusManager;
+import hexacloud.core.cluster.event.NodeRegistered;
 
 public class Cluster {
 
     private final ConcurrentHashMap<String, ServerNode> cluster;
+    private final ClusterEventBusManager eventManager;
+    private final ClusterSecurityManager securityManager;
 
     private String clusterName = ClusterConfig.DEFAULT_CLUSTER_NAME;
     private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
-    private String secret;
-    private boolean requireToken;
-    private int timeoutMs;
-    private String allowedIps;
-    private int rateLimitRequests;
-    private int rateLimitDurationSeconds;
-    private RateLimiter rateLimiter;
-
     private List<ServerNode> tempCluster;
 
     public Cluster() {
-        this(ClusterConfig.DEFAULT_CLUSTER_NAME);
+        this(ClusterConfig.DEFAULT_CLUSTER_NAME, null);
     }
 
     public Cluster(String clusterName) {
+        this(clusterName, null);
+    }
+
+    public Cluster(String clusterName, ClusterEventBusManager eventManager) {
         this.cluster = new ConcurrentHashMap<>();
         this.clusterName = clusterName;
-        this.secret = EnvLoader.get(clusterName, "secret", null);
-        this.requireToken = EnvLoader.getBoolean(clusterName, "requireToken", true);
-        this.timeoutMs = EnvLoader.getInt(clusterName, "timeoutMs", 5000);
-        this.allowedIps = EnvLoader.get(clusterName, "allowedIps", "");
-        this.rateLimitRequests = EnvLoader.getInt(clusterName, "rateLimitRequests", 100);
-        this.rateLimitDurationSeconds = EnvLoader.getInt(clusterName, "rateLimitDurationSeconds", 60);
-        this.rateLimiter = new RateLimiter(this.rateLimitRequests, this.rateLimitDurationSeconds);
-        
-        DebugUtils.info("Cluster '" + clusterName + "' initialized settings -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "], rateLimit: " + rateLimitRequests + "/" + rateLimitDurationSeconds + "s");
+        this.eventManager = eventManager;
+        this.securityManager = new ClusterSecurityManager(clusterName);
+    }
+
+    public ClusterSecurityManager security() {
+        return securityManager;
     }
 
     public void registerServer(ServerNode node) {
@@ -123,7 +118,6 @@ public class Cluster {
         if(start) {
             this.tempCluster = null;
         }
-        
     }
 
     private void centralizedRegister(int port, String host, NodeStatus status, boolean isExternal) {
@@ -145,7 +139,9 @@ public class Cluster {
         }
 
         cluster.put(node.getFullHost(), node);
-
+        if(eventManager != null) {
+            eventManager.dispatch(new NodeRegistered(node));
+        }
     }
     
     private void removeClusterNode() {
@@ -214,55 +210,30 @@ public class Cluster {
     }
 
     public String getSecret() {
-        return secret;
+        return securityManager.getSecret();
     }
 
     public boolean isRequireToken() {
-        return requireToken;
+        return securityManager.isRequireToken();
     }
 
     public int getTimeoutMs() {
-        return timeoutMs;
+        return securityManager.getTimeoutMs();
     }
 
     public String getAllowedIps() {
-        return allowedIps;
+        return securityManager.getAllowedIps();
     }
 
     public boolean authenticate(String token) {
-        if(!requireToken) {
-            return true;
-        }
-        if(secret == null || secret.isEmpty()) {
-            DebugUtils.error("Cluster '" + clusterName + "' access barred: Token is required but no secret key is configured.");
-            return false;
-        }
-        boolean authorized = secret.equals(token);
-        if(!authorized) {
-            DebugUtils.error("Cluster '" + clusterName + "' access barred: Invalid API token provided.");
-        }
-        return authorized;
+        return securityManager.authenticate(token);
     }
 
     public boolean isIpAllowed(String ipAddress) {
-        if(allowedIps == null || allowedIps.trim().isEmpty()) {
-            return true;
-        }
-        String[] ips = allowedIps.split(",");
-        for(String ip : ips) {
-            if(ip.trim().equals(ipAddress)) {
-                return true;
-            }
-        }
-        DebugUtils.error("Cluster '" + clusterName + "' access barred: IP '" + ipAddress + "' is not allowed.");
-        return false;
+        return securityManager.isIpAllowed(ipAddress);
     }
 
     public boolean checkRateLimit(String clientId) {
-        boolean allowed = rateLimiter.allowRequest(clientId);
-        if(!allowed) {
-            DebugUtils.error("Cluster '" + clusterName + "' access barred: Too many requests from '" + clientId + "'.");
-        }
-        return allowed;
+        return securityManager.checkRateLimit(clientId);
     }
 }

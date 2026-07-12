@@ -5,6 +5,9 @@ import hexacloud.core.ports.GatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.infra.gateway.GatewayFactory;
 import hexacloud.core.event.Event;
+import hexacloud.core.event.EventController;
+import hexacloud.core.event.Subscribe;
+import hexacloud.core.cluster.event.NodeRegistered;
 
 public class Main {
     
@@ -20,8 +23,29 @@ public class Main {
             .pingInterval(5)
             .enableTelnet(true)
             .enableHttp(true)
-            .enableWs(true)
-            .registerServer(3001, NodeStatus.OFFLINE)
+            .enableWs(true);
+
+        // Custom event verification
+        record UserCustomEvent(String message) implements Event {}
+
+        // Custom controller listener
+        class CustomEventListener implements EventController {
+            @Subscribe
+            public void onCustomEvent(UserCustomEvent event) {
+                DebugUtils.info("UserCustomEvent handler method invoked: " + event.message());
+            }
+
+            @Subscribe
+            public void onNodeRegistered(NodeRegistered event) {
+                DebugUtils.info("Event received: Node successfully registered at " + event.node().getFullHost());
+            }
+        }
+
+        // Register the event listener controller before registering nodes
+        hexacloud.eventManager().registerListener(new CustomEventListener());
+
+        // Register servers (will trigger NodeRegistered event for each node!)
+        hexacloud.registerServer(3001, NodeStatus.OFFLINE)
             .registerServer(3002, NodeStatus.OFFLINE)
             .registerServer(3003, NodeStatus.OFFLINE)
             .registerServer(3004, NodeStatus.OFFLINE)
@@ -30,13 +54,6 @@ public class Main {
             .listen()
             .startPingScheduler();
 
-        // Custom event verification
-        record UserCustomEvent(String message) implements Event {}
-
-        hexacloud.eventManager().sub(UserCustomEvent.class, event -> {
-            DebugUtils.info("UserCustomEvent received: " + event.message());
-        });
-
-        hexacloud.eventManager().dispatch(new UserCustomEvent("Hello Hexacloud event system!"));
+        hexacloud.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
     }
 }

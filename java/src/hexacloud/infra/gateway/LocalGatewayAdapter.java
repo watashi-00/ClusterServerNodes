@@ -21,17 +21,17 @@ class LocalGatewayAdapter implements GatewayPort {
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
         this.clusterEventManager = new ClusterEventBusManager();
-        this.clusterManager = new ClusterManager(new Cluster(clusterName), this.clusterEventManager);
+        this.clusterManager = new ClusterManager(new Cluster(clusterName, this.clusterEventManager), this.clusterEventManager);
         this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
     }
 
     public LocalGatewayAdapter(String clusterName, int port) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName + " with pre-configured server port " + port);
         this.clusterEventManager = new ClusterEventBusManager();
-        this.clusterManager = new ClusterManager(new Cluster(clusterName), this.clusterEventManager);
+        this.clusterManager = new ClusterManager(new Cluster(clusterName, this.clusterEventManager), this.clusterEventManager);
         this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
         this.port = port;
-        this.serverManager = new ServerManager(port, this.clusterManager.getCluster());
+        this.serverManager = new ServerManager(port, this.clusterManager.getCluster(), this.clusterEventManager);
     }
 
     @Override
@@ -121,7 +121,7 @@ class LocalGatewayAdapter implements GatewayPort {
 
     private void ensureServerManagerInitialized() {
         if(this.serverManager == null) {
-            this.serverManager = new ServerManager(this.clusterManager.getCluster());
+            this.serverManager = new ServerManager(this.clusterManager.getCluster(), this.clusterEventManager);
         }
     }
 

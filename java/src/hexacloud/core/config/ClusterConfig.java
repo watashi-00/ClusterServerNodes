@@ -6,7 +6,7 @@ import java.time.Duration;
 public class ClusterConfig {
 
     // Cluster Defaults
-    public static final int MAX_CLUSTER_SIZE = 5;
+    public static final int MAX_CLUSTER_SIZE = 10;
     public static final String DEFAULT_CLUSTER_URI = "http://localhost";
     public static final String DEFAULT_CLUSTER_NAME= "DefaultCluster";
 

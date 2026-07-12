@@ -14,7 +14,7 @@ import hexacloud.core.utils.DebugUtils;
 public class ClusterManager implements ClusterListener, ClusterOperations {
 
     private final Cluster cluster;
-    private final ClusterEventBusManager eventManager;
+    protected final ClusterEventBusManager eventManager;
 
     public ClusterManager(Cluster cluster, ClusterEventBusManager eventManager) {
         this.cluster = cluster;

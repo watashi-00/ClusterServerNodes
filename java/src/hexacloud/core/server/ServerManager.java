@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import hexacloud.core.cluster.Cluster;
+import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.contracts.ServerOperations;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
@@ -12,6 +13,7 @@ import hexacloud.core.utils.DebugUtils;
 public class ServerManager implements ServerOperations {
 
     private final Cluster cluster;
+    protected final ClusterEventBusManager eventManager;
     private final RouteRegistry routeRegistry;
     private final List<ServerTransport> activeTransports = new ArrayList<>();
     
@@ -20,14 +22,15 @@ public class ServerManager implements ServerOperations {
     private boolean wsEnabled = false;
     private int port = 3000;
 
-    public ServerManager(Cluster cluster) {
+    public ServerManager(Cluster cluster, ClusterEventBusManager eventManager) {
         this.cluster = cluster;
+        this.eventManager = eventManager;
         this.routeRegistry = new RouteRegistry();
         this.routeRegistry.registerController(new ClusterController(cluster));
     }
 
-    public ServerManager(int port, Cluster cluster) {
-        this(cluster);
+    public ServerManager(int port, Cluster cluster, ClusterEventBusManager eventManager) {
+        this(cluster, eventManager);
         this.port = port;
     }
 
