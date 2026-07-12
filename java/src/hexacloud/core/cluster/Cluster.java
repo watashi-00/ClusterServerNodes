@@ -9,6 +9,7 @@ import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
 import hexacloud.core.config.EnvLoader;
+import hexacloud.core.utils.RateLimiter;
 
 public class Cluster {
 
@@ -20,6 +21,9 @@ public class Cluster {
     private boolean requireToken;
     private int timeoutMs;
     private String allowedIps;
+    private int rateLimitRequests;
+    private int rateLimitDurationSeconds;
+    private RateLimiter rateLimiter;
 
     private List<ServerNode> tempCluster;
 
@@ -34,8 +38,11 @@ public class Cluster {
         this.requireToken = EnvLoader.getBoolean(clusterName, "requireToken", true);
         this.timeoutMs = EnvLoader.getInt(clusterName, "timeoutMs", 5000);
         this.allowedIps = EnvLoader.get(clusterName, "allowedIps", "");
+        this.rateLimitRequests = EnvLoader.getInt(clusterName, "rateLimitRequests", 100);
+        this.rateLimitDurationSeconds = EnvLoader.getInt(clusterName, "rateLimitDurationSeconds", 60);
+        this.rateLimiter = new RateLimiter(this.rateLimitRequests, this.rateLimitDurationSeconds);
         
-        DebugUtils.log("Cluster '" + clusterName + "' initialized with settings -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "]");
+        DebugUtils.log("Cluster '" + clusterName + "' initialized settings -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "], rateLimit: " + rateLimitRequests + "/" + rateLimitDurationSeconds + "s");
     }
 
     public void registerServer(ServerNode node) {
@@ -249,5 +256,13 @@ public class Cluster {
         }
         DebugUtils.error("Cluster '" + clusterName + "' access barred: IP '" + ipAddress + "' is not allowed.");
         return false;
+    }
+
+    public boolean checkRateLimit(String clientId) {
+        boolean allowed = rateLimiter.allowRequest(clientId);
+        if(!allowed) {
+            DebugUtils.error("Cluster '" + clusterName + "' access barred: Too many requests from '" + clientId + "'.");
+        }
+        return allowed;
     }
 }

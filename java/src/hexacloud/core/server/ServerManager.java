@@ -11,6 +11,7 @@ import hexacloud.core.utils.DebugUtils;
 
 public class ServerManager implements ServerOperations {
 
+    private final Cluster cluster;
     private final RouteRegistry routeRegistry;
     private final List<ServerTransport> activeTransports = new ArrayList<>();
     
@@ -20,6 +21,7 @@ public class ServerManager implements ServerOperations {
     private int port = 3000;
 
     public ServerManager(Cluster cluster) {
+        this.cluster = cluster;
         this.routeRegistry = new RouteRegistry();
         this.routeRegistry.registerController(new ClusterController(cluster));
     }
@@ -56,21 +58,21 @@ public class ServerManager implements ServerOperations {
 
         if(telnetEnabled) {
             ServerTransport telnet = new TelnetTransport();
-            telnet.listen(port, routeRegistry);
+            telnet.listen(port, routeRegistry, cluster);
             activeTransports.add(telnet);
         }
         
         if(httpEnabled) {
             ServerTransport http = new HttpTransport();
             // HTTP runs on port + 1
-            http.listen(port + 1, routeRegistry);
+            http.listen(port + 1, routeRegistry, cluster);
             activeTransports.add(http);
         }
         
         if(wsEnabled) {
             ServerTransport ws = new WsTransport();
             // WS runs on port + 2
-            ws.listen(port + 2, routeRegistry);
+            ws.listen(port + 2, routeRegistry, cluster);
             activeTransports.add(ws);
         }
         

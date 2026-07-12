@@ -7,7 +7,7 @@ public class WsTransport implements ServerTransport {
     private boolean running = false;
 
     @Override
-    public void listen(int port, RouteRegistry registry) {
+    public void listen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
         running = true;
         DebugUtils.log("WebSocket Transport (Stub) successfully bound and simulated on port " + port);
     }

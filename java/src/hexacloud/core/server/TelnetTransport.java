@@ -20,11 +20,11 @@ public class TelnetTransport implements ServerTransport {
     private final ExecutorService threadPool = ThreadManager.newVirtualThreadPool();
 
     @Override
-    public void listen(int port, RouteRegistry registry) {
-        new Thread(() -> serverListen(port, registry), "TelnetServer-Listener-" + port).start();
+    public void listen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
+        new Thread(() -> serverListen(port, registry, cluster), "TelnetServer-Listener-" + port).start();
     }
 
-    private void serverListen(int port, RouteRegistry registry) {
+    private void serverListen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
         DebugUtils.log("Telnet Transport starting to listen on port " + port);
         try {
             serverSocket = new ServerSocket(port);
@@ -33,7 +33,7 @@ public class TelnetTransport implements ServerTransport {
             while(clusterActive) {
                 Socket socket = serverSocket.accept();
                 DebugUtils.log("Telnet Transport accepted new connection from " + socket.getRemoteSocketAddress());
-                threadPool.execute(() -> conn(socket, registry));
+                threadPool.execute(() -> conn(socket, registry, cluster));
             }
         } catch(IOException ex) {
             if (clusterActive) {
@@ -42,12 +42,23 @@ public class TelnetTransport implements ServerTransport {
         }
     }
 
-    private void conn(Socket socket, RouteRegistry registry) {
+    private void conn(Socket socket, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
         try(
             socket;
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
         ) {
+            String clientIp = socket.getInetAddress().getHostAddress();
+            if(!cluster.isIpAllowed(clientIp)) {
+                out.println("ERROR: IP not allowed");
+                return;
+            }
+
+            if(!cluster.checkRateLimit(clientIp)) {
+                out.println("ERROR: Too many requests");
+                return;
+            }
+
             String line = in.readLine();
             if(line == null || line.trim().isEmpty()) {
                 DebugUtils.log("Telnet received empty connection request from " + socket.getRemoteSocketAddress());
@@ -56,9 +67,27 @@ public class TelnetTransport implements ServerTransport {
 
             DebugUtils.log("Telnet received raw command line: '" + line + "'");
 
-            String[] tokens = line.split(" ", 2);
-            String command = tokens[0].toUpperCase();
-            String args = tokens.length > 1 ? tokens[1].trim() : "";
+            String[] tokens = line.split(" ", 3);
+            String command;
+            String args;
+            
+            if(cluster.isRequireToken()) {
+                if(tokens.length < 2) {
+                    out.println("ERROR: Authentication required");
+                    return;
+                }
+                String token = tokens[0];
+                if(!cluster.authenticate(token)) {
+                    out.println("ERROR: Unauthorized");
+                    return;
+                }
+                command = tokens[1].toUpperCase();
+                args = tokens.length > 2 ? tokens[2].trim() : "";
+            } else {
+                command = tokens[0].toUpperCase();
+                String firstTokenArgs = tokens.length > 1 ? tokens[1].trim() : "";
+                args = tokens.length > 2 ? (firstTokenArgs + " " + tokens[2].trim()).trim() : firstTokenArgs;
+            }
 
             var handler = registry.getRoutes().get(command);
 

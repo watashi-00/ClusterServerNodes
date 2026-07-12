@@ -19,14 +19,59 @@ public class HttpTransport implements ServerTransport {
     private boolean running = false;
 
     @Override
-    public void listen(int port, RouteRegistry registry) {
+    public void listen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
         try {
             server = HttpServer.create(new InetSocketAddress(port), 0);
             server.setExecutor(ThreadManager.newVirtualThreadPool());
             server.createContext("/", new HttpHandler() {
                 @Override
                 public void handle(HttpExchange exchange) throws IOException {
+                    String clientIp = exchange.getRemoteAddress().getAddress().getHostAddress();
+                    if(!cluster.isIpAllowed(clientIp)) {
+                        String response = "403 Forbidden - IP Not Allowed";
+                        exchange.sendResponseHeaders(403, response.length());
+                        try(OutputStream os = exchange.getResponseBody()) {
+                            os.write(response.getBytes());
+                        }
+                        return;
+                    }
+
+                    if(!cluster.checkRateLimit(clientIp)) {
+                        String response = "429 Too Many Requests";
+                        exchange.getResponseHeaders().set("Retry-After", "10");
+                        exchange.sendResponseHeaders(429, response.length());
+                        try(OutputStream os = exchange.getResponseBody()) {
+                            os.write(response.getBytes());
+                        }
+                        return;
+                    }
+
+                    String token = exchange.getRequestHeaders().getFirst("X-Cluster-Token");
+                    if(token == null || token.isEmpty()) {
+                        String query = exchange.getRequestURI().getQuery();
+                        if(query != null && query.contains("token=")) {
+                            for(String param : query.split("&")) {
+                                if(param.startsWith("token=")) {
+                                    token = param.substring(6);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if(!cluster.authenticate(token)) {
+                        String response = "401 Unauthorized - Invalid or Missing API Token";
+                        exchange.sendResponseHeaders(401, response.length());
+                        try(OutputStream os = exchange.getResponseBody()) {
+                            os.write(response.getBytes());
+                        }
+                        return;
+                    }
+
                     String path = exchange.getRequestURI().getPath().substring(1).toUpperCase();
+                    if(path.isEmpty()) {
+                        path = "GET_NODES";
+                    }
 
                     var handler = registry.getRoutes().get(path);
                     if(handler != null) {
