@@ -1,0 +1,6 @@
+# Ignore compiled shared libraries and native binaries
+*.so
+*.dll
+*.dylib
+*.class
+/tmp/

@@ -1,41 +1,71 @@
 package hexacloud.core.utils;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 public class DebugUtils {
 
     private static boolean debugEnabled = false;
+    private static boolean tuiModeActive = false;
+    private static final Queue<String> recentLogs = new ConcurrentLinkedQueue<>();
 
     public static void setDebugEnabled(boolean enabled) {
         debugEnabled = enabled;
     }
 
+    public static void setTuiModeActive(boolean active) {
+        tuiModeActive = active;
+    }
+
+    public static List<String> getRecentLogs() {
+        return new ArrayList<>(recentLogs);
+    }
+
+    private static void captureLog(String prefix, String message) {
+        String formatted = "[" + prefix + "] " + message;
+        recentLogs.offer(formatted);
+        while (recentLogs.size() > 10) {
+            recentLogs.poll();
+        }
+        if (!tuiModeActive) {
+            if (prefix.equals("ERROR")) {
+                System.err.println(formatted);
+            } else {
+                System.out.println(formatted);
+            }
+        }
+    }
+
     public static void log(String message) {
-        if(debugEnabled) {
-            System.out.println("[DEBUG] " + message);
+        if (debugEnabled) {
+            captureLog("DEBUG", message);
         }
     }
 
     public static void info(String message) {
-        System.out.println("[INFO] " + message);
+        captureLog("INFO", message);
     }
 
     public static void error(String message) {
-        System.err.println("[ERROR] " + message);
+        captureLog("ERROR", message);
     }
 
     public static void error(String message, Throwable t) {
-        if(t != null) {
+        if (t != null) {
             Throwable cause = t.getCause() != null ? t.getCause() : t;
-            if(cause instanceof java.net.ConnectException) {
-                System.err.println("[ERROR] " + message + " -> Connection refused");
-            } else if(cause instanceof java.net.http.HttpConnectTimeoutException || cause instanceof java.io.IOException && cause.getMessage().contains("timed out")) {
-                System.err.println("[ERROR] " + message + " -> Connection timeout");
+            String details;
+            if (cause instanceof java.net.ConnectException) {
+                details = " -> Connection refused";
+            } else if (cause instanceof java.net.http.HttpConnectTimeoutException || (cause instanceof java.io.IOException && cause.getMessage() != null && cause.getMessage().contains("timed out"))) {
+                details = " -> Connection timeout";
             } else {
-                System.err.println("[ERROR] " + message + " -> " + cause.toString());
-                t.printStackTrace(System.err);
+                details = " -> " + cause.toString();
             }
+            captureLog("ERROR", message + details);
         } else {
-            System.err.println("[ERROR] " + message);
+            captureLog("ERROR", message);
         }
     }
-    
 }
