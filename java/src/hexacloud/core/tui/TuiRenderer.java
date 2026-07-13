@@ -187,29 +187,35 @@ public class TuiRenderer {
     private void renderClusterDetailView() {
         TuiState state = tui.state();
 
-        drawBox(2, 5, 29, 12, "POLICIES & LIMITS", false);
-        drawBox(31, 5, 79, 12, "SERVICES / TELEMETRY (" + state.nodes.size() + ")", true);
-        drawBox(2, 13, 79, 22, "CONSOLE LOGS FOR " + state.selectedClusterName, false);
+        drawBox(2, 5, 29, 13, "POLICIES & LIMITS", false);
+        drawBox(31, 5, 79, 13, "SERVICES / TELEMETRY (" + state.nodes.size() + ")", true);
+        drawBox(2, 14, 79, 22, "CONSOLE LOGS FOR " + state.selectedClusterName, false);
 
         NativeTerminal.printAt(4, 6, WHITE_BOLD + "Active:   " + RESET + state.selectedClusterName);
         NativeTerminal.printAt(4, 7, "Security: " + (state.targetRequireToken ? GREEN + "Token Required" + RESET : YELLOW + "Optional" + RESET));
+        
+        Cluster currentCluster = ClusterRegistry.getInstance().getCluster(state.selectedClusterName);
+        String secretDisplay = (currentCluster != null && currentCluster.getSecret() != null && !currentCluster.getSecret().isEmpty()) ? currentCluster.getSecret() : "None";
+        if (secretDisplay.length() > 14) secretDisplay = secretDisplay.substring(0, 11) + "...";
+        NativeTerminal.printAt(4, 8, "Token:    " + CYAN + secretDisplay + RESET);
+
         String ips = state.targetAllowedIps.isEmpty() ? "Any Client Allowed" : state.targetAllowedIps;
         if (ips.length() > 14) ips = ips.substring(0, 11) + "...";
-        NativeTerminal.printAt(4, 8, "Allowed:  " + CYAN + ips + RESET);
-        NativeTerminal.printAt(4, 9, "Limits:   " + YELLOW + state.targetRateLimitRequests + " reqs / " + state.targetRateLimitDurationSeconds + "s" + RESET);
-        NativeTerminal.printAt(4, 10, "Timeout:  " + state.targetTimeoutMs + " ms");
-        NativeTerminal.printAt(4, 11, "Ping Int: " + state.globalPingInterval + "s");
+        NativeTerminal.printAt(4, 9, "Allowed:  " + CYAN + ips + RESET);
+        NativeTerminal.printAt(4, 10, "Limits:   " + YELLOW + state.targetRateLimitRequests + " reqs / " + state.targetRateLimitDurationSeconds + "s" + RESET);
+        NativeTerminal.printAt(4, 11, "Timeout:  " + state.targetTimeoutMs + " ms");
+        NativeTerminal.printAt(4, 12, "Ping Int: " + state.globalPingInterval + "s");
 
         int y = 6;
         NativeTerminal.printAt(33, y, WHITE_BOLD + String.format("%-22s %-8s %-10s", "SERVICE HOST", "PORT", "STATUS") + RESET);
         y++;
 
-        tui.adjustServicesViewport(5);
+        tui.adjustServicesViewport(6);
 
         if (state.nodes.isEmpty()) {
             NativeTerminal.printAt(33, y, RED + "No services registered." + RESET);
         } else {
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 6; i++) {
                 int index = state.servicesViewportStart + i;
                 if (index >= state.nodes.size()) break;
 
@@ -232,8 +238,8 @@ public class TuiRenderer {
             if (state.servicesViewportStart > 0) {
                 NativeTerminal.printAt(77, 7, WHITE_BOLD + "▲" + RESET);
             }
-            if (state.servicesViewportStart + 5 < state.nodes.size()) {
-                NativeTerminal.printAt(77, 11, WHITE_BOLD + "▼" + RESET);
+            if (state.servicesViewportStart + 6 < state.nodes.size()) {
+                NativeTerminal.printAt(77, 12, WHITE_BOLD + "▼" + RESET);
             }
         }
 
@@ -265,7 +271,7 @@ public class TuiRenderer {
         if (tui.nodeConfigurationEnabled()) controlsStr.append("  [Enter] Node Config");
         if (tui.gatewayManagementEnabled() && !tui.readOnly()) controlsStr.append("  [G] Gateway");
         if (tui.nodeManagementEnabled() && !tui.readOnly()) controlsStr.append("  [A] Add  [D] Delete");
-        if (!tui.readOnly()) controlsStr.append("  [I] IPs  [T] Timeout");
+        if (!tui.readOnly()) controlsStr.append("  [I] IPs  [T] Timeout  [K] Token  [S] Secure");
         NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
     }
 

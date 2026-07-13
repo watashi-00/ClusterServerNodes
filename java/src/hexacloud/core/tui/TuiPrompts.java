@@ -28,18 +28,23 @@ public class TuiPrompts {
             System.out.println(YELLOW + "Operation cancelled." + RESET);
             try { Thread.sleep(800); } catch (Exception e) {}
         } else {
-            ClusterRegistry.getInstance().createCluster(name);
-            System.out.println(GREEN + "SUCCESS: Created cluster '" + name + "'" + RESET);
-            if (tui.gatewayManagementEnabled()) {
-                System.out.print("Do you want to configure and start a gateway for this cluster now? (y/n): ");
-                String ans = TerminalScanner.readLine();
-                if (ans.equalsIgnoreCase("y")) {
-                    state.selectedClusterName = name;
-                    manageGatewayPrompt();
-                    return;
+            if (ClusterRegistry.getInstance().getCluster(name) != null) {
+                System.out.println(RED + "ERROR: Cluster '" + name + "' already exists." + RESET);
+                try { Thread.sleep(1500); } catch (Exception e) {}
+            } else {
+                ClusterRegistry.getInstance().createCluster(name);
+                System.out.println(GREEN + "SUCCESS: Created cluster '" + name + "'" + RESET);
+                if (tui.gatewayManagementEnabled()) {
+                    System.out.print("Do you want to configure and start a gateway for this cluster now? (y/n): ");
+                    String ans = TerminalScanner.readLine();
+                    if (ans.equalsIgnoreCase("y")) {
+                        state.selectedClusterName = name;
+                        manageGatewayPrompt();
+                        return;
+                    }
                 }
+                try { Thread.sleep(800); } catch (Exception e) {}
             }
-            try { Thread.sleep(800); } catch (Exception e) {}
         }
         NativeTerminal.initTerminal();
         tui.fetchClusterNames();
@@ -273,5 +278,25 @@ public class TuiPrompts {
         }
         NativeTerminal.initTerminal();
         tui.fetchNodeStatus();
+    }
+
+    public void changeSecretPrompt() {
+        TuiState state = tui.state();
+        if (state.selectedClusterName.isEmpty()) return;
+        NativeTerminal.resetTerminal();
+        System.out.print("\n" + CYAN + ">> Enter new cluster secret API token (or /cancel to abort): " + RESET);
+        String secret = TerminalScanner.readLine();
+        if (secret.equalsIgnoreCase("/cancel")) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
+        } else {
+            Cluster c = ClusterRegistry.getInstance().getCluster(state.selectedClusterName);
+            if (c != null) {
+                c.setSecret(secret);
+                System.out.println(GREEN + "SUCCESS: Cluster secret API token updated." + RESET);
+            }
+        }
+        try { Thread.sleep(800); } catch (Exception e) {}
+        NativeTerminal.initTerminal();
+        tui.fetchClusterConfig(state.selectedClusterName);
     }
 }

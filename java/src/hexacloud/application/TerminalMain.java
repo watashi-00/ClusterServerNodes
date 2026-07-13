@@ -3,7 +3,7 @@ package hexacloud.application;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.ports.GatewayPort;
 import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.tui.TerminalUI;
+import hexacloud.core.tui.TerminalUiFactory;
 import hexacloud.infra.gateway.GatewayFactory;
 
 public class TerminalMain {
@@ -33,6 +33,8 @@ public class TerminalMain {
             .startPingScheduler();
 
         // Launch the pure Terminal UI client passing the configured gateway
-        TerminalUI.startTerminal("MyCompany - GateBridge DevOps Panel", hexacloud);
+        TerminalUiFactory.createTui("MyCompany - GateBridge DevOps Panel")
+            .seedGateway(hexacloud)
+            .start();
     }
 }

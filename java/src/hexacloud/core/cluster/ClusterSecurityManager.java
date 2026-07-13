@@ -7,8 +7,8 @@ import hexacloud.core.utils.RateLimiter;
 public class ClusterSecurityManager {
 
     private final String clusterName;
-    private final String secret;
-    private final boolean requireToken;
+    private String secret;
+    private boolean requireToken;
     private int timeoutMs;
     private String allowedIps;
     private int rateLimitRequests;
@@ -101,5 +101,13 @@ public class ClusterSecurityManager {
         this.rateLimitRequests = requests;
         this.rateLimitDurationSeconds = durationSeconds;
         this.rateLimiter.updateLimits(requests, durationSeconds);
+    }
+
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
+
+    public void setRequireToken(boolean requireToken) {
+        this.requireToken = requireToken;
     }
 }

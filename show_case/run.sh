@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run helper for GateBridge Terminal UI bootstrap
+# Change directory to the project root folder
+cd "$(dirname "$0")/.."
+
+# Dynamic run helper for GateBridge
+# - detects Java/Javac (uses JAVA_HOME if set)
+# - compiles optional JNI native terminal lib on supported platforms (Linux/macOS)
+# - compiles Java sources to a temp build directory (configurable via OUTDIR)
+# - runs the main application class
+
 OUTDIR=${OUTDIR:-/tmp/gatebridge}
 BUILD_NATIVE=${BUILD_NATIVE:-1}
 JAVA_HOME=${JAVA_HOME:-}
 
-echo "GateBridge Terminal TUI Launcher"
+echo "GateBridge run helper"
 
 OSNAME=$(uname -s)
 case "$OSNAME" in
@@ -40,21 +48,30 @@ if [ -z "${JAVA_BIN}" ] || [ -z "${JAVAC_BIN}" ]; then
     exit 1
 fi
 
+echo "Using java: ${JAVA_BIN}"
+echo "Using javac: ${JAVAC_BIN}"
+
 # Determine JDK include dirs for JNI compilation
 JDK_INCLUDE_DIR=""
 if [ -n "${JAVA_HOME:-}" ]; then
     JDK_INCLUDE_DIR="${JAVA_HOME}/include"
 else
+    # try to derive JAVA_HOME from java properties
     JAVA_PATH=$(${JAVA_BIN} -XshowSettings:properties -version 2>&1 | awk -F ' = ' '/java.home/ {print $2; exit}') || true
     if [ -n "${JAVA_PATH}" ]; then
         JDK_INCLUDE_DIR="${JAVA_PATH}/include"
     fi
 fi
 
+echo "Platform detected: ${PLATFORM} (${OSNAME})"
+echo "Build dir: ${OUTDIR}"
+
 mkdir -p "${OUTDIR}"
 
+# Build native JNI library on supported platforms
 if [ "${BUILD_NATIVE}" -ne 0 ]; then
     if command -v gcc >/dev/null 2>&1 && [ -n "${JDK_INCLUDE_DIR}" ] && [ -d "${JDK_INCLUDE_DIR}" ] && { [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "darwin" ]; }; then
+        echo "Compiling native JNI terminal library..."
         JNI_OS_INCLUDE="${JDK_INCLUDE_DIR}/${PLATFORM}"
         LIB_NAME="libhexaterminal"
         OUT_LIB="java/${LIB_NAME}.so"
@@ -66,13 +83,23 @@ if [ "${BUILD_NATIVE}" -ne 0 ]; then
             gcc -shared -fPIC -o "${OUT_LIB}" -I"${JDK_INCLUDE_DIR}" -I"${JNI_OS_INCLUDE}" c/hexaterminal.c || {
                 echo "Warning: native build failed, continuing without native terminal library." >&2
             }
+            # copy to /tmp for convenience
             cp -f "${OUT_LIB}" /tmp/ || true
+        else
+            echo "Warning: JNI OS include directory not found: ${JNI_OS_INCLUDE}. Skipping native build." >&2
         fi
+    else
+        echo "Skipping native build: gcc or JDK include not available or unsupported platform." >&2
     fi
+else
+    echo "Native build disabled via BUILD_NATIVE=0." >&2
 fi
 
 # Compile Java sources
+echo "Compiling Java sources to ${OUTDIR}..."
 find java/src -name "*.java" -print0 | xargs -0 "${JAVAC_BIN}" -d "${OUTDIR}"
 
-# Launch GateBridge TerminalMain TUI Bootstrap
-"${JAVA_BIN}" -cp "${OUTDIR}" hexacloud.application.TerminalMain
+echo "Launching GateBridge application..."
+"${JAVA_BIN}" -cp "${OUTDIR}" hexacloud.application.Main
+
+echo "Process finished."

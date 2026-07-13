@@ -121,6 +121,14 @@ public class TuiKeyHandler {
             tui.prompts().changeTimeoutPrompt();
         } else if ((key == 'l' || key == 'L') && !tui.readOnly()) {
             tui.prompts().changeRateLimitPrompt();
+        } else if ((key == 'k' || key == 'K') && !tui.readOnly()) {
+            tui.prompts().changeSecretPrompt();
+        } else if ((key == 's' || key == 'S') && !tui.readOnly()) {
+            Cluster c = ClusterRegistry.getInstance().getCluster(state.selectedClusterName);
+            if (c != null) {
+                c.setRequireToken(!c.isRequireToken());
+                tui.fetchClusterConfig(state.selectedClusterName);
+            }
         } else if (key == 127 || key == 8 || key == 27) { // Backspace or Escape
             state.currentView = VIEW_DASHBOARD;
         }

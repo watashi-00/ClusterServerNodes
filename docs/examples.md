@@ -1,74 +1,76 @@
-# Usage Examples
+# Usage Examples & Showcase
 
-This page collects common GateBridge usage examples that are intentionally separated from the framework entry-point code.
+This page collects common GateBridge bootstrapping examples and highlights the polyglot client nodes available in the showcase directory.
 
-> Example logic has been moved out of `Main.java` and is documented here instead of being embedded in the application entry point.
+## Bootstrapping a Gateway & TUI
 
-## Gateway setup
-
-Create a gateway and configure transports:
+Using `TerminalUiFactory` and `TerminalUiPort` makes launching the console dashboard fluent:
 
 ```java
-GatewayPort gateway = GatewayFactory.createGateway("my-cluster")
-    .port(3000)
-    .pingInterval(5)
-    .enableTelnet(true)
-    .enableHttp(true)
-    .enableWs(true);
-```
+import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.TerminalUiPort;
+import hexacloud.core.tui.TerminalUiFactory;
+import hexacloud.infra.gateway.GatewayFactory;
 
-## Registering servers
+public class AppBootstrap {
+    public static void main(String[] args) {
+        // 1. Build and configure the gateway listener ports
+        GatewayPort gateway = GatewayFactory.createGateway("production-cluster")
+            .port(8080)
+            .pingInterval(10)
+            .enableHttp(true)
+            .enableTelnet(true);
 
-Register cluster nodes using the `GatewayPort` API:
+        // 2. Launch listeners and checks
+        gateway.listen().startPingScheduler();
 
-```java
-gateway.registerServer(3001, NodeStatus.OFFLINE)
-       .registerServer(3002, NodeStatus.OFFLINE)
-       .registerServer(3003, NodeStatus.OFFLINE);
-```
+        // 3. Obtain the TUI control panel and lock permissions
+        TerminalUiPort controlPanel = TerminalUiFactory.createTui("Hexacloud Admin Desk")
+            .seedGateway(gateway)
+            .readOnly(false)
+            .nodeManagementEnabled(true)
+            .gatewayManagementEnabled(true);
 
-Then start listening and health checks:
-
-```java
-gateway.listen()
-       .startPingScheduler();
-```
-
-## Using the terminal monitor
-
-`MonitorMain` is provided as an example launcher for the GateBridge monitor. It is part of the sample application layer and not required for core framework integration.
-
-```bash
-./run.sh
-```
-
-The monitor renders an interactive dashboard with telemetry, cluster state, and configuration screens.
-
-## Custom events
-
-Define event records and event controllers separately from your main entry point.
-
-```java
-record UserCustomEvent(String message) implements Event {}
-
-class CustomEventListener implements EventController {
-    @Subscribe
-    public void onCustomEvent(UserCustomEvent event) {
-        DebugUtils.info("UserCustomEvent received: " + event.message());
+        // 4. Run the interactive terminal interface
+        controlPanel.start();
     }
 }
 ```
 
-Register listeners and dispatch events with the gateway event manager:
+## Zero-Configuration Dynamic Startup
+
+If your gateway state is already persisted inside `java/resources/hexacloud-state.properties`, you can bootstrap the entire monitor and gateway server network with a single line of code:
 
 ```java
-gateway.eventManager().registerListener(new CustomEventListener());
+import hexacloud.core.tui.TerminalUiFactory;
 
-gateway.eventManager().dispatch(new UserCustomEvent("Startup complete"));
+public class PureTerminalLauncher {
+    public static void main(String[] args) {
+        TerminalUiFactory.createTui("Hexacloud Dynamic Dashboard").start();
+    }
+}
 ```
 
-## Recommended structure
+## Polyglot Node Showcase (`show_case/`)
 
-- keep `Main.java` and `MonitorMain.java` focused on startup and bootstrapping
-- place concrete examples in docs or sample source files
-- use the event system for custom hooks rather than embedding example logic in the entry point
+The repository contains concrete client nodes written in various languages inside the [`show_case/`](../show_case/) folder to simulate real production service workloads:
+
+### 1. Node.js Client Node (`node_node.js`)
+*   **Protocol:** Connects to the gateway via a Telnet TCP socket connection.
+*   **Functionality:** Registers itself by sending dynamic command lines and spins up a local HTTP listener on port `4001` that answers health pings.
+*   **Command:** `node show_case/node_node.js`
+
+### 2. Python Client Node (`python_node.py`)
+*   **Protocol:** Registers itself via HTTP POST endpoint requests to `/register`.
+*   **Functionality:** Starts an HTTP server on port `4002` that answers health checks with a custom auth header token (`Bearer showCaseToken`).
+*   **Command:** `python3 show_case/python_node.py`
+
+### 3. Go Client Node (`go_node.go`)
+*   **Protocol:** Registers via HTTP POST request.
+*   **Functionality:** Standardized Go HTTP router listening on port `4003` responding with JSON status values on `/` route checks.
+*   **Command:** `go run show_case/go_node.go`
+
+### 4. Bash DevOps Script (`bash_control.sh`)
+*   **Protocol:** Telnet Netcat socket and raw curl checks.
+*   **Functionality:** DevOps querying automation showing list registers and status telemetry.
+*   **Command:** `./show_case/bash_control.sh`

@@ -50,6 +50,7 @@ public class ClusterStatePersistence {
             
             String prefix = "cluster." + name + ".";
             props.setProperty(prefix + "requireToken", String.valueOf(cluster.isRequireToken()));
+            props.setProperty(prefix + "secret", cluster.getSecret() != null ? cluster.getSecret() : "");
             props.setProperty(prefix + "timeoutMs", String.valueOf(cluster.getTimeoutMs()));
             props.setProperty(prefix + "allowedIps", cluster.getAllowedIps());
             props.setProperty(prefix + "rateLimitRequests", String.valueOf(cluster.getRateLimitRequests()));
@@ -121,11 +122,15 @@ public class ClusterStatePersistence {
             Cluster cluster = ClusterRegistry.getInstance().createCluster(name);
             String prefix = "cluster." + name + ".";
             
+            boolean requireToken = Boolean.parseBoolean(props.getProperty(prefix + "requireToken", "true"));
+            String secret = props.getProperty(prefix + "secret", "");
             int timeoutMs = Integer.parseInt(props.getProperty(prefix + "timeoutMs", "5000"));
             String allowedIps = props.getProperty(prefix + "allowedIps", "");
             int rateLimitRequests = Integer.parseInt(props.getProperty(prefix + "rateLimitRequests", "100"));
             int rateLimitDurationSeconds = Integer.parseInt(props.getProperty(prefix + "rateLimitDurationSeconds", "60"));
             
+            cluster.setRequireToken(requireToken);
+            cluster.setSecret(secret);
             cluster.setAllowedIps(allowedIps);
             cluster.setTimeoutMs(timeoutMs);
             cluster.setRateLimit(rateLimitRequests, rateLimitDurationSeconds);

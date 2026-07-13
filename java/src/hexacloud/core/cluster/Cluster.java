@@ -300,4 +300,14 @@ public class Cluster {
         securityManager.setRateLimit(requests, durationSeconds);
         ClusterStatePersistence.saveState();
     }
+
+    public void setSecret(String secret) {
+        securityManager.setSecret(secret);
+        ClusterStatePersistence.saveState();
+    }
+
+    public void setRequireToken(boolean requireToken) {
+        securityManager.setRequireToken(requireToken);
+        ClusterStatePersistence.saveState();
+    }
 }

@@ -1,48 +1,73 @@
 # Terminal UI
 
-The GateBridge terminal UI is implemented in `java/src/hexacloud/application/TerminalUI.java`.
+The GateBridge Terminal UI is a modular, high-telemetry terminal console located in `java/src/hexacloud/core/tui/`.
 
-## Purpose
+## Architecture & Separation of Concerns
 
-`TerminalUI` abstracts the terminal rendering and keyboard interaction so application code does not need to manage low-level terminal state.
+The TUI subsystem is split into five distinct classes to isolate different operations:
 
-It provides a simple entry point for launching the monitor:
+1. **`TerminalUI.java`** — The coordinator that orchestrates background data synchronization, periodic UI refreshes, and shutdown hooks.
+2. **`TuiState.java`** — Encapsulates the UI navigation, active viewports, cursor indices, and cached cluster/node telemetry.
+3. **`TuiRenderer.java`** — Responsible for drawing boxes, borders, styling logs, and rendering panels based on state.
+4. **`TuiKeyHandler.java`** — Intercepts key presses and converts them into navigation or editing events.
+5. **`TuiPrompts.java`** — Manages interactive dialogues (like creating a cluster or updating node parameters) by temporarily suspending raw terminal mode.
+6. **`TuiConstants.java`** — Centralizes ANSI escape color codes, view numbers, and panel focus IDs.
+
+## Configuration & Feature Flags (`TerminalUiPort`)
+
+Clients interact with the TUI using the `TerminalUiPort` interface obtained from `TerminalUiFactory`. The TUI permissions can be restricted using a fluent builder API:
 
 ```java
-TerminalUI.startTerminal("watashi-00");
+TerminalUiFactory.createTui("DevOps Control Plane")
+    .readOnly(false)                     // Set to true to disable all write operations
+    .gatewayManagementEnabled(true)     // Enable [G] key to start/stop server listeners
+    .clusterManagementEnabled(true)     // Enable [C] key to create clusters
+    .nodeManagementEnabled(true)        // Enable [A]/[D] to register/deregister nodes
+    .nodeConfigurationEnabled(true)     // Enable [Enter] config of ping routes & headers
+    .seedGateway(hexacloud)             // Inject already started gateway instance
+    .start();                           // Start TUI loop
 ```
 
-or with a custom HTTP port:
+## UI Interaction & Shortcuts
 
-```java
-TerminalUI.startTerminal("watashi-00", 3001);
-```
+### Dashboard View (`VIEW_DASHBOARD`)
+- `TAB` — Switch focus between the left panel (Clusters) and the right panel (Services).
+- `UP` / `DOWN` — Navigate the selected list (clusters list or nodes list).
+- `ENTER` — Open the Cluster Console Detail View for the selected cluster.
+- `[G]` — Open Gateway Setup to start/stop the gateway for the active cluster.
+- `[C]` — Create a new cluster.
+- `[L]` — Open full, scrollable system logs panel.
+- `[Q]` / `ESC` — Terminate TUI and close the application.
 
-## Main features
+### Cluster Detail View (`VIEW_CLUSTER_DETAIL`)
+- `UP` / `DOWN` — Navigate registered service nodes.
+- `ENTER` — Open the Node Config Panel for the selected service node.
+- `[G]` — Open Gateway Setup to start/stop the gateway.
+- `[A]` — Register a new node (specifies port).
+- `[D]` — Deregister/delete the selected node.
+- `[I]` — Configure Allowed Client IPs (comma-separated).
+- `[T]` — Edit response Timeout in milliseconds.
+- `[L]` — Edit Rate Limit (format: `<requests> <durationSeconds>`).
+- `BACKSPACE` / `ESC` — Return to the Dashboard View.
 
-- interactive TUI with main menu, telemetry, cluster details, and configuration screens
-- on-screen keyboard commands for refresh, adding nodes, exporting reports, and navigation
-- polling node status only while the telemetry screen is active
-- automatic terminal reset on shutdown
+### Node Config Panel (`VIEW_NODE_CONFIG`)
+- `[P]` — Toggle ping health check monitoring (Enabled/Disabled).
+- `[E]` — Change ping endpoint route (e.g. `/health`).
+- `[H]` — Edit authentication header name (e.g. `X-API-Key`).
+- `[V]` — Edit token value.
+- `BACKSPACE` / `ESC` — Return to Cluster Detail View.
 
-## UI interaction
+### Full Logs View (`VIEW_FULL_LOGS`)
+- `UP` / `DOWN` — Scroll through detailed logs history.
+- `BACKSPACE` / `ESC` — Return to Dashboard View.
 
-The monitor supports the following keys:
+## Automatic Persistence
 
-- `UP` / `DOWN` — navigate the main menu
-- `ENTER` — select a menu item
-- `Q` or `ESC` — return to the main menu or exit
-- `R` — refresh telemetry when viewing the telemetry screen
-- `A` — add a new local node from the telemetry screen
-- `S` — export the current telemetry report
+Any cluster parameter updates, node additions/deletions, or configuration modifications made in the TUI are automatically saved in the background to the `java/resources/hexacloud-state.properties` configuration file. This allows restarting the application with a clean one-line loader (`OnlyTerminalMain.java`) while preserving all customizations!
 
-## Application entry points
+## Dependencies
 
-- `java/src/hexacloud/application/Main.java` uses `GatewayFactory` and demonstrates event handling.
-- `java/src/hexacloud/application/MonitorMain.java` launches the terminal monitor.
-
-## Notes
-
-`TerminalUI` depends on `NativeTerminal` for low-level screen control and `DebugUtils` for logging.
-
-It fetches node data from the local control plane using the configured cluster secret and HTTP port.
+The Terminal UI relies on:
+- `NativeTerminal` for native screen manipulation and JNI-level keyboard polling.
+- `TerminalScanner` for clean console line reads without interrupting native settings.
+- `DebugUtils` for dispatching logging statements displayed on the dashboard.

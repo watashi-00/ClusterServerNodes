@@ -15,9 +15,9 @@ import hexacloud.core.ports.GatewayPort;
  * Main coordinator for the DevOps TUI console dashboard.
  * Delegates rendering, keyboard processing, and text dialogues to sub-components.
  */
-public class TerminalUI {
+public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
 
-    private final String displayName;
+    private String displayName;
     private final TuiState state = new TuiState();
     
     private final TuiRenderer renderer;
@@ -104,29 +104,53 @@ public class TerminalUI {
         return nodeConfigurationEnabled;
     }
 
-    public TerminalUI readOnly(boolean readOnly) {
+    @Override
+    public hexacloud.core.ports.TerminalUiPort displayName(String displayName) {
+        this.displayName = displayName;
+        return this;
+    }
+
+    @Override
+    public hexacloud.core.ports.TerminalUiPort readOnly(boolean readOnly) {
         this.readOnly = readOnly;
         return this;
     }
 
-    public TerminalUI gatewayManagementEnabled(boolean enabled) {
+    @Override
+    public hexacloud.core.ports.TerminalUiPort gatewayManagementEnabled(boolean enabled) {
         this.gatewayManagementEnabled = enabled;
         return this;
     }
 
-    public TerminalUI clusterManagementEnabled(boolean enabled) {
+    @Override
+    public hexacloud.core.ports.TerminalUiPort clusterManagementEnabled(boolean enabled) {
         this.clusterManagementEnabled = enabled;
         return this;
     }
 
-    public TerminalUI nodeManagementEnabled(boolean enabled) {
+    @Override
+    public hexacloud.core.ports.TerminalUiPort nodeManagementEnabled(boolean enabled) {
         this.nodeManagementEnabled = enabled;
         return this;
     }
 
-    public TerminalUI nodeConfigurationEnabled(boolean enabled) {
+    @Override
+    public hexacloud.core.ports.TerminalUiPort nodeConfigurationEnabled(boolean enabled) {
         this.nodeConfigurationEnabled = enabled;
         return this;
+    }
+
+    @Override
+    public hexacloud.core.ports.TerminalUiPort seedGateway(GatewayPort gateway) {
+        if (gateway != null) {
+            activeGateways.put(gateway.getClusterName(), gateway);
+        }
+        return this;
+    }
+
+    @Override
+    public void start() {
+        this.run();
     }
 
     public boolean isGatewayActive(String clusterName) {
@@ -193,11 +217,38 @@ public class TerminalUI {
     }
 
     public void fetchClusterNames() {
-        List<String> names = new ArrayList<>();
+        List<String> onlineNames = new ArrayList<>();
+        List<String> offlineNames = new ArrayList<>();
         for (Cluster c : ClusterRegistry.getInstance().getClusters()) {
-            names.add(c.getClusterName());
+            String name = c.getClusterName();
+            if (isGatewayActive(name)) {
+                onlineNames.add(name);
+            } else {
+                offlineNames.add(name);
+            }
         }
-        state.clusterNames = names;
+        onlineNames.sort(String::compareTo);
+        offlineNames.sort(String::compareTo);
+        
+        List<String> sortedNames = new ArrayList<>();
+        sortedNames.addAll(onlineNames);
+        sortedNames.addAll(offlineNames);
+        
+        String previousSelected = state.selectedClusterName;
+        state.clusterNames = sortedNames;
+        
+        if (!sortedNames.isEmpty()) {
+            int index = sortedNames.indexOf(previousSelected);
+            if (index != -1) {
+                state.selectedClusterIndex = index;
+            } else {
+                state.selectedClusterIndex = 0;
+                state.selectedClusterName = sortedNames.get(0);
+            }
+        } else {
+            state.selectedClusterIndex = 0;
+            state.selectedClusterName = "";
+        }
     }
 
     public void fetchClusterConfig(String name) {
