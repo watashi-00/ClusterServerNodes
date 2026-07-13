@@ -7,7 +7,6 @@ The repository contains:
 - `java/` — core Java packages for cluster management, gateway creation, event dispatch, and terminal monitoring.
 - `c/` — native helper code for terminal rendering via JNI.
 - `run.sh` — build and launch script for the control plane and monitor.
-- `run_monitor.sh` — helper script for monitor execution.
 
 ## What this project does
 

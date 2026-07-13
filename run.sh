@@ -11,5 +11,5 @@ echo "Compiling Java Sources..."
 find java/src -name "*.java" | xargs javac -d /tmp
 
 # Launch Main control plane (starts server + interactive TUI Monitor)
-echo "Launching Hexacloud Control Plane & Monitor..."
+echo "Launching <Hexacloud:GateBridge>  Control Plane..."
 java -cp /tmp hexacloud.application.Main
