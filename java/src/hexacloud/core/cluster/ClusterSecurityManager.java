@@ -9,10 +9,10 @@ public class ClusterSecurityManager {
     private final String clusterName;
     private final String secret;
     private final boolean requireToken;
-    private final int timeoutMs;
-    private final String allowedIps;
-    private final int rateLimitRequests;
-    private final int rateLimitDurationSeconds;
+    private int timeoutMs;
+    private String allowedIps;
+    private int rateLimitRequests;
+    private int rateLimitDurationSeconds;
     private final RateLimiter rateLimiter;
 
     public ClusterSecurityManager(String clusterName) {
@@ -87,5 +87,19 @@ public class ClusterSecurityManager {
 
     public int getRateLimitDurationSeconds() {
         return rateLimitDurationSeconds;
+    }
+
+    public void setTimeoutMs(int timeoutMs) {
+        this.timeoutMs = timeoutMs;
+    }
+
+    public void setAllowedIps(String allowedIps) {
+        this.allowedIps = allowedIps;
+    }
+
+    public void setRateLimit(int requests, int durationSeconds) {
+        this.rateLimitRequests = requests;
+        this.rateLimitDurationSeconds = durationSeconds;
+        this.rateLimiter.updateLimits(requests, durationSeconds);
     }
 }

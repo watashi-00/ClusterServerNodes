@@ -6,11 +6,16 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class RateLimiter {
 
-    private final int maxRequests;
-    private final long windowSizeMs;
+    private int maxRequests;
+    private long windowSizeMs;
     private final ConcurrentHashMap<String, Queue<Long>> clientRequestWindows = new ConcurrentHashMap<>();
 
     public RateLimiter(int maxRequests, int durationSeconds) {
+        this.maxRequests = maxRequests;
+        this.windowSizeMs = durationSeconds * 1000L;
+    }
+
+    public synchronized void updateLimits(int maxRequests, int durationSeconds) {
         this.maxRequests = maxRequests;
         this.windowSizeMs = durationSeconds * 1000L;
     }

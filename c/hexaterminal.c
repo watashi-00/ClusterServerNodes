@@ -12,7 +12,7 @@ static DWORD orig_console_mode = 0;
 static HANDLE hStdin = NULL;
 static HANDLE hStdout = NULL;
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_initTerminal(JNIEnv *env, jclass clazz) {
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_initTerminal0(JNIEnv *env, jclass clazz) {
     if (raw_mode_active) return;
     hStdin = GetStdHandle(STD_INPUT_HANDLE);
     hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -21,19 +21,15 @@ JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_initTerminal(JNI
     if (!GetConsoleMode(hStdin, &orig_console_mode)) return;
 
     DWORD mode = orig_console_mode;
-    // Disable line input and echo input to approximate raw mode
     mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
-    // Keep processed input so Ctrl+C still works
     SetConsoleMode(hStdin, mode);
 
-    // Hide cursor
     CONSOLE_CURSOR_INFO cursorInfo;
     GetConsoleCursorInfo(hStdout, &cursorInfo);
     cursorInfo.bVisible = FALSE;
     SetConsoleCursorInfo(hStdout, &cursorInfo);
 
     raw_mode_active = 1;
-    // Clear screen
     DWORD written = 0;
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     if (GetConsoleScreenBufferInfo(hStdout, &csbi)) {
@@ -42,7 +38,7 @@ JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_initTerminal(JNI
     }
 }
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_resetTerminal(JNIEnv *env, jclass clazz) {
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_resetTerminal0(JNIEnv *env, jclass clazz) {
     if (!raw_mode_active) return;
     if (hStdin != NULL) SetConsoleMode(hStdin, orig_console_mode);
     if (hStdout != NULL) {
@@ -55,7 +51,7 @@ JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_resetTerminal(JN
     raw_mode_active = 0;
 }
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_clearScreen(JNIEnv *env, jclass clazz) {
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_clearScreen0(JNIEnv *env, jclass clazz) {
     if (hStdout == NULL) hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD written = 0;
     CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -65,7 +61,7 @@ JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_clearScreen(JNIE
     }
 }
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_printAt(JNIEnv *env, jclass clazz, jint x, jint y, jstring text) {
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_printAt0(JNIEnv *env, jclass clazz, jint x, jint y, jstring text) {
     const char *str = (*env)->GetStringUTFChars(env, text, NULL);
     if (str == NULL) return;
     if (hStdout == NULL) hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -76,16 +72,16 @@ JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_printAt(JNIEnv *
     (*env)->ReleaseStringUTFChars(env, text, str);
 }
 
-JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey(JNIEnv *env, jclass clazz) {
+JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey0(JNIEnv *env, jclass clazz) {
     if (_kbhit()) {
         int c = _getch();
-        if (c == 0 || c == 224) { // special key
+        if (c == 0 || c == 224) { // Special key code block
             int code = _getch();
             switch (code) {
-                case 72: return 1000; // UP
-                case 80: return 1001; // DOWN
-                case 77: return 1002; // RIGHT
-                case 75: return 1003; // LEFT
+                case 72: return 1000; // UP Arrow
+                case 80: return 1001; // DOWN Arrow
+                case 77: return 1002; // RIGHT Arrow
+                case 75: return 1003; // LEFT Arrow
                 default: return (jint)code;
             }
         }
@@ -94,7 +90,7 @@ JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey(JNIEnv *
     return -1;
 }
 
-JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig(JNIEnv *env, jclass clazz, jstring filepath, jstring content) {
+JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig0(JNIEnv *env, jclass clazz, jstring filepath, jstring content) {
     const char *path = (*env)->GetStringUTFChars(env, filepath, NULL);
     const char *body = (*env)->GetStringUTFChars(env, content, NULL);
     if (path == NULL || body == NULL) return JNI_FALSE;
@@ -123,54 +119,47 @@ JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig(J
 static struct termios orig_termios;
 static int raw_mode_active = 0;
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_initTerminal(JNIEnv *env, jclass clazz) {
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_initTerminal0(JNIEnv *env, jclass clazz) {
     if (raw_mode_active) return;
 
-    // Save current terminal settings
     if (tcgetattr(STDIN_FILENO, &orig_termios) == -1) return;
 
     struct termios raw = orig_termios;
-    // Disable canonical mode (line buffering) and echo
     raw.c_lflag &= ~(ECHO | ICANON);
     
-    // Apply raw settings
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) return;
 
     raw_mode_active = 1;
 
-    // Clear screen and hide cursor
-    printf("\033[2J\033[H\033[?25l");
+    printf("\033[2J\033[H\033[3J\033[?25l");
     fflush(stdout);
 }
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_resetTerminal(JNIEnv *env, jclass clazz) {
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_resetTerminal0(JNIEnv *env, jclass clazz) {
     if (!raw_mode_active) return;
 
-    // Restore original settings and show cursor
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
     raw_mode_active = 0;
     printf("\033[?25h\033[0m\n");
     fflush(stdout);
 }
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_clearScreen(JNIEnv *env, jclass clazz) {
-    printf("\033[2J\033[H");
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_clearScreen0(JNIEnv *env, jclass clazz) {
+    printf("\033[2J\033[H\033[3J");
     fflush(stdout);
 }
 
-JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_printAt(JNIEnv *env, jclass clazz, jint x, jint y, jstring text) {
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_printAt0(JNIEnv *env, jclass clazz, jint x, jint y, jstring text) {
     const char *str = (*env)->GetStringUTFChars(env, text, NULL);
     if (str == NULL) return;
 
-    // Move cursor to (y, x) (note: ANSI escape code expects line, column)
     printf("\033[%d;%dH%s", y, x, str);
     fflush(stdout);
 
     (*env)->ReleaseStringUTFChars(env, text, str);
 }
 
-JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey(JNIEnv *env, jclass clazz) {
-    // Configure stdin to non-blocking
+JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey0(JNIEnv *env, jclass clazz) {
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
     fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
 
@@ -178,15 +167,15 @@ JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey(JNIEnv *
     int n = read(STDIN_FILENO, &c, 1);
 
     if (n > 0) {
-        if (c == 27) { // Escape sequence
+        if (c == 27) { // Escape sequence parser
             char seq[2];
             if (read(STDIN_FILENO, &seq[0], 1) > 0 && read(STDIN_FILENO, &seq[1], 1) > 0) {
                 if (seq[0] == '[') {
                     switch (seq[1]) {
-                        case 'A': fcntl(STDIN_FILENO, F_SETFL, flags); return 1000; // UP arrow
-                        case 'B': fcntl(STDIN_FILENO, F_SETFL, flags); return 1001; // DOWN arrow
-                        case 'C': fcntl(STDIN_FILENO, F_SETFL, flags); return 1002; // RIGHT arrow
-                        case 'D': fcntl(STDIN_FILENO, F_SETFL, flags); return 1003; // LEFT arrow
+                        case 'A': fcntl(STDIN_FILENO, F_SETFL, flags); return 1000; // UP Arrow
+                        case 'B': fcntl(STDIN_FILENO, F_SETFL, flags); return 1001; // DOWN Arrow
+                        case 'C': fcntl(STDIN_FILENO, F_SETFL, flags); return 1002; // RIGHT Arrow
+                        case 'D': fcntl(STDIN_FILENO, F_SETFL, flags); return 1003; // LEFT Arrow
                     }
                 }
             }
@@ -195,12 +184,11 @@ JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey(JNIEnv *
         return (jint)c;
     }
 
-    // Restore blocking flags
     fcntl(STDIN_FILENO, F_SETFL, flags);
     return -1;
 }
 
-JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig(JNIEnv *env, jclass clazz, jstring filepath, jstring content) {
+JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig0(JNIEnv *env, jclass clazz, jstring filepath, jstring content) {
     const char *path = (*env)->GetStringUTFChars(env, filepath, NULL);
     const char *body = (*env)->GetStringUTFChars(env, content, NULL);
     if (path == NULL || body == NULL) return JNI_FALSE;

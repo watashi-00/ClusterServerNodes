@@ -254,4 +254,16 @@ public class Cluster {
     public int getRateLimitDurationSeconds() {
         return securityManager.getRateLimitDurationSeconds();
     }
+
+    public void setTimeoutMs(int timeoutMs) {
+        securityManager.setTimeoutMs(timeoutMs);
+    }
+
+    public void setAllowedIps(String allowedIps) {
+        securityManager.setAllowedIps(allowedIps);
+    }
+
+    public void setRateLimit(int requests, int durationSeconds) {
+        securityManager.setRateLimit(requests, durationSeconds);
+    }
 }

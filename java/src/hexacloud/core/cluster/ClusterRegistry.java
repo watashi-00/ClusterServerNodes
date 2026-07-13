@@ -14,14 +14,17 @@ public class ClusterRegistry {
         return INSTANCE;
     }
 
-    public Cluster createCluster(String name) {
-        return clusters.computeIfAbsent(name, key -> {
-            Cluster c = new Cluster(key, new ClusterEventBusManager());
-            return c;
-        });
+    public synchronized Cluster createCluster(String name) {
+        Cluster existing = clusters.get(name);
+        if (existing != null) {
+            return existing;
+        }
+        // The constructor of Cluster automatically registers itself by calling
+        // ClusterRegistry.getInstance().registerCluster(this);
+        return new Cluster(name, new ClusterEventBusManager());
     }
 
-    public void registerCluster(Cluster cluster) {
+    public synchronized void registerCluster(Cluster cluster) {
         if (cluster != null) {
             clusters.put(cluster.getClusterName(), cluster);
         }
@@ -35,7 +38,7 @@ public class ClusterRegistry {
         return clusters.values();
     }
 
-    public void clear() {
+    public synchronized void clear() {
         clusters.clear();
     }
 }

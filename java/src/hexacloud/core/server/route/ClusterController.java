@@ -33,6 +33,16 @@ public class ClusterController implements RouteController {
         }
     }
 
+    @RouteMapping("DEREGISTER")
+    public void deregister(String args, PrintWriter out) {
+        if (args == null || args.trim().isEmpty()) {
+            out.println("ERROR: Missing host address.");
+            return;
+        }
+        cluster.deregisterServer(args.trim());
+        out.println("SUCCESS: Node " + args.trim() + " deregistered.");
+    }
+
     @RouteMapping("LIST_CLUSTERS")
     public void listClusters(String args, PrintWriter out) {
         StringBuilder sb = new StringBuilder();
@@ -72,5 +82,39 @@ public class ClusterController implements RouteController {
         sb.append("pingInterval=").append(hexacloud.core.config.ClusterConfig.DEFAULT_PING_INTERVAL_SECONDS).append(";");
         sb.append("httpVersion=").append(hexacloud.core.config.ClusterConfig.HTTP_VERSION.name()).append(";");
         out.println(sb.toString());
+    }
+
+    @RouteMapping("SET_ALLOWED_IPS")
+    public void setAllowedIps(String args, PrintWriter out) {
+        cluster.setAllowedIps(args.trim());
+        out.println("SUCCESS: Allowed IPs updated.");
+    }
+
+    @RouteMapping("SET_TIMEOUT")
+    public void setTimeout(String args, PrintWriter out) {
+        try {
+            int timeout = Integer.parseInt(args.trim());
+            cluster.setTimeoutMs(timeout);
+            out.println("SUCCESS: Timeout updated.");
+        } catch (NumberFormatException e) {
+            out.println("ERROR: Invalid timeout: " + args);
+        }
+    }
+
+    @RouteMapping("SET_RATE_LIMIT")
+    public void setRateLimit(String args, PrintWriter out) {
+        try {
+            String[] parts = args.trim().split(" ");
+            if (parts.length < 2) {
+                out.println("ERROR: Expected format: <requests> <durationSeconds>");
+                return;
+            }
+            int requests = Integer.parseInt(parts[0]);
+            int duration = Integer.parseInt(parts[1]);
+            cluster.setRateLimit(requests, duration);
+            out.println("SUCCESS: Rate limit updated.");
+        } catch (NumberFormatException e) {
+            out.println("ERROR: Invalid format.");
+        }
     }
 }

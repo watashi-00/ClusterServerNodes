@@ -24,7 +24,7 @@ public class TerminalMain {
             .listen()
             .startPingScheduler();
 
-        // Launch the pure Terminal UI client connected to port 3001
-        TerminalUI.startTerminal("watashi-00", 3001);
+        // Launch the pure Terminal UI client
+        TerminalUI.startTerminal("MyCompany - GateBridge DevOps Panel");
     }
 }
