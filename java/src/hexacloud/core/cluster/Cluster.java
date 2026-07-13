@@ -51,7 +51,19 @@ public class Cluster {
     }
 
     public void registerServer(ServerNode node) {
-        centralizedRegister(node.port(), node.host(), node.status(), node.isExternal());
+        if (node == null) return;
+        if(this.tempCluster != null && !this.tempCluster.isEmpty()) {
+            DebugUtils.error("Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
+            return;
+        }
+        String host = validHost(node.host());
+        if (host == null) return;
+
+        ServerNode validNode = new ServerNode(
+            host, node.port(), node.status(), node.isExternal(),
+            node.pingEnabled(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
+        );
+        addClusterNode(validNode);
     }
 
     public void registerServer(int port) {
@@ -98,6 +110,18 @@ public class Cluster {
             return;
         }
         this.cluster.computeIfPresent(host, (key, serverNode) -> serverNode.withStatus(status));
+    }
+
+    /**
+     * Update an existing server node configuration in the registry.
+     */
+    public void updateServerNode(ServerNode updatedNode) {
+        if (updatedNode == null) return;
+        String key = updatedNode.getFullHost();
+        if (this.cluster.containsKey(key)) {
+            this.cluster.put(key, updatedNode);
+            DebugUtils.log("Updated server node configuration: " + updatedNode);
+        }
     }
 
     private void toggleAllServers(boolean start) {

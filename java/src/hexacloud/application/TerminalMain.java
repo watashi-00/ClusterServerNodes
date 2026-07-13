@@ -19,9 +19,16 @@ public class TerminalMain {
         hexacloud.registerServer(3001, NodeStatus.OFFLINE)
             .registerServer(3002, NodeStatus.OFFLINE)
             .registerServer(3003, NodeStatus.OFFLINE)
-            .registerServer(3004, NodeStatus.OFFLINE)
-            .registerServer(3005, NodeStatus.OFFLINE)
-            .listen()
+            .registerServer(3004, NodeStatus.OFFLINE);
+            
+        // Register port 3005 with custom health-check path and header using the new NodeBuilder API
+        hexacloud.registerNode("http://localhost", 3005)
+            .pingEnabled(true)
+            .pingPath("/")
+            .pingHeader("Authorization", "Bearer showCaseToken")
+            .register();
+
+        hexacloud.listen()
             .startPingScheduler();
 
         // Launch the pure Terminal UI client

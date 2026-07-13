@@ -6,6 +6,7 @@ import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.NodeBuilderPort;
 import hexacloud.core.server.ServerManager;
 import hexacloud.infra.network.ThreadPingScheduler;
 import hexacloud.core.utils.DebugUtils;
@@ -32,6 +33,11 @@ class LocalGatewayAdapter implements GatewayPort {
         this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
         this.port = port;
         this.serverManager = new ServerManager(port, this.clusterManager.getCluster(), this.clusterEventManager);
+    }
+
+    @Override
+    public NodeBuilderPort registerNode(String host, int port) {
+        return new NodeBuilder(this.clusterManager.getCluster(), host, port);
     }
 
     @Override

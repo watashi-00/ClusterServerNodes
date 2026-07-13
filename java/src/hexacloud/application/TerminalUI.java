@@ -25,6 +25,7 @@ public class TerminalUI {
     private static final int VIEW_DASHBOARD = 0;
     private static final int VIEW_CLUSTER_DETAIL = 1;
     private static final int VIEW_FULL_LOGS = 2;
+    private static final int VIEW_NODE_CONFIG = 3;
 
     private int currentView = VIEW_DASHBOARD;
     private int activePanel = PANEL_CLUSTERS;
@@ -201,6 +202,9 @@ public class TerminalUI {
         } else if (currentView == VIEW_FULL_LOGS) {
             drawHeader("Detailed System Logs");
             renderFullLogsView();
+        } else if (currentView == VIEW_NODE_CONFIG) {
+            drawHeader("Node Config Panel");
+            renderNodeConfigView();
         }
     }
 
@@ -390,7 +394,7 @@ public class TerminalUI {
         }
 
         // Help controls inside Console view
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspc] Back  [A] Add  [D] Delete  [I] Allowed IPs  [T] Timeout  [L] Limits");
+        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspc] Back  [Enter] Configure Node  [A] Add  [D] Delete  [I] IPs  [T] Timeout");
     }
 
     private void renderFullLogsView() {
@@ -434,6 +438,42 @@ public class TerminalUI {
 
         // Logs Help controls
         NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspace] Back to Dashboard  [UP/DOWN] Scroll logs");
+    }
+
+    private void renderNodeConfigView() {
+        if (nodes.isEmpty() || selectedNodeIndex >= nodes.size()) {
+            currentView = VIEW_CLUSTER_DETAIL;
+            return;
+        }
+
+        ServerNode node = nodes.get(selectedNodeIndex);
+
+        // Draw a central config card
+        drawBox(10, 6, 70, 18, "NODE CONFIGURATION PANEL", true);
+
+        NativeTerminal.printAt(13, 8, WHITE_BOLD + "Node Host Address: " + RESET + node.host());
+        NativeTerminal.printAt(13, 9, WHITE_BOLD + "Port Number:       " + RESET + node.port());
+        
+        String coloredStatus = GREEN + "ONLINE" + RESET;
+        if (node.status().name().equals("OFFLINE")) {
+            coloredStatus = RED + "OFFLINE" + RESET;
+        } else if (node.status().name().equals("UNSTABLE")) {
+            coloredStatus = YELLOW + "UNSTABLE" + RESET;
+        }
+        NativeTerminal.printAt(13, 10, WHITE_BOLD + "Current Status:    " + RESET + coloredStatus);
+
+        NativeTerminal.printAt(13, 12, WHITE_BOLD + "[P] Ping Monitoring:  " + RESET + (node.pingEnabled() ? GREEN + "Enabled" + RESET : RED + "Disabled" + RESET));
+        NativeTerminal.printAt(13, 13, WHITE_BOLD + "[E] Ping Path Route:  " + RESET + CYAN + node.pingPath() + RESET);
+        
+        String headerName = node.pingHeaderName() == null ? "None" : node.pingHeaderName();
+        String headerVal = node.pingHeaderValue() == null ? "None" : node.pingHeaderValue();
+        NativeTerminal.printAt(13, 14, WHITE_BOLD + "[H] Auth Header Name: " + RESET + CYAN + headerName + RESET);
+        NativeTerminal.printAt(13, 15, WHITE_BOLD + "[V] Token Value:      " + RESET + CYAN + headerVal + RESET);
+
+        NativeTerminal.printAt(13, 17, WHITE_BOLD + "Press [Backspace / Esc] to return to Cluster Console" + RESET);
+
+        // Help controls at safe row 23
+        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspace] Console  [P] Toggle Ping  [E] Change Path  [H] Header Name  [V] Value");
     }
 
     private List<String> getFilteredLogs(String clusterName) {
@@ -501,6 +541,8 @@ public class TerminalUI {
             handleKeyPressClusterDetail(key);
         } else if (currentView == VIEW_FULL_LOGS) {
             handleKeyPressFullLogs(key);
+        } else if (currentView == VIEW_NODE_CONFIG) {
+            handleKeyPressNodeConfig(key);
         }
     }
 
@@ -571,6 +613,10 @@ public class TerminalUI {
             if (selectedNodeIndex >= nodes.size()) {
                 selectedNodeIndex = 0;
             }
+        } else if (key == 10 || key == 13) { // Enter: Open Selected Node Config Screen
+            if (!nodes.isEmpty()) {
+                currentView = VIEW_NODE_CONFIG;
+            }
         } else if (key == 'a' || key == 'A') {
             addNewNodePrompt();
         } else if (key == 'd' || key == 'D') {
@@ -602,6 +648,35 @@ public class TerminalUI {
             }
         } else if (key == 127 || key == 8 || key == 27) { // Backspace or Escape
             currentView = VIEW_DASHBOARD;
+        }
+    }
+
+    private void handleKeyPressNodeConfig(int key) {
+        if (nodes.isEmpty() || selectedNodeIndex >= nodes.size()) {
+            currentView = VIEW_CLUSTER_DETAIL;
+            return;
+        }
+
+        Cluster cluster = ClusterRegistry.getInstance().getCluster(selectedClusterName);
+        if (cluster == null) return;
+
+        ServerNode node = nodes.get(selectedNodeIndex);
+
+        if (key == 127 || key == 8 || key == 27) { // Backspace or Escape
+            currentView = VIEW_CLUSTER_DETAIL;
+        } else if (key == 'p' || key == 'P') {
+            ServerNode updated = new ServerNode(
+                node.host(), node.port(), node.status(), node.isExternal(),
+                !node.pingEnabled(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
+            );
+            cluster.updateServerNode(updated);
+            fetchNodeStatus();
+        } else if (key == 'e' || key == 'E') {
+            changeNodePingPathPrompt(cluster, node);
+        } else if (key == 'h' || key == 'H') {
+            changeNodePingHeaderNamePrompt(cluster, node);
+        } else if (key == 'v' || key == 'V') {
+            changeNodePingHeaderValuePrompt(cluster, node);
         }
     }
 
@@ -726,5 +801,57 @@ public class TerminalUI {
         try { Thread.sleep(800); } catch (Exception e) {}
         NativeTerminal.initTerminal();
         fetchClusterConfig(selectedClusterName);
+    }
+
+    private void changeNodePingPathPrompt(Cluster cluster, ServerNode node) {
+        NativeTerminal.resetTerminal();
+        System.out.print("\n" + CYAN + ">> Enter new ping endpoint route (or /cancel to abort): " + RESET);
+        String path = TerminalScanner.readLine();
+        if (!path.equalsIgnoreCase("/cancel")) {
+            ServerNode updated = new ServerNode(
+                node.host(), node.port(), node.status(), node.isExternal(),
+                node.pingEnabled(), path, node.pingHeaderName(), node.pingHeaderValue()
+            );
+            cluster.updateServerNode(updated);
+            System.out.println(GREEN + "SUCCESS: Ping endpoint path updated." + RESET);
+            try { Thread.sleep(800); } catch (Exception e) {}
+        }
+        NativeTerminal.initTerminal();
+        fetchNodeStatus();
+    }
+
+    private void changeNodePingHeaderNamePrompt(Cluster cluster, ServerNode node) {
+        NativeTerminal.resetTerminal();
+        System.out.print("\n" + CYAN + ">> Enter new ping auth header name (or /cancel to abort, empty for None): " + RESET);
+        String name = TerminalScanner.readLine();
+        if (!name.equalsIgnoreCase("/cancel")) {
+            String val = name.isEmpty() ? null : node.pingHeaderValue();
+            ServerNode updated = new ServerNode(
+                node.host(), node.port(), node.status(), node.isExternal(),
+                node.pingEnabled(), node.pingPath(), name.isEmpty() ? null : name, val
+            );
+            cluster.updateServerNode(updated);
+            System.out.println(GREEN + "SUCCESS: Ping header name updated." + RESET);
+            try { Thread.sleep(800); } catch (Exception e) {}
+        }
+        NativeTerminal.initTerminal();
+        fetchNodeStatus();
+    }
+
+    private void changeNodePingHeaderValuePrompt(Cluster cluster, ServerNode node) {
+        NativeTerminal.resetTerminal();
+        System.out.print("\n" + CYAN + ">> Enter new ping header token value (or /cancel to abort, empty for None): " + RESET);
+        String val = TerminalScanner.readLine();
+        if (!val.equalsIgnoreCase("/cancel")) {
+            ServerNode updated = new ServerNode(
+                node.host(), node.port(), node.status(), node.isExternal(),
+                node.pingEnabled(), node.pingPath(), node.pingHeaderName(), val.isEmpty() ? null : val
+            );
+            cluster.updateServerNode(updated);
+            System.out.println(GREEN + "SUCCESS: Ping header value updated." + RESET);
+            try { Thread.sleep(800); } catch (Exception e) {}
+        }
+        NativeTerminal.initTerminal();
+        fetchNodeStatus();
     }
 }

@@ -63,7 +63,10 @@ public class ThreadPingScheduler {
     }
 
     private void pingClusterNode(ServerNode node) {
-        CompletableFuture<NodeStatus> response = httpcli.fetchPingAsync(node.getFullHost());
+        if (!node.pingEnabled()) {
+            return;
+        }
+        CompletableFuture<NodeStatus> response = httpcli.fetchPingAsync(node);
 
         response.thenAccept(status -> {
             if(node.status() != status) {
