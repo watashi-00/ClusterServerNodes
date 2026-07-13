@@ -1,0 +1,28 @@
+package hexacloud.core.tui;
+
+/**
+ * Global constants for the Terminal User Interface, including ANSI colors,
+ * navigation view modes, and active panels.
+ */
+public final class TuiConstants {
+    
+    // ANSI Terminal Colors
+    public static final String RESET = "\033[0m";
+    public static final String GREEN = "\033[32m";
+    public static final String RED = "\033[31m";
+    public static final String YELLOW = "\033[33m";
+    public static final String CYAN = "\033[36m";
+    public static final String WHITE_BOLD = "\033[1;37m";
+
+    // View Navigation Modes
+    public static final int VIEW_DASHBOARD = 0;
+    public static final int VIEW_CLUSTER_DETAIL = 1;
+    public static final int VIEW_FULL_LOGS = 2;
+    public static final int VIEW_NODE_CONFIG = 3;
+
+    // Active Panel Focus
+    public static final int PANEL_CLUSTERS = 0;
+    public static final int PANEL_SERVICES = 1;
+
+    private TuiConstants() {}
+}
