@@ -1,15 +1,102 @@
-#!/bin/bash
-# Compile JNI Shared Library if needed
-if [ ! -f "java/libhexaterminal.so" ] || [ ! -f "/tmp/libhexaterminal.so" ]; then
-    echo "Compiling Native JNI Terminal Library..."
-    gcc -shared -fPIC -o java/libhexaterminal.so -I/usr/lib/jvm/java-26-openjdk/include -I/usr/lib/jvm/java-26-openjdk/include/linux c/hexaterminal.c
-    cp java/libhexaterminal.so /tmp/libhexaterminal.so
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Dynamic run helper for GateBridge
+# - detects Java/Javac (uses JAVA_HOME if set)
+# - compiles optional JNI native terminal lib on supported platforms (Linux/macOS)
+# - compiles Java sources to a temp build directory (configurable via OUTDIR)
+# - runs the main application class
+
+OUTDIR=${OUTDIR:-/tmp/gatebridge}
+BUILD_NATIVE=${BUILD_NATIVE:-1}
+JAVA_HOME=${JAVA_HOME:-}
+
+echo "GateBridge run helper"
+
+OSNAME=$(uname -s)
+case "$OSNAME" in
+    Linux*)   PLATFORM=linux ;;
+    Darwin*)  PLATFORM=darwin ;;
+    MINGW*|MSYS*|CYGWIN*) PLATFORM=windows ;;
+    *) PLATFORM=unknown ;;
+esac
+
+find_java() {
+    if [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/java" ]; then
+        echo "${JAVA_HOME}/bin/java"
+    else
+        command -v java || true
+    fi
+}
+
+find_javac() {
+    if [ -n "${JAVA_HOME:-}" ] && [ -x "${JAVA_HOME}/bin/javac" ]; then
+        echo "${JAVA_HOME}/bin/javac"
+    else
+        command -v javac || true
+    fi
+}
+
+JAVA_BIN=$(find_java)
+JAVAC_BIN=$(find_javac)
+
+if [ -z "${JAVA_BIN}" ] || [ -z "${JAVAC_BIN}" ]; then
+    echo "ERROR: java or javac not found. Please install a JDK and/or set JAVA_HOME." >&2
+    exit 1
 fi
 
-# Compile Java project
-echo "Compiling Java Sources..."
-find java/src -name "*.java" | xargs javac -d /tmp
+echo "Using java: ${JAVA_BIN}"
+echo "Using javac: ${JAVAC_BIN}"
 
-# Launch Main control plane (starts server + interactive TUI Monitor)
-echo "Launching <Hexacloud:GateBridge>  Control Plane..."
-java -cp /tmp hexacloud.application.Main
+# Determine JDK include dirs for JNI compilation
+JDK_INCLUDE_DIR=""
+if [ -n "${JAVA_HOME:-}" ]; then
+    JDK_INCLUDE_DIR="${JAVA_HOME}/include"
+else
+    # try to derive JAVA_HOME from java properties
+    JAVA_PATH=$(${JAVA_BIN} -XshowSettings:properties -version 2>&1 | awk -F ' = ' '/java.home/ {print $2; exit}') || true
+    if [ -n "${JAVA_PATH}" ]; then
+        JDK_INCLUDE_DIR="${JAVA_PATH}/include"
+    fi
+fi
+
+echo "Platform detected: ${PLATFORM} (${OSNAME})"
+echo "Build dir: ${OUTDIR}"
+
+mkdir -p "${OUTDIR}"
+
+# Build native JNI library on supported platforms
+if [ "${BUILD_NATIVE}" -ne 0 ]; then
+    if command -v gcc >/dev/null 2>&1 && [ -n "${JDK_INCLUDE_DIR}" ] && [ -d "${JDK_INCLUDE_DIR}" ] && { [ "${PLATFORM}" = "linux" ] || [ "${PLATFORM}" = "darwin" ]; }; then
+        echo "Compiling native JNI terminal library..."
+        JNI_OS_INCLUDE="${JDK_INCLUDE_DIR}/${PLATFORM}"
+        LIB_NAME="libhexaterminal"
+        OUT_LIB="java/${LIB_NAME}.so"
+        if [ "${PLATFORM}" = "darwin" ]; then
+            OUT_LIB="java/${LIB_NAME}.dylib"
+        fi
+
+        if [ -d "${JNI_OS_INCLUDE}" ]; then
+            gcc -shared -fPIC -o "${OUT_LIB}" -I"${JDK_INCLUDE_DIR}" -I"${JNI_OS_INCLUDE}" c/hexaterminal.c || {
+                echo "Warning: native build failed, continuing without native terminal library." >&2
+            }
+            # copy to /tmp for convenience
+            cp -f "${OUT_LIB}" /tmp/ || true
+        else
+            echo "Warning: JNI OS include directory not found: ${JNI_OS_INCLUDE}. Skipping native build." >&2
+        fi
+    else
+        echo "Skipping native build: gcc or JDK include not available or unsupported platform." >&2
+    fi
+else
+    echo "Native build disabled via BUILD_NATIVE=0." >&2
+fi
+
+# Compile Java sources
+echo "Compiling Java sources to ${OUTDIR}..."
+find java/src -name "*.java" -print0 | xargs -0 "${JAVAC_BIN}" -d "${OUTDIR}"
+
+echo "Launching GateBridge application..."
+"${JAVA_BIN}" -cp "${OUTDIR}" hexacloud.application.Main
+
+echo "Process finished."
