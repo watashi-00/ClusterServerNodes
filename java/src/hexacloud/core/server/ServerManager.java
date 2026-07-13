@@ -91,6 +91,12 @@ public class ServerManager implements ServerOperations {
         return this;
     }
 
+    @Override
+    public ServerManager stop() {
+        stopTransports();
+        return this;
+    }
+
     private void stopTransports() {
         for(ServerTransport transport : activeTransports) {
             if(transport != null && transport.isRunning()) {

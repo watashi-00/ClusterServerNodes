@@ -53,6 +53,9 @@ public class NodeBuilder implements NodeBuilderPort {
             host, port, NodeStatus.OFFLINE, isExternal,
             pingEnabled, pingPath, pingHeaderName, pingHeaderValue
         );
+        if (hexacloud.core.config.ClusterStatePersistence.isStateLoaded()) {
+            return node;
+        }
         cluster.registerServer(node);
         return node;
     }

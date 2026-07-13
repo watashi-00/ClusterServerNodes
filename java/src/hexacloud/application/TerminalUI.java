@@ -47,14 +47,22 @@ public class TerminalUI {
     private int targetRateLimitDurationSeconds;
 
     // Dynamically fetched engine global configurations
-    private int globalMaxClusterSize;
     private int globalPingInterval;
 
     private final String displayName;
     private boolean running = true;
     private List<ServerNode> nodes = new ArrayList<>();
 
+    private static final java.util.Map<String, hexacloud.core.ports.GatewayPort> activeGateways = new java.util.concurrent.ConcurrentHashMap<>();
+
     public static void startTerminal(String displayName) {
+        new TerminalUI(displayName).run();
+    }
+
+    public static void startTerminal(String displayName, hexacloud.core.ports.GatewayPort gateway) {
+        if (gateway != null) {
+            activeGateways.put(gateway.getClusterName(), gateway);
+        }
         new TerminalUI(displayName).run();
     }
 
@@ -139,7 +147,6 @@ public class TerminalUI {
     }
 
     private void fetchGlobalConfig() {
-        this.globalMaxClusterSize = hexacloud.core.config.ClusterConfig.MAX_CLUSTER_SIZE;
         this.globalPingInterval = hexacloud.core.config.ClusterConfig.DEFAULT_PING_INTERVAL_SECONDS;
     }
 
@@ -235,7 +242,10 @@ public class TerminalUI {
         String ips = targetAllowedIps.isEmpty() ? "Any Client" : targetAllowedIps;
         if (ips.length() > 22) ips = ips.substring(0, 19) + "...";
 
-        NativeTerminal.printAt(28, 6, WHITE_BOLD + "Active:   " + RESET + selectedClusterName + " (Capacity: " + globalMaxClusterSize + ", Ping: " + globalPingInterval + "s)");
+        hexacloud.core.ports.GatewayPort gw = activeGateways.get(selectedClusterName);
+        String gwStatus = gw != null ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
+
+        NativeTerminal.printAt(28, 6, WHITE_BOLD + "Active:   " + RESET + selectedClusterName + " | Gateway: " + gwStatus);
         NativeTerminal.printAt(28, 7, "Security: " + (targetRequireToken ? GREEN + "Required (Key Hidden)" + RESET : YELLOW + "Optional" + RESET) + " | Allowed: " + CYAN + ips + RESET);
         NativeTerminal.printAt(28, 8, "Limits:   " + YELLOW + targetRateLimitRequests + " reqs / " + targetRateLimitDurationSeconds + "s" + RESET + " | Timeout: " + targetTimeoutMs + " ms");
         
@@ -312,7 +322,7 @@ public class TerminalUI {
         }
 
         // Help controls at safe row 23
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Tab] Focus  [Enter] Console  [C] New Cluster  [L] Logs  [Q] Exit");
+        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Tab] Focus  [Enter] Console  [G] Gateway  [C] New Cluster  [L] Logs  [Q] Exit");
     }
 
     private void renderClusterDetailView() {
@@ -394,7 +404,7 @@ public class TerminalUI {
         }
 
         // Help controls inside Console view
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspc] Back  [Enter] Configure Node  [A] Add  [D] Delete  [I] IPs  [T] Timeout");
+        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspc] Back  [Enter] Node Config  [G] Gateway  [A] Add  [D] Delete  [I] IPs  [T] Timeout");
     }
 
     private void renderFullLogsView() {
@@ -591,6 +601,8 @@ public class TerminalUI {
                 selectedNodeIndex = 0;
                 servicesViewportStart = 0;
             }
+        } else if (key == 'g' || key == 'G') {
+            manageGatewayPrompt();
         } else if (key == 'c' || key == 'C') {
             createNewClusterPrompt();
         } else if (key == 'l' || key == 'L') {
@@ -617,6 +629,8 @@ public class TerminalUI {
             if (!nodes.isEmpty()) {
                 currentView = VIEW_NODE_CONFIG;
             }
+        } else if (key == 'g' || key == 'G') {
+            manageGatewayPrompt();
         } else if (key == 'a' || key == 'A') {
             addNewNodePrompt();
         } else if (key == 'd' || key == 'D') {
@@ -686,14 +700,98 @@ public class TerminalUI {
         String name = TerminalScanner.readLine();
         if (name.equalsIgnoreCase("/cancel") || name.isEmpty()) {
             System.out.println(YELLOW + "Operation cancelled." + RESET);
+            try { Thread.sleep(800); } catch (Exception e) {}
         } else {
             ClusterRegistry.getInstance().createCluster(name);
             System.out.println(GREEN + "SUCCESS: Created cluster '" + name + "'" + RESET);
+            System.out.print("Do you want to configure and start a gateway for this cluster now? (y/n): ");
+            String ans = TerminalScanner.readLine();
+            if (ans.equalsIgnoreCase("y")) {
+                selectedClusterName = name;
+                manageGatewayPrompt();
+                return;
+            } else {
+                try { Thread.sleep(800); } catch (Exception e) {}
+            }
         }
-        try { Thread.sleep(800); } catch (Exception e) {}
         NativeTerminal.initTerminal();
         fetchClusterNames();
         selectedClusterIndex = 0;
+    }
+
+    private void manageGatewayPrompt() {
+        if (selectedClusterName.isEmpty()) {
+            NativeTerminal.resetTerminal();
+            System.out.println(YELLOW + "Please select or create a cluster first." + RESET);
+            try { Thread.sleep(800); } catch (Exception e) {}
+            NativeTerminal.initTerminal();
+            return;
+        }
+
+        hexacloud.core.ports.GatewayPort currentGw = activeGateways.get(selectedClusterName);
+        NativeTerminal.resetTerminal();
+        System.out.println("\n" + WHITE_BOLD + "=== Gateway Setup for Cluster: " + selectedClusterName + " ===" + RESET);
+        if (currentGw != null) {
+            System.out.println("Status: " + GREEN + "ONLINE" + RESET);
+            System.out.print("Do you want to STOP the gateway? (y/n) [/cancel]: ");
+            String ans = TerminalScanner.readLine();
+            if (ans.equalsIgnoreCase("y")) {
+                currentGw.stop();
+                activeGateways.remove(selectedClusterName);
+                System.out.println(GREEN + "SUCCESS: Gateway stopped." + RESET);
+                try { Thread.sleep(800); } catch (Exception e) {}
+            }
+        } else {
+            System.out.println("Status: " + RED + "OFFLINE" + RESET);
+            System.out.print("Do you want to START the gateway? (y/n) [/cancel]: ");
+            String ans = TerminalScanner.readLine();
+            if (ans.equalsIgnoreCase("y")) {
+                try {
+                    System.out.print("Enter base port (default 3000) [/cancel]: ");
+                    String portStr = TerminalScanner.readLine();
+                    if (portStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    int port = portStr.isEmpty() ? 3000 : Integer.parseInt(portStr);
+
+                    System.out.print("Enter ping check interval in seconds (default 5) [/cancel]: ");
+                    String intStr = TerminalScanner.readLine();
+                    if (intStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    int pingInt = intStr.isEmpty() ? 5 : Integer.parseInt(intStr);
+
+                    System.out.print("Enable Telnet? (y/n, default y) [/cancel]: ");
+                    String telnetStr = TerminalScanner.readLine();
+                    if (telnetStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    boolean telnet = !telnetStr.equalsIgnoreCase("n");
+
+                    System.out.print("Enable HTTP? (y/n, default y) [/cancel]: ");
+                    String httpStr = TerminalScanner.readLine();
+                    if (httpStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    boolean http = !httpStr.equalsIgnoreCase("n");
+
+                    System.out.print("Enable WS? (y/n, default y) [/cancel]: ");
+                    String wsStr = TerminalScanner.readLine();
+                    if (wsStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    boolean ws = !wsStr.equalsIgnoreCase("n");
+
+                    hexacloud.core.ports.GatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(selectedClusterName)
+                        .port(port)
+                        .pingInterval(pingInt)
+                        .enableTelnet(telnet)
+                        .enableHttp(http)
+                        .enableWs(ws)
+                        .listen()
+                        .startPingScheduler();
+
+                    activeGateways.put(selectedClusterName, newGw);
+                    System.out.println(GREEN + "SUCCESS: Gateway started successfully." + RESET);
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+                } catch (Exception e) {
+                    System.out.println(RED + "ERROR: Failed to start gateway: " + e.getMessage() + RESET);
+                    try { Thread.sleep(1500); } catch (Exception ex) {}
+                }
+            }
+        }
+        NativeTerminal.initTerminal();
+        fetchNodeStatus();
     }
 
     private void addNewNodePrompt() {

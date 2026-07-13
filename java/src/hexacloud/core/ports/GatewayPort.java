@@ -63,6 +63,12 @@ public interface GatewayPort extends SchedulerOperations, ClusterOperations, Ser
 
     @Override GatewayPort listen(int port);
     @Override GatewayPort listen();
+    GatewayPort stop();
+
+    /**
+     * Get the cluster name associated with this gateway.
+     */
+    String getClusterName();
 
     /**
      * Access the event manager to subscribe to cluster node changes or connection pings.

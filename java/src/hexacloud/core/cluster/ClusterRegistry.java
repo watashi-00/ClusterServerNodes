@@ -3,6 +3,7 @@ package hexacloud.core.cluster;
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
+import hexacloud.core.config.ClusterStatePersistence;
 
 public class ClusterRegistry {
     private static final ClusterRegistry INSTANCE = new ClusterRegistry();
@@ -19,14 +20,15 @@ public class ClusterRegistry {
         if (existing != null) {
             return existing;
         }
-        // The constructor of Cluster automatically registers itself by calling
-        // ClusterRegistry.getInstance().registerCluster(this);
-        return new Cluster(name, new ClusterEventBusManager());
+        Cluster c = new Cluster(name, new ClusterEventBusManager());
+        // The Cluster constructor registers itself and triggers saveState()
+        return c;
     }
 
     public synchronized void registerCluster(Cluster cluster) {
         if (cluster != null) {
             clusters.put(cluster.getClusterName(), cluster);
+            ClusterStatePersistence.saveState();
         }
     }
 
@@ -40,5 +42,6 @@ public class ClusterRegistry {
 
     public synchronized void clear() {
         clusters.clear();
+        ClusterStatePersistence.saveState();
     }
 }

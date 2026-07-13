@@ -8,6 +8,7 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
+import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.cluster.event.NodeRegistered;
 import hexacloud.core.server.route.RouteRegistry;
@@ -121,6 +122,7 @@ public class Cluster {
         if (this.cluster.containsKey(key)) {
             this.cluster.put(key, updatedNode);
             DebugUtils.log("Updated server node configuration: " + updatedNode);
+            ClusterStatePersistence.saveState();
         }
     }
 
@@ -176,6 +178,7 @@ public class Cluster {
         if(eventManager != null) {
             eventManager.dispatch(new NodeRegistered(node));
         }
+        ClusterStatePersistence.saveState();
     }
     
     private void removeClusterNode() {
@@ -185,12 +188,16 @@ public class Cluster {
         }
         cluster.keySet().stream()
             .reduce((first, second) -> second)
-            .ifPresent(lastKey -> cluster.remove(lastKey));
+            .ifPresent(lastKey -> {
+                cluster.remove(lastKey);
+                ClusterStatePersistence.saveState();
+            });
     }
 
     private void removeClusterNode(String fullHost) {
         if(cluster.containsKey(fullHost)) {
             cluster.remove(fullHost);
+            ClusterStatePersistence.saveState();
         }
     }
 
@@ -281,13 +288,16 @@ public class Cluster {
 
     public void setTimeoutMs(int timeoutMs) {
         securityManager.setTimeoutMs(timeoutMs);
+        ClusterStatePersistence.saveState();
     }
 
     public void setAllowedIps(String allowedIps) {
         securityManager.setAllowedIps(allowedIps);
+        ClusterStatePersistence.saveState();
     }
 
     public void setRateLimit(int requests, int durationSeconds) {
         securityManager.setRateLimit(requests, durationSeconds);
+        ClusterStatePersistence.saveState();
     }
 }

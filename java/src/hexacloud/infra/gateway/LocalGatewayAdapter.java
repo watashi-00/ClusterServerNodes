@@ -10,6 +10,8 @@ import hexacloud.core.ports.NodeBuilderPort;
 import hexacloud.core.server.ServerManager;
 import hexacloud.infra.network.ThreadPingScheduler;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.config.ClusterStatePersistence;
+import hexacloud.core.cluster.ClusterRegistry;
 
 class LocalGatewayAdapter implements GatewayPort {
 
@@ -22,14 +24,32 @@ class LocalGatewayAdapter implements GatewayPort {
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
         this.clusterEventManager = new ClusterEventBusManager();
-        this.clusterManager = new ClusterManager(new Cluster(clusterName, this.clusterEventManager), this.clusterEventManager);
+        
+        // Load configurations state from file on startup
+        ClusterStatePersistence.loadState();
+        
+        Cluster cluster = ClusterRegistry.getInstance().getCluster(clusterName);
+        if (cluster == null) {
+            cluster = new Cluster(clusterName, this.clusterEventManager);
+        }
+        
+        this.clusterManager = new ClusterManager(cluster, this.clusterEventManager);
         this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
     }
 
     public LocalGatewayAdapter(String clusterName, int port) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName + " with pre-configured server port " + port);
         this.clusterEventManager = new ClusterEventBusManager();
-        this.clusterManager = new ClusterManager(new Cluster(clusterName, this.clusterEventManager), this.clusterEventManager);
+        
+        // Load configurations state from file on startup
+        ClusterStatePersistence.loadState();
+        
+        Cluster cluster = ClusterRegistry.getInstance().getCluster(clusterName);
+        if (cluster == null) {
+            cluster = new Cluster(clusterName, this.clusterEventManager);
+        }
+        
+        this.clusterManager = new ClusterManager(cluster, this.clusterEventManager);
         this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
         this.port = port;
         this.serverManager = new ServerManager(port, this.clusterManager.getCluster(), this.clusterEventManager);
@@ -73,18 +93,27 @@ class LocalGatewayAdapter implements GatewayPort {
 
     @Override
     public GatewayPort registerServer(int port) {
+        if (ClusterStatePersistence.isStateLoaded()) {
+            return this;
+        }
         clusterManager.registerServer(port);
         return this;
     }
 
     @Override
     public GatewayPort registerServer(int port, NodeStatus status) {
+        if (ClusterStatePersistence.isStateLoaded()) {
+            return this;
+        }
         clusterManager.registerServer(port, status);
         return this;
     }
 
     @Override
     public GatewayPort registerServer(ServerNode node) {
+        if (ClusterStatePersistence.isStateLoaded()) {
+            return this;
+        }
         clusterManager.registerServer(node);
         return this;
     }
@@ -165,6 +194,20 @@ class LocalGatewayAdapter implements GatewayPort {
     public GatewayPort listen() {
         listen(this.port);
         return this;
+    }
+
+    @Override
+    public GatewayPort stop() {
+        if (serverManager != null) {
+            serverManager.stop();
+        }
+        schedulerPing.stopPingScheduler();
+        return this;
+    }
+
+    @Override
+    public String getClusterName() {
+        return this.clusterManager.getCluster().getClusterName();
     }
 
     @Override

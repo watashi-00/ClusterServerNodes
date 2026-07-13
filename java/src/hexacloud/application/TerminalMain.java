@@ -31,7 +31,7 @@ public class TerminalMain {
         hexacloud.listen()
             .startPingScheduler();
 
-        // Launch the pure Terminal UI client
-        TerminalUI.startTerminal("MyCompany - GateBridge DevOps Panel");
+        // Launch the pure Terminal UI client passing the configured gateway
+        TerminalUI.startTerminal("MyCompany - GateBridge DevOps Panel", hexacloud);
     }
 }
