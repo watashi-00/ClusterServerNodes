@@ -2,7 +2,6 @@ package hexacloud.core.tui;
 
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
-import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.GatewayPort;
 import hexacloud.core.utils.NativeTerminal;
