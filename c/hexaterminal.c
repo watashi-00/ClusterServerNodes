@@ -2,6 +2,120 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <conio.h>
+#include <windows.h>
+
+static int raw_mode_active = 0;
+static DWORD orig_console_mode = 0;
+static HANDLE hStdin = NULL;
+static HANDLE hStdout = NULL;
+
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_initTerminal(JNIEnv *env, jclass clazz) {
+    if (raw_mode_active) return;
+    hStdin = GetStdHandle(STD_INPUT_HANDLE);
+    hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (hStdin == INVALID_HANDLE_VALUE || hStdout == INVALID_HANDLE_VALUE) return;
+
+    if (!GetConsoleMode(hStdin, &orig_console_mode)) return;
+
+    DWORD mode = orig_console_mode;
+    // Disable line input and echo input to approximate raw mode
+    mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+    // Keep processed input so Ctrl+C still works
+    SetConsoleMode(hStdin, mode);
+
+    // Hide cursor
+    CONSOLE_CURSOR_INFO cursorInfo;
+    GetConsoleCursorInfo(hStdout, &cursorInfo);
+    cursorInfo.bVisible = FALSE;
+    SetConsoleCursorInfo(hStdout, &cursorInfo);
+
+    raw_mode_active = 1;
+    // Clear screen
+    DWORD written = 0;
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(hStdout, &csbi)) {
+        FillConsoleOutputCharacter(hStdout, ' ', csbi.dwSize.X * csbi.dwSize.Y, (COORD){0,0}, &written);
+        SetConsoleCursorPosition(hStdout, (COORD){0,0});
+    }
+}
+
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_resetTerminal(JNIEnv *env, jclass clazz) {
+    if (!raw_mode_active) return;
+    if (hStdin != NULL) SetConsoleMode(hStdin, orig_console_mode);
+    if (hStdout != NULL) {
+        CONSOLE_CURSOR_INFO cursorInfo;
+        if (GetConsoleCursorInfo(hStdout, &cursorInfo)) {
+            cursorInfo.bVisible = TRUE;
+            SetConsoleCursorInfo(hStdout, &cursorInfo);
+        }
+    }
+    raw_mode_active = 0;
+}
+
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_clearScreen(JNIEnv *env, jclass clazz) {
+    if (hStdout == NULL) hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    DWORD written = 0;
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(hStdout, &csbi)) {
+        FillConsoleOutputCharacter(hStdout, ' ', csbi.dwSize.X * csbi.dwSize.Y, (COORD){0,0}, &written);
+        SetConsoleCursorPosition(hStdout, (COORD){0,0});
+    }
+}
+
+JNIEXPORT void JNICALL Java_hexacloud_core_utils_NativeTerminal_printAt(JNIEnv *env, jclass clazz, jint x, jint y, jstring text) {
+    const char *str = (*env)->GetStringUTFChars(env, text, NULL);
+    if (str == NULL) return;
+    if (hStdout == NULL) hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD pos; pos.X = (SHORT)(x-1); pos.Y = (SHORT)(y-1);
+    DWORD written = 0;
+    SetConsoleCursorPosition(hStdout, pos);
+    WriteConsoleA(hStdout, str, (DWORD)strlen(str), &written, NULL);
+    (*env)->ReleaseStringUTFChars(env, text, str);
+}
+
+JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_readKey(JNIEnv *env, jclass clazz) {
+    if (_kbhit()) {
+        int c = _getch();
+        if (c == 0 || c == 224) { // special key
+            int code = _getch();
+            switch (code) {
+                case 72: return 1000; // UP
+                case 80: return 1001; // DOWN
+                case 77: return 1002; // RIGHT
+                case 75: return 1003; // LEFT
+                default: return (jint)code;
+            }
+        }
+        return (jint)c;
+    }
+    return -1;
+}
+
+JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig(JNIEnv *env, jclass clazz, jstring filepath, jstring content) {
+    const char *path = (*env)->GetStringUTFChars(env, filepath, NULL);
+    const char *body = (*env)->GetStringUTFChars(env, content, NULL);
+    if (path == NULL || body == NULL) return JNI_FALSE;
+
+    FILE *file = fopen(path, "w");
+    if (file == NULL) {
+        if (path) (*env)->ReleaseStringUTFChars(env, filepath, path);
+        if (body) (*env)->ReleaseStringUTFChars(env, content, body);
+        return JNI_FALSE;
+    }
+
+    fprintf(file, "%s", body);
+    fclose(file);
+
+    (*env)->ReleaseStringUTFChars(env, filepath, path);
+    (*env)->ReleaseStringUTFChars(env, content, body);
+    return JNI_TRUE;
+}
+
+#else
+
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
@@ -105,3 +219,5 @@ JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig(J
     (*env)->ReleaseStringUTFChars(env, content, body);
     return JNI_TRUE;
 }
+
+#endif
