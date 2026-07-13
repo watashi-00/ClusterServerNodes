@@ -91,10 +91,17 @@ public class TuiRenderer {
             for (int i = 0; i < state.clusterNames.size(); i++) {
                 if (y >= 17) break;
                 String name = state.clusterNames.get(i);
+                String gwIndicator = tui.isGatewayActive(name) ? GREEN + "●" + RESET : RED + "○" + RESET;
+                
+                String displayName = name;
+                if (displayName.length() > 13) {
+                    displayName = displayName.substring(0, 10) + "...";
+                }
+                
                 if (i == state.selectedClusterIndex) {
-                    NativeTerminal.printAt(4, y, CYAN + "➔ " + WHITE_BOLD + name + RESET);
+                    NativeTerminal.printAt(4, y, CYAN + "➔ " + WHITE_BOLD + displayName + " " + gwIndicator + RESET);
                 } else {
-                    NativeTerminal.printAt(4, y, "  " + name);
+                    NativeTerminal.printAt(4, y, "  " + displayName + " " + gwIndicator + RESET);
                 }
                 y++;
             }
