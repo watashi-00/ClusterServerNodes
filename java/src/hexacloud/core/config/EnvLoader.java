@@ -21,17 +21,22 @@ public class EnvLoader {
             // Ignore classpath loading error and try local files
         }
 
-        // 2. Try loading from resources/ folder or CWD
+        // 2. Try loading from resources/ folder, java/resources/ or CWD
         if(properties.isEmpty()) {
             try (InputStream input = new FileInputStream("resources/hexacloud.properties")) {
                 properties.load(input);
                 DebugUtils.info("EnvLoader: Loaded configurations from local file 'resources/hexacloud.properties'");
             } catch(IOException e) {
-                try (InputStream input = new FileInputStream("hexacloud.properties")) {
+                try (InputStream input = new FileInputStream("java/resources/hexacloud.properties")) {
                     properties.load(input);
-                    DebugUtils.info("EnvLoader: Loaded configurations from local file 'hexacloud.properties'");
+                    DebugUtils.info("EnvLoader: Loaded configurations from local file 'java/resources/hexacloud.properties'");
                 } catch(IOException ex) {
-                    DebugUtils.info("EnvLoader: No 'hexacloud.properties' found in resources/ or CWD. Using system environment variables and defaults.");
+                    try (InputStream input = new FileInputStream("hexacloud.properties")) {
+                        properties.load(input);
+                        DebugUtils.info("EnvLoader: Loaded configurations from local file 'hexacloud.properties'");
+                    } catch(IOException ex2) {
+                        DebugUtils.info("EnvLoader: No 'hexacloud.properties' found in resources/ or CWD. Using system environment variables and defaults.");
+                    }
                 }
             }
         }
