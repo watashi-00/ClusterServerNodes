@@ -1,4 +1,4 @@
-package hexacloud.application;
+package hexacloud.core.tui;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,8 +8,14 @@ import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import hexacloud.core.utils.TerminalScanner;
+import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.ports.GatewayPort;
 
+/**
+ * Interactive Terminal User Interface for managing and monitoring DevOps Gateway clusters.
+ * Features modular UI rendering and configurable permissions.
+ */
 public class TerminalUI {
 
     private static final String RESET = "\033[0m";
@@ -53,24 +59,83 @@ public class TerminalUI {
     private boolean running = true;
     private List<ServerNode> nodes = new ArrayList<>();
 
-    private static final java.util.Map<String, hexacloud.core.ports.GatewayPort> activeGateways = new java.util.concurrent.ConcurrentHashMap<>();
+    // Modular Feature Flags
+    private boolean readOnly = false;
+    private boolean gatewayManagementEnabled = true;
+    private boolean clusterManagementEnabled = true;
+    private boolean nodeManagementEnabled = true;
+    private boolean nodeConfigurationEnabled = true;
 
+    private static final java.util.Map<String, GatewayPort> activeGateways = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Start the Terminal UI client with the default settings.
+     */
     public static void startTerminal(String displayName) {
         new TerminalUI(displayName).run();
     }
 
-    public static void startTerminal(String displayName, hexacloud.core.ports.GatewayPort gateway) {
+    /**
+     * Start the Terminal UI client seeding it with an already started GatewayPort instance.
+     */
+    public static void startTerminal(String displayName, GatewayPort gateway) {
         if (gateway != null) {
             activeGateways.put(gateway.getClusterName(), gateway);
         }
         new TerminalUI(displayName).run();
     }
 
+    /**
+     * Initialize TerminalUI.
+     */
     public TerminalUI(String displayName) {
         this.displayName = displayName != null ? displayName : "GateBridge Control Plane";
     }
 
-    private void run() {
+    /**
+     * Enable or disable read-only mode. If enabled, no modifications can be made from the TUI.
+     */
+    public TerminalUI readOnly(boolean readOnly) {
+        this.readOnly = readOnly;
+        return this;
+    }
+
+    /**
+     * Enable or disable gateway starting, stopping, and port/protocol configurations from the TUI.
+     */
+    public TerminalUI gatewayManagementEnabled(boolean enabled) {
+        this.gatewayManagementEnabled = enabled;
+        return this;
+    }
+
+    /**
+     * Enable or disable cluster creation and deletion from the TUI.
+     */
+    public TerminalUI clusterManagementEnabled(boolean enabled) {
+        this.clusterManagementEnabled = enabled;
+        return this;
+    }
+
+    /**
+     * Enable or disable node registration and deregistration from the TUI.
+     */
+    public TerminalUI nodeManagementEnabled(boolean enabled) {
+        this.nodeManagementEnabled = enabled;
+        return this;
+    }
+
+    /**
+     * Enable or disable custom node configurations (like editing ping routes/headers) from the TUI.
+     */
+    public TerminalUI nodeConfigurationEnabled(boolean enabled) {
+        this.nodeConfigurationEnabled = enabled;
+        return this;
+    }
+
+    /**
+     * Launch the TUI loop.
+     */
+    public void run() {
         DebugUtils.setTuiModeActive(true);
 
         NativeTerminal.initTerminal();
@@ -216,12 +281,10 @@ public class TerminalUI {
     }
 
     private void renderDashboardView() {
-        // Safe 79-column layout
         drawBox(2, 5, 24, 17, "CLUSTERS (" + clusterNames.size() + ")", activePanel == PANEL_CLUSTERS);
         drawBox(26, 5, 79, 17, "CLUSTER CONFIG & SERVICES", activePanel == PANEL_SERVICES);
         drawBox(2, 18, 79, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
 
-        // Left Panel (Clusters list)
         int y = 6;
         if (clusterNames.isEmpty()) {
             NativeTerminal.printAt(4, y, RED + "No clusters." + RESET);
@@ -238,28 +301,25 @@ public class TerminalUI {
             }
         }
 
-        // Right Panel - Top Portion (Compact Configs)
         String ips = targetAllowedIps.isEmpty() ? "Any Client" : targetAllowedIps;
         if (ips.length() > 22) ips = ips.substring(0, 19) + "...";
 
-        hexacloud.core.ports.GatewayPort gw = activeGateways.get(selectedClusterName);
+        GatewayPort gw = activeGateways.get(selectedClusterName);
         String gwStatus = gw != null ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
 
         NativeTerminal.printAt(28, 6, WHITE_BOLD + "Active:   " + RESET + selectedClusterName + " | Gateway: " + gwStatus);
         NativeTerminal.printAt(28, 7, "Security: " + (targetRequireToken ? GREEN + "Required (Key Hidden)" + RESET : YELLOW + "Optional" + RESET) + " | Allowed: " + CYAN + ips + RESET);
         NativeTerminal.printAt(28, 8, "Limits:   " + YELLOW + targetRateLimitRequests + " reqs / " + targetRateLimitDurationSeconds + "s" + RESET + " | Timeout: " + targetTimeoutMs + " ms");
         
-        // Separator line
         StringBuilder sep = new StringBuilder();
         for (int i = 27; i < 79; i++) sep.append("─");
         NativeTerminal.printAt(26, 9, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
 
-        // Right Panel - Bottom Portion (Services list with scrolling viewport)
         y = 10;
         NativeTerminal.printAt(28, y, WHITE_BOLD + String.format("%-26s %-10s %-12s", "SERVICE HOST", "PORT", "STATUS") + RESET);
         y++;
 
-        adjustServicesViewport(6); // 6 visible rows for services
+        adjustServicesViewport(6);
 
         if (nodes.isEmpty()) {
             NativeTerminal.printAt(28, y, RED + "No services registered." + RESET);
@@ -287,8 +347,6 @@ public class TerminalUI {
                 NativeTerminal.printAt(28, y, line);
                 y++;
             }
-            
-            // Show scroll indicators if needed
             if (servicesViewportStart > 0) {
                 NativeTerminal.printAt(77, 10, WHITE_BOLD + "▲" + RESET);
             }
@@ -297,7 +355,6 @@ public class TerminalUI {
             }
         }
 
-        // Recent System Logs (last 3 lines)
         y = 19;
         List<String> logs = DebugUtils.getRecentLogs();
         if (logs.isEmpty()) {
@@ -321,17 +378,20 @@ public class TerminalUI {
             }
         }
 
-        // Help controls at safe row 23
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Tab] Focus  [Enter] Console  [G] Gateway  [C] New Cluster  [L] Logs  [Q] Exit");
+        // Dynamic help rendering based on flags
+        StringBuilder sb = new StringBuilder();
+        sb.append(" [Tab] Focus  [Enter] Console");
+        if (gatewayManagementEnabled && !readOnly) sb.append("  [G] Gateway");
+        if (clusterManagementEnabled && !readOnly) sb.append("  [C] New Cluster");
+        sb.append("  [L] Logs  [Q] Exit");
+        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + sb.toString());
     }
 
     private void renderClusterDetailView() {
-        // Detailed panel layout
         drawBox(2, 5, 29, 12, "POLICIES & LIMITS", false);
         drawBox(31, 5, 79, 12, "SERVICES / TELEMETRY (" + nodes.size() + ")", true);
         drawBox(2, 13, 79, 22, "CONSOLE LOGS FOR " + selectedClusterName, false);
 
-        // Top Left - Policies summary
         NativeTerminal.printAt(4, 6, WHITE_BOLD + "Active:   " + RESET + selectedClusterName);
         NativeTerminal.printAt(4, 7, "Security: " + (targetRequireToken ? GREEN + "Token Required" + RESET : YELLOW + "Optional" + RESET));
         String ips = targetAllowedIps.isEmpty() ? "Any Client Allowed" : targetAllowedIps;
@@ -341,7 +401,6 @@ public class TerminalUI {
         NativeTerminal.printAt(4, 10, "Timeout:  " + targetTimeoutMs + " ms");
         NativeTerminal.printAt(4, 11, "Ping Int: " + globalPingInterval + "s");
 
-        // Top Right - Services with scrolling viewport (5 visible rows)
         int y = 6;
         NativeTerminal.printAt(33, y, WHITE_BOLD + String.format("%-22s %-8s %-10s", "SERVICE HOST", "PORT", "STATUS") + RESET);
         y++;
@@ -379,7 +438,6 @@ public class TerminalUI {
             }
         }
 
-        // Bottom - Filtered logs for this cluster (up to 8 lines)
         y = 14;
         List<String> filteredLogs = getFilteredLogs(selectedClusterName);
         if (filteredLogs.isEmpty()) {
@@ -403,8 +461,14 @@ public class TerminalUI {
             }
         }
 
-        // Help controls inside Console view
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspc] Back  [Enter] Node Config  [G] Gateway  [A] Add  [D] Delete  [I] IPs  [T] Timeout");
+        // Dynamic help rendering based on flags
+        StringBuilder sb = new StringBuilder();
+        sb.append(" [Backspc] Back");
+        if (nodeConfigurationEnabled) sb.append("  [Enter] Node Config");
+        if (gatewayManagementEnabled && !readOnly) sb.append("  [G] Gateway");
+        if (nodeManagementEnabled && !readOnly) sb.append("  [A] Add  [D] Delete");
+        if (!readOnly) sb.append("  [I] IPs  [T] Timeout");
+        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + sb.toString());
     }
 
     private void renderFullLogsView() {
@@ -446,7 +510,6 @@ public class TerminalUI {
             }
         }
 
-        // Logs Help controls
         NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspace] Back to Dashboard  [UP/DOWN] Scroll logs");
     }
 
@@ -458,7 +521,6 @@ public class TerminalUI {
 
         ServerNode node = nodes.get(selectedNodeIndex);
 
-        // Draw a central config card
         drawBox(10, 6, 70, 18, "NODE CONFIGURATION PANEL", true);
 
         NativeTerminal.printAt(13, 8, WHITE_BOLD + "Node Host Address: " + RESET + node.host());
@@ -472,18 +534,24 @@ public class TerminalUI {
         }
         NativeTerminal.printAt(13, 10, WHITE_BOLD + "Current Status:    " + RESET + coloredStatus);
 
-        NativeTerminal.printAt(13, 12, WHITE_BOLD + "[P] Ping Monitoring:  " + RESET + (node.pingEnabled() ? GREEN + "Enabled" + RESET : RED + "Disabled" + RESET));
-        NativeTerminal.printAt(13, 13, WHITE_BOLD + "[E] Ping Path Route:  " + RESET + CYAN + node.pingPath() + RESET);
+        boolean canEdit = !readOnly && nodeConfigurationEnabled;
+
+        NativeTerminal.printAt(13, 12, (canEdit ? WHITE_BOLD + "[P] " : "") + "Ping Monitoring:  " + RESET + (node.pingEnabled() ? GREEN + "Enabled" + RESET : RED + "Disabled" + RESET));
+        NativeTerminal.printAt(13, 13, (canEdit ? WHITE_BOLD + "[E] " : "") + "Ping Path Route:  " + RESET + CYAN + node.pingPath() + RESET);
         
         String headerName = node.pingHeaderName() == null ? "None" : node.pingHeaderName();
         String headerVal = node.pingHeaderValue() == null ? "None" : node.pingHeaderValue();
-        NativeTerminal.printAt(13, 14, WHITE_BOLD + "[H] Auth Header Name: " + RESET + CYAN + headerName + RESET);
-        NativeTerminal.printAt(13, 15, WHITE_BOLD + "[V] Token Value:      " + RESET + CYAN + headerVal + RESET);
+        NativeTerminal.printAt(13, 14, (canEdit ? WHITE_BOLD + "[H] " : "") + "Auth Header Name: " + RESET + CYAN + headerName + RESET);
+        NativeTerminal.printAt(13, 15, (canEdit ? WHITE_BOLD + "[V] " : "") + "Token Value:      " + RESET + CYAN + headerVal + RESET);
 
         NativeTerminal.printAt(13, 17, WHITE_BOLD + "Press [Backspace / Esc] to return to Cluster Console" + RESET);
 
-        // Help controls at safe row 23
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + " [Backspace] Console  [P] Toggle Ping  [E] Change Path  [H] Header Name  [V] Value");
+        StringBuilder sb = new StringBuilder();
+        sb.append(" [Backspace] Console");
+        if (canEdit) {
+            sb.append("  [P] Toggle Ping  [E] Change Path  [H] Header Name  [V] Value");
+        }
+        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + sb.toString());
     }
 
     private List<String> getFilteredLogs(String clusterName) {
@@ -601,9 +669,9 @@ public class TerminalUI {
                 selectedNodeIndex = 0;
                 servicesViewportStart = 0;
             }
-        } else if (key == 'g' || key == 'G') {
+        } else if ((key == 'g' || key == 'G') && gatewayManagementEnabled && !readOnly) {
             manageGatewayPrompt();
-        } else if (key == 'c' || key == 'C') {
+        } else if ((key == 'c' || key == 'C') && clusterManagementEnabled && !readOnly) {
             createNewClusterPrompt();
         } else if (key == 'l' || key == 'L') {
             currentView = VIEW_FULL_LOGS;
@@ -626,22 +694,22 @@ public class TerminalUI {
                 selectedNodeIndex = 0;
             }
         } else if (key == 10 || key == 13) { // Enter: Open Selected Node Config Screen
-            if (!nodes.isEmpty()) {
+            if (!nodes.isEmpty() && nodeConfigurationEnabled) {
                 currentView = VIEW_NODE_CONFIG;
             }
-        } else if (key == 'g' || key == 'G') {
+        } else if ((key == 'g' || key == 'G') && gatewayManagementEnabled && !readOnly) {
             manageGatewayPrompt();
-        } else if (key == 'a' || key == 'A') {
+        } else if ((key == 'a' || key == 'A') && nodeManagementEnabled && !readOnly) {
             addNewNodePrompt();
-        } else if (key == 'd' || key == 'D') {
+        } else if ((key == 'd' || key == 'D') && nodeManagementEnabled && !readOnly) {
             if (!nodes.isEmpty()) {
                 deregisterSelectedNode();
             }
-        } else if (key == 'i' || key == 'I') {
+        } else if ((key == 'i' || key == 'I') && !readOnly) {
             changeAllowedIpsPrompt();
-        } else if (key == 't' || key == 'T') {
+        } else if ((key == 't' || key == 'T') && !readOnly) {
             changeTimeoutPrompt();
-        } else if (key == 'l' || key == 'L') {
+        } else if ((key == 'l' || key == 'L') && !readOnly) {
             changeRateLimitPrompt();
         } else if (key == 127 || key == 8 || key == 27) { // Backspace or Escape
             currentView = VIEW_DASHBOARD;
@@ -671,14 +739,22 @@ public class TerminalUI {
             return;
         }
 
+        if (key == 127 || key == 8 || key == 27) { // Backspace or Escape
+            currentView = VIEW_CLUSTER_DETAIL;
+            return;
+        }
+
+        // Edit operations requires non-readOnly and enabled nodeConfiguration
+        if (readOnly || !nodeConfigurationEnabled) {
+            return;
+        }
+
         Cluster cluster = ClusterRegistry.getInstance().getCluster(selectedClusterName);
         if (cluster == null) return;
 
         ServerNode node = nodes.get(selectedNodeIndex);
 
-        if (key == 127 || key == 8 || key == 27) { // Backspace or Escape
-            currentView = VIEW_CLUSTER_DETAIL;
-        } else if (key == 'p' || key == 'P') {
+        if (key == 'p' || key == 'P') {
             ServerNode updated = new ServerNode(
                 node.host(), node.port(), node.status(), node.isExternal(),
                 !node.pingEnabled(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
@@ -704,15 +780,16 @@ public class TerminalUI {
         } else {
             ClusterRegistry.getInstance().createCluster(name);
             System.out.println(GREEN + "SUCCESS: Created cluster '" + name + "'" + RESET);
-            System.out.print("Do you want to configure and start a gateway for this cluster now? (y/n): ");
-            String ans = TerminalScanner.readLine();
-            if (ans.equalsIgnoreCase("y")) {
-                selectedClusterName = name;
-                manageGatewayPrompt();
-                return;
-            } else {
-                try { Thread.sleep(800); } catch (Exception e) {}
+            if (gatewayManagementEnabled) {
+                System.out.print("Do you want to configure and start a gateway for this cluster now? (y/n): ");
+                String ans = TerminalScanner.readLine();
+                if (ans.equalsIgnoreCase("y")) {
+                    selectedClusterName = name;
+                    manageGatewayPrompt();
+                    return;
+                }
             }
+            try { Thread.sleep(800); } catch (Exception e) {}
         }
         NativeTerminal.initTerminal();
         fetchClusterNames();
@@ -728,7 +805,7 @@ public class TerminalUI {
             return;
         }
 
-        hexacloud.core.ports.GatewayPort currentGw = activeGateways.get(selectedClusterName);
+        GatewayPort currentGw = activeGateways.get(selectedClusterName);
         NativeTerminal.resetTerminal();
         System.out.println("\n" + WHITE_BOLD + "=== Gateway Setup for Cluster: " + selectedClusterName + " ===" + RESET);
         if (currentGw != null) {
@@ -772,7 +849,7 @@ public class TerminalUI {
                     if (wsStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
                     boolean ws = !wsStr.equalsIgnoreCase("n");
 
-                    hexacloud.core.ports.GatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(selectedClusterName)
+                    GatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(selectedClusterName)
                         .port(port)
                         .pingInterval(pingInt)
                         .enableTelnet(telnet)
