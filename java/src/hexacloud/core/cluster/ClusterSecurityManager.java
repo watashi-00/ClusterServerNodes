@@ -11,6 +11,8 @@ public class ClusterSecurityManager {
     private final boolean requireToken;
     private final int timeoutMs;
     private final String allowedIps;
+    private final int rateLimitRequests;
+    private final int rateLimitDurationSeconds;
     private final RateLimiter rateLimiter;
 
     public ClusterSecurityManager(String clusterName) {
@@ -19,10 +21,9 @@ public class ClusterSecurityManager {
         this.requireToken = EnvLoader.getBoolean(clusterName, "requireToken", true);
         this.timeoutMs = EnvLoader.getInt(clusterName, "timeoutMs", 5000);
         this.allowedIps = EnvLoader.get(clusterName, "allowedIps", "");
-        
-        int rateLimitRequests = EnvLoader.getInt(clusterName, "rateLimitRequests", 100);
-        int rateLimitDurationSeconds = EnvLoader.getInt(clusterName, "rateLimitDurationSeconds", 60);
-        this.rateLimiter = new RateLimiter(rateLimitRequests, rateLimitDurationSeconds);
+        this.rateLimitRequests = EnvLoader.getInt(clusterName, "rateLimitRequests", 100);
+        this.rateLimitDurationSeconds = EnvLoader.getInt(clusterName, "rateLimitDurationSeconds", 60);
+        this.rateLimiter = new RateLimiter(this.rateLimitRequests, this.rateLimitDurationSeconds);
 
         DebugUtils.info("ClusterSecurityManager initialized for '" + clusterName + "' -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "], rateLimit: " + rateLimitRequests + "/" + rateLimitDurationSeconds + "s");
     }
@@ -78,5 +79,13 @@ public class ClusterSecurityManager {
 
     public String getAllowedIps() {
         return allowedIps;
+    }
+
+    public int getRateLimitRequests() {
+        return rateLimitRequests;
+    }
+
+    public int getRateLimitDurationSeconds() {
+        return rateLimitDurationSeconds;
     }
 }

@@ -27,7 +27,38 @@ public class HttpTransport implements ServerTransport {
                 @Override
                 public void handle(HttpExchange exchange) throws IOException {
                     String clientIp = exchange.getRemoteAddress().getAddress().getHostAddress();
-                    if(!cluster.isIpAllowed(clientIp)) {
+                    String rawPath = exchange.getRequestURI().getPath();
+                    hexacloud.core.cluster.Cluster targetCluster = cluster;
+                    RouteRegistry targetRegistry = registry;
+                    String routeName = "";
+
+                    if (rawPath.startsWith("/clusters/")) {
+                        String[] parts = rawPath.split("/");
+                        if (parts.length >= 4) {
+                            String targetClusterName = parts[2];
+                            routeName = parts[3].toUpperCase();
+                            targetCluster = hexacloud.core.cluster.ClusterRegistry.getInstance().getCluster(targetClusterName);
+                            if (targetCluster != null) {
+                                targetRegistry = targetCluster.getRouteRegistry();
+                            }
+                        }
+                    } else {
+                        routeName = rawPath.substring(1).toUpperCase();
+                        if (routeName.isEmpty()) {
+                            routeName = "GET_NODES";
+                        }
+                    }
+
+                    if (targetCluster == null) {
+                        String response = "404 Not Found - Cluster Not Found";
+                        exchange.sendResponseHeaders(404, response.length());
+                        try(OutputStream os = exchange.getResponseBody()) {
+                            os.write(response.getBytes());
+                        }
+                        return;
+                    }
+
+                    if(!targetCluster.isIpAllowed(clientIp)) {
                         String response = "403 Forbidden - IP Not Allowed";
                         exchange.sendResponseHeaders(403, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
@@ -36,7 +67,7 @@ public class HttpTransport implements ServerTransport {
                         return;
                     }
 
-                    if(!cluster.checkRateLimit(clientIp)) {
+                    if(!targetCluster.checkRateLimit(clientIp)) {
                         String response = "429 Too Many Requests";
                         exchange.getResponseHeaders().set("Retry-After", "10");
                         exchange.sendResponseHeaders(429, response.length());
@@ -59,7 +90,7 @@ public class HttpTransport implements ServerTransport {
                         }
                     }
 
-                    if(!cluster.authenticate(token)) {
+                    if(!targetCluster.authenticate(token)) {
                         String response = "401 Unauthorized - Invalid or Missing API Token";
                         exchange.sendResponseHeaders(401, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
@@ -68,12 +99,7 @@ public class HttpTransport implements ServerTransport {
                         return;
                     }
 
-                    String path = exchange.getRequestURI().getPath().substring(1).toUpperCase();
-                    if(path.isEmpty()) {
-                        path = "GET_NODES";
-                    }
-
-                    var handler = registry.getRoutes().get(path);
+                    var handler = targetRegistry.getRoutes().get(routeName);
                     if(handler != null) {
                         exchange.getResponseHeaders().set("Content-Type", "text/plain");
                         exchange.sendResponseHeaders(200, 0); // chunked transfer
@@ -85,7 +111,7 @@ public class HttpTransport implements ServerTransport {
                             handler.accept(args, out);
                         }
                     } else {
-                        String response = "404 Not Found - Unknown Route: " + path;
+                        String response = "404 Not Found - Unknown Route: " + routeName;
                         exchange.sendResponseHeaders(404, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
                             os.write(response.getBytes());

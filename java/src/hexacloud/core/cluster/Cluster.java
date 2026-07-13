@@ -10,12 +10,15 @@ import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.cluster.event.NodeRegistered;
+import hexacloud.core.server.route.RouteRegistry;
+import hexacloud.core.server.route.ClusterController;
 
 public class Cluster {
 
     private final ConcurrentHashMap<String, ServerNode> cluster;
     private final ClusterEventBusManager eventManager;
     private final ClusterSecurityManager securityManager;
+    private final RouteRegistry routeRegistry;
 
     private String clusterName = ClusterConfig.DEFAULT_CLUSTER_NAME;
     private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
@@ -34,6 +37,13 @@ public class Cluster {
         this.clusterName = clusterName;
         this.eventManager = eventManager;
         this.securityManager = new ClusterSecurityManager(clusterName);
+        this.routeRegistry = new RouteRegistry();
+        this.routeRegistry.registerController(new ClusterController(this));
+        ClusterRegistry.getInstance().registerCluster(this);
+    }
+
+    public RouteRegistry getRouteRegistry() {
+        return routeRegistry;
     }
 
     public ClusterSecurityManager security() {
@@ -235,5 +245,13 @@ public class Cluster {
 
     public boolean checkRateLimit(String clientId) {
         return securityManager.checkRateLimit(clientId);
+    }
+
+    public int getRateLimitRequests() {
+        return securityManager.getRateLimitRequests();
+    }
+
+    public int getRateLimitDurationSeconds() {
+        return securityManager.getRateLimitDurationSeconds();
     }
 }

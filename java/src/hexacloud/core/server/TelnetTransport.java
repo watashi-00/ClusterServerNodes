@@ -49,15 +49,6 @@ public class TelnetTransport implements ServerTransport {
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
         ) {
             String clientIp = socket.getInetAddress().getHostAddress();
-            if(!cluster.isIpAllowed(clientIp)) {
-                out.println("ERROR: IP not allowed");
-                return;
-            }
-
-            if(!cluster.checkRateLimit(clientIp)) {
-                out.println("ERROR: Too many requests");
-                return;
-            }
 
             String line = in.readLine();
             if(line == null || line.trim().isEmpty()) {
@@ -70,14 +61,38 @@ public class TelnetTransport implements ServerTransport {
             String[] tokens = line.split(" ", 3);
             String command;
             String args;
-            
-            if(cluster.isRequireToken()) {
+
+            hexacloud.core.cluster.Cluster targetCluster = cluster;
+            RouteRegistry targetRegistry = registry;
+
+            if(tokens.length >= 2) {
+                String token = tokens[0];
+                for (hexacloud.core.cluster.Cluster c : hexacloud.core.cluster.ClusterRegistry.getInstance().getClusters()) {
+                    if (token.equals(c.getSecret())) {
+                        targetCluster = c;
+                        targetRegistry = c.getRouteRegistry();
+                        break;
+                    }
+                }
+            }
+
+            if(!targetCluster.isIpAllowed(clientIp)) {
+                out.println("ERROR: IP not allowed");
+                return;
+            }
+
+            if(!targetCluster.checkRateLimit(clientIp)) {
+                out.println("ERROR: Too many requests");
+                return;
+            }
+
+            if(targetCluster.isRequireToken()) {
                 if(tokens.length < 2) {
                     out.println("ERROR: Authentication required");
                     return;
                 }
                 String token = tokens[0];
-                if(!cluster.authenticate(token)) {
+                if(!targetCluster.authenticate(token)) {
                     out.println("ERROR: Unauthorized");
                     return;
                 }
@@ -89,7 +104,7 @@ public class TelnetTransport implements ServerTransport {
                 args = tokens.length > 2 ? (firstTokenArgs + " " + tokens[2].trim()).trim() : firstTokenArgs;
             }
 
-            var handler = registry.getRoutes().get(command);
+            var handler = targetRegistry.getRoutes().get(command);
 
             if(handler == null) {
                 DebugUtils.error("Telnet: Unknown command '" + command + "' received from client.");
