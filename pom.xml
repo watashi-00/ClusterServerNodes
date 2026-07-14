@@ -26,7 +26,6 @@
                     <include>**/*</include>
                 </includes>
                 <excludes>
-                    <!-- Exclude development and testing settings from final JAR -->
                     <exclude>hexacloud.properties</exclude>
                     <exclude>*-state.properties</exclude>
                 </excludes>
@@ -34,25 +33,21 @@
         </resources>
 
         <plugins>
-            <!-- Compiler Plugin to build Java sources -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
+                    <release>${maven.compiler.release}</release>
                 </configuration>
             </plugin>
 
-            <!-- Jar Plugin configured to exclude development mains / application package -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
                 <configuration>
                     <excludes>
-                        <!-- Exclude showcase mains and application package so it's a clean framework lib -->
                         <exclude>hexacloud/application/**</exclude>
                     </excludes>
                 </configuration>
