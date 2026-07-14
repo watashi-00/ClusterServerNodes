@@ -3,13 +3,16 @@ package hexacloud.core.config;
 import java.io.InputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 import hexacloud.core.utils.DebugUtils;
 
 public class EnvLoader {
 
     private static final Properties properties = new Properties();
+    private static final Map<String, String> configCache = new ConcurrentHashMap<>();
 
     static {
         try (InputStream input = EnvLoader.class.getClassLoader().getResourceAsStream("hexacloud.properties")) {
@@ -48,8 +51,16 @@ public class EnvLoader {
             }
         }
     }
-
     public static String get(String clusterName, String propertyName, String defaultValue) {
+        
+        String cacheKey = clusterName + ":" + propertyName;
+        
+        return configCache.computeIfAbsent(cacheKey, k ->
+            resolveProperty(clusterName, propertyName, defaultValue)
+        );
+    }
+
+    private static String resolveProperty(String clusterName, String propertyName, String defaultValue) {
         String key = "cluster." + clusterName + "." + propertyName;
         String value = properties.getProperty(key);
         if(value != null) return value.trim();
