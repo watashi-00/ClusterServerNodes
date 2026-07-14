@@ -17,11 +17,11 @@ The Gateway allows operators to configure a specific health-check protocol per S
 | **`TCP`** | Successful TCP three-way socket connection | Time to establish TCP handshake | Not supported |
 | **`UDP`** | Datagram packet successfully dispatched | Time to send datagram packet | Not supported |
 | **`GRPC`** | gRPC endpoint port is open/reachable | Time to establish TCP port check | Not supported |
-| **`NONE`** | No active health-check performed | Not monitored (0 ms) | Disabled |
+| **`NONE`** | No active health-check performed | Not monitored (0 ms) | Disabled / Push-Only |
 
 ---
 
-## 2. Protocol Specifications
+## 2. Active Monitoring (Pull-Based Specifications)
 
 ### 2.1. HTTP Contract
 
@@ -64,11 +64,11 @@ The Gateway allows operators to configure a specific health-check protocol per S
 ### 2.6. NONE Contract
 
 - **Behavior:** The gateway skips scheduling any health checks.
-- **ONLINE criteria:** Stays registered in the status assigned during registration.
+- **ONLINE criteria:** Stays registered in the status assigned during registration (or updated via passive push-based telemetry).
 
 ---
 
-## 3. Telemetry Schema (For HTTP and WebSocket)
+## 3. Telemetry Schema (For HTTP and WebSocket Pull)
 
 When a node uses `HTTP` or `WEBSOCKET` and is `ONLINE`, the Gateway parses the response body or text frame as JSON. All fields are optional:
 
@@ -82,3 +82,44 @@ When a node uses `HTTP` or `WEBSOCKET` and is `ONLINE`, the Gateway parses the r
 }
 ```
 If `language` is omitted, the DevOps Panel falls back to displaying the transport protocol (`HTTP` or `WebSocket`).
+
+---
+
+## 4. Passive Monitoring (Push-Based Telemetry)
+
+Instead of the Gateway actively pinging the service node (Pull-based), a service node can choose to actively push its metrics to the Gateway. This is especially useful for nodes using a `PingProtocol` of `NONE`.
+
+### 4.1. HTTP Push-Based Endpoint
+
+- **Method:** `GET` or `POST`
+- **URL Path:** `/clusters/<clusterName>/telemetry`
+- **Port:** Base gateway port + 1 (e.g. `3001` if base port is `3000`).
+- **Query Parameters:**
+  - `host` (String, Required): The registered host of the node (e.g. `localhost` or `http://localhost`).
+  - `port` (Number, Required): The registered port of the node (e.g. `3004`).
+  - `cpu` (Number, Optional): CPU load percentage (e.g. `2.5`).
+  - `ram` (Number, Optional): RAM usage in MB (e.g. `45.3`).
+  - `language` or `lang` (String, Optional): Node runtime environment (e.g. `Go`, `NodeJS`).
+  - `latency` (Number, Optional): Custom-measured response latency in ms.
+  - `status` (String, Optional): `ONLINE`, `UNSTABLE`, or `OFFLINE`.
+  
+- **Example Request URL:**
+  ```
+  http://localhost:3001/clusters/watashi-00/telemetry?host=localhost&port=3004&cpu=2.5&ram=45.3&language=NodeJS&status=ONLINE
+  ```
+- **Example Response:**
+  ```
+  SUCCESS: Telemetry updated for localhost:3004
+  ```
+
+### 4.2. Telnet Push-Based Command
+
+- **Port:** Base gateway port (e.g. `3000`).
+- **Syntax:**
+  ```
+  TELEMETRY <host> <port> [key=value] [key=value] ...
+  ```
+- **Example Command:**
+  ```
+  TELEMETRY localhost 3004 cpu=2.5 ram=45.3 language=NodeJS status=ONLINE
+  ```

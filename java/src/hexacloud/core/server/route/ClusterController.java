@@ -36,22 +36,63 @@ public class ClusterController implements RouteController {
     @RouteMapping("TELEMETRY")
     public void telemetry(String args, PrintWriter out) {
         if (args == null || args.trim().isEmpty()) {
-            out.println("ERROR: Missing arguments. Expected format: <host> <port> [key=value]...");
+            out.println("ERROR: Missing arguments. Expected format: <host> <port> [key=value]... or host=...&port=...");
             return;
         }
 
-        String[] parts = args.trim().split("\\s+");
-        if (parts.length < 2) {
-            out.println("ERROR: Host and port are required. Format: <host> <port> [key=value]...");
-            return;
+        String host = null;
+        int port = 0;
+        double cpu = -1;
+        double ram = -1;
+        String lang = null;
+        int latency = -1;
+        String statusStr = null;
+
+        if (args.contains("&") || args.contains("host=")) {
+            String[] params = args.split("&");
+            for (String param : params) {
+                if (!param.contains("=")) continue;
+                String[] kv = param.split("=", 2);
+                String key = kv[0].toLowerCase().trim();
+                String val = kv[1].replace("+", " ").replace("%20", " ").trim();
+                try {
+                    if (key.equals("host")) host = val;
+                    else if (key.equals("port")) port = Integer.parseInt(val);
+                    else if (key.equals("cpu")) cpu = Double.parseDouble(val);
+                    else if (key.equals("ram")) ram = Double.parseDouble(val);
+                    else if (key.equals("language") || key.equals("lang")) lang = val;
+                    else if (key.equals("latency")) latency = Integer.parseInt(val);
+                    else if (key.equals("status")) statusStr = val;
+                } catch (Exception e) {}
+            }
+        } else {
+            String decodedArgs = args.replace("+", " ").replace("%20", " ");
+            String[] parts = decodedArgs.trim().split("\\s+");
+            if (parts.length >= 2) {
+                host = parts[0];
+                try {
+                    port = Integer.parseInt(parts[1]);
+                } catch (NumberFormatException e) {}
+
+                for (int i = 2; i < parts.length; i++) {
+                    String kv = parts[i];
+                    if (!kv.contains("=")) continue;
+                    String[] kvParts = kv.split("=", 2);
+                    String key = kvParts[0].toLowerCase().trim();
+                    String val = kvParts[1].trim();
+                    try {
+                        if (key.equals("cpu")) cpu = Double.parseDouble(val);
+                        else if (key.equals("ram")) ram = Double.parseDouble(val);
+                        else if (key.equals("language") || key.equals("lang")) lang = val;
+                        else if (key.equals("latency")) latency = Integer.parseInt(val);
+                        else if (key.equals("status")) statusStr = val;
+                    } catch (Exception e) {}
+                }
+            }
         }
 
-        String host = parts[0];
-        int port;
-        try {
-            port = Integer.parseInt(parts[1]);
-        } catch (NumberFormatException e) {
-            out.println("ERROR: Invalid port format: " + parts[1]);
+        if (host == null || port == 0) {
+            out.println("ERROR: Missing or invalid host/port parameter.");
             return;
         }
 
@@ -59,7 +100,7 @@ public class ClusterController implements RouteController {
         for (ServerNode node : cluster.getCluster()) {
             String normalizedNodeHost = node.host().replace("http://", "").replace("https://", "").replace("ws://", "").replace("wss://", "").replace("tcp://", "").replace("udp://", "").replace("grpc://", "");
             String normalizedTargetHost = host.replace("http://", "").replace("https://", "").replace("ws://", "").replace("wss://", "").replace("tcp://", "").replace("udp://", "").replace("grpc://", "");
-            
+
             if (normalizedNodeHost.equals(normalizedTargetHost) && node.port() == port) {
                 targetNode = node;
                 break;
@@ -71,31 +112,18 @@ public class ClusterController implements RouteController {
             return;
         }
 
-        for (int i = 2; i < parts.length; i++) {
-            String kv = parts[i];
-            if (!kv.contains("=")) continue;
-            String[] kvParts = kv.split("=", 2);
-            String key = kvParts[0].toLowerCase();
-            String val = kvParts[1];
+        if (cpu >= 0) targetNode.setCpuUsage(cpu);
+        if (ram >= 0) targetNode.setRamUsage(ram);
+        if (lang != null) targetNode.setRuntime(lang);
+        if (latency >= 0) targetNode.setLatencyMs(latency);
 
+        if (statusStr != null) {
             try {
-                if (key.equals("cpu")) {
-                    targetNode.setCpuUsage(Double.parseDouble(val));
-                } else if (key.equals("ram")) {
-                    targetNode.setRamUsage(Double.parseDouble(val));
-                } else if (key.equals("language") || key.equals("lang")) {
-                    targetNode.setRuntime(val);
-                } else if (key.equals("latency")) {
-                    targetNode.setLatencyMs(Integer.parseInt(val));
-                } else if (key.equals("status")) {
-                    hexacloud.core.model.NodeStatus newStatus = hexacloud.core.model.NodeStatus.valueOf(val.toUpperCase());
-                    if (targetNode.status() != newStatus) {
-                        cluster.dispatchEvent(new hexacloud.core.cluster.event.NodeStatusChanged(targetNode.getFullHost(), newStatus));
-                    }
+                hexacloud.core.model.NodeStatus newStatus = hexacloud.core.model.NodeStatus.valueOf(statusStr.toUpperCase());
+                if (targetNode.status() != newStatus) {
+                    cluster.dispatchEvent(new hexacloud.core.cluster.event.NodeStatusChanged(targetNode.getFullHost(), newStatus));
                 }
-            } catch (Exception e) {
-                // Ignore parameter format errors
-            }
+            } catch (Exception e) {}
         }
 
         if (targetNode.status() != hexacloud.core.model.NodeStatus.ONLINE) {
