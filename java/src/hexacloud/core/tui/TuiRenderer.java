@@ -6,6 +6,7 @@ import java.util.List;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.ports.GatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import static hexacloud.core.tui.TuiConstants.*;
@@ -91,11 +92,25 @@ public class TuiRenderer {
             for (int i = 0; i < state.clusterNames.size(); i++) {
                 if (y >= 17) break;
                 String name = state.clusterNames.get(i);
-                String gwIndicator = tui.isGatewayActive(name) ? GREEN + "●" + RESET : RED + "○" + RESET;
                 
                 String displayName = name;
-                if (displayName.length() > 13) {
-                    displayName = displayName.substring(0, 10) + "...";
+                String gwIndicator;
+                if (tui.isGatewayActive(name)) {
+                    GatewayPort gw = tui.activeGateways().get(name);
+                    int port = (gw != null) ? gw.getPort() : 3000;
+                    String suffix = " [" + port + "]";
+                    int maxLen = 16 - suffix.length();
+                    if (displayName.length() > maxLen) {
+                        displayName = displayName.substring(0, maxLen - 3) + "...";
+                    }
+                    displayName = displayName + suffix;
+                    gwIndicator = GREEN + "●" + RESET;
+                } else {
+                    int maxLen = 16;
+                    if (displayName.length() > maxLen) {
+                        displayName = displayName.substring(0, maxLen - 3) + "...";
+                    }
+                    gwIndicator = RED + "○" + RESET;
                 }
                 
                 if (i == state.selectedClusterIndex) {
@@ -278,7 +293,12 @@ public class TuiRenderer {
         if (tui.nodeConfigurationEnabled()) controlsStr.append("  [Enter] Node Config");
         if (tui.gatewayManagementEnabled() && !tui.readOnly()) controlsStr.append("  [G] Gateway");
         if (tui.nodeManagementEnabled() && !tui.readOnly()) controlsStr.append("  [A] Add  [D] Delete");
-        if (!tui.readOnly()) controlsStr.append("  [I] IPs  [T] Timeout  [K] Token  [S] Secure");
+        if (!tui.readOnly()) {
+            controlsStr.append("  [I] IPs  [T] Timeout");
+            if (tui.tokenManagementEnabled()) {
+                controlsStr.append("  [K] Token  [S] Secure");
+            }
+        }
         NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
     }
 

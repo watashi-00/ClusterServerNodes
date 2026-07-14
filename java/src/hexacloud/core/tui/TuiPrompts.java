@@ -34,7 +34,7 @@ public class TuiPrompts {
             } else {
                 ClusterRegistry.getInstance().createCluster(name);
                 System.out.println(GREEN + "SUCCESS: Created cluster '" + name + "'" + RESET);
-                if (tui.gatewayManagementEnabled()) {
+                if (tui.gatewayManagementEnabled() && !tui.isGatewayActive(name)) {
                     System.out.print("Do you want to configure and start a gateway for this cluster now? (y/n): ");
                     String ans = TerminalScanner.readLine();
                     if (ans.equalsIgnoreCase("y")) {

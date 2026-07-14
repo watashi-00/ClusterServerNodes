@@ -30,6 +30,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     private boolean clusterManagementEnabled = true;
     private boolean nodeManagementEnabled = true;
     private boolean nodeConfigurationEnabled = true;
+    private boolean tokenManagementEnabled = true;
 
     private static final Map<String, GatewayPort> activeGateways = new ConcurrentHashMap<>();
 
@@ -105,6 +106,11 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     }
 
     @Override
+    public boolean tokenManagementEnabled() {
+        return tokenManagementEnabled;
+    }
+
+    @Override
     public hexacloud.core.ports.TerminalUiPort displayName(String displayName) {
         this.displayName = displayName;
         return this;
@@ -137,6 +143,12 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     @Override
     public hexacloud.core.ports.TerminalUiPort nodeConfigurationEnabled(boolean enabled) {
         this.nodeConfigurationEnabled = enabled;
+        return this;
+    }
+
+    @Override
+    public hexacloud.core.ports.TerminalUiPort tokenManagementEnabled(boolean enabled) {
+        this.tokenManagementEnabled = enabled;
         return this;
     }
 

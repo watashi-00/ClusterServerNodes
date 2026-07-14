@@ -36,6 +36,11 @@ public interface TerminalUiPort {
     TerminalUiPort nodeConfigurationEnabled(boolean enabled);
     
     /**
+     * Enable or disable cluster secret token management (key changes, security toggles).
+     */
+    TerminalUiPort tokenManagementEnabled(boolean enabled);
+    
+    /**
      * Seed the TUI with an already started GatewayPort instance.
      */
     TerminalUiPort seedGateway(GatewayPort gateway);
@@ -44,4 +49,9 @@ public interface TerminalUiPort {
      * Launch the interactive terminal loop.
      */
     void start();
+    
+    /**
+     * Check if token management is enabled.
+     */
+    boolean tokenManagementEnabled();
 }

@@ -71,6 +71,11 @@ public interface GatewayPort extends SchedulerOperations, ClusterOperations, Ser
     String getClusterName();
 
     /**
+     * Get the port number this gateway listens on.
+     */
+    int getPort();
+
+    /**
      * Access the event manager to subscribe to cluster node changes or connection pings.
      */
     ClusterEventBusManager eventManager();
