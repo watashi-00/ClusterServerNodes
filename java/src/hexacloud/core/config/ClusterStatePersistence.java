@@ -33,14 +33,26 @@ public class ClusterStatePersistence {
         return stateLoaded;
     }
 
-    private static String resolveStateFilePath(String clusterName) {
-        String filename = clusterName + "-state.properties";
-        if (new File("java/resources").isDirectory()) {
-            return "java/resources/" + filename;
-        } else if (new File("resources").isDirectory()) {
-            return "resources/" + filename;
+    private static String getStateDicrectory() {
+        String dir = System.getProperty("hexacloud.state.dir");
+        if(dir == null) {
+            dir = System.getenv("HEXACLOUD_STATE_DIR");
         }
-        return filename;
+
+        if(dir == null || dir.trim().isEmpty()) {
+            dir = "."; // fallback
+        }
+
+        File dirFile = new File(dir);
+        if (!dirFile.exists() && !dir.equals(".")) {
+            dirFile.mkdirs();
+        }
+
+        return dir;
+    }
+
+    private static String resolveStateFilePath(String clusterName) {
+        return getStateDicrectory()+ File.separator + clusterName + "-state.properties";
     }
 
     /**
@@ -102,12 +114,12 @@ public class ClusterStatePersistence {
         loading = true;
         try {
             List<File> filesToLoad = new ArrayList<>();
-            findStateFiles(new File("java/resources"), filesToLoad);
-            findStateFiles(new File("resources"), filesToLoad);
-            findStateFiles(new File("."), filesToLoad);
+            
+            File stateDir = new File(getStateDicrectory());
+            findStateFiles(stateDir, filesToLoad);
 
             if (filesToLoad.isEmpty()) {
-                DebugUtils.log("DevOps Panel: No *-state.properties configuration files found. Using defaults.");
+                DebugUtils.log("DevOps Panel: No *-state.properties configuration files found in '" + stateDir.getPath() + "'. Using defaults.");
                 stateLoaded = false;
                 return;
             }
