@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -67,7 +68,10 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status": "UP", "language": "Go", "message": "Hello from Go mock service"}`))
+		cpu := 0.5 + rand.Float64()*4.5
+		ram := 15.4 + rand.Float64()*8.2
+		response := fmt.Sprintf(`{"status": "UP", "language": "Go", "cpu": %.1f, "ram": %.1f, "message": "Hello from Go mock service"}`, cpu, ram)
+		w.Write([]byte(response))
 	})
 
 	server := &http.Server{

@@ -12,6 +12,7 @@ import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.model.PingProtocol;
 import hexacloud.core.utils.DebugUtils;
 
 /**
@@ -75,6 +76,7 @@ public class ClusterStatePersistence {
             props.setProperty(nodePrefix + "port", String.valueOf(node.port()));
             props.setProperty(nodePrefix + "isExternal", String.valueOf(node.isExternal()));
             props.setProperty(nodePrefix + "pingEnabled", String.valueOf(node.pingEnabled()));
+            props.setProperty(nodePrefix + "pingProtocol", node.pingProtocol().name());
             props.setProperty(nodePrefix + "pingPath", node.pingPath());
             if (node.pingHeaderName() != null) {
                 props.setProperty(nodePrefix + "pingHeaderName", node.pingHeaderName());
@@ -181,14 +183,26 @@ public class ClusterStatePersistence {
                 String host = props.getProperty(nodePrefix + "host");
                 int port = Integer.parseInt(props.getProperty(nodePrefix + "port"));
                 boolean isExternal = Boolean.parseBoolean(props.getProperty(nodePrefix + "isExternal", "false"));
-                boolean pingEnabled = Boolean.parseBoolean(props.getProperty(nodePrefix + "pingEnabled", "true"));
                 String pingPath = props.getProperty(nodePrefix + "pingPath", "/");
                 String pingHeaderName = props.getProperty(nodePrefix + "pingHeaderName", null);
                 String pingHeaderValue = props.getProperty(nodePrefix + "pingHeaderValue", null);
 
+                String protoStr = props.getProperty(nodePrefix + "pingProtocol");
+                PingProtocol pingProtocol;
+                if (protoStr != null) {
+                    try {
+                        pingProtocol = PingProtocol.valueOf(protoStr.toUpperCase());
+                    } catch (Exception e) {
+                        pingProtocol = PingProtocol.HTTP;
+                    }
+                } else {
+                    boolean pingEnabled = Boolean.parseBoolean(props.getProperty(nodePrefix + "pingEnabled", "true"));
+                    pingProtocol = pingEnabled ? PingProtocol.HTTP : PingProtocol.NONE;
+                }
+
                 ServerNode node = new ServerNode(
                     host, port, NodeStatus.OFFLINE, isExternal,
-                    pingEnabled, pingPath, pingHeaderName, pingHeaderValue
+                    pingProtocol, pingPath, pingHeaderName, pingHeaderValue
                 );
                 
                 boolean alreadyRegistered = cluster.getCluster().stream()

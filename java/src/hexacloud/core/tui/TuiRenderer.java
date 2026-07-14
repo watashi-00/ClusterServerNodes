@@ -135,7 +135,7 @@ public class TuiRenderer {
         NativeTerminal.printAt(26, 9, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
 
         y = 10;
-        NativeTerminal.printAt(28, y, WHITE_BOLD + String.format("%-26s %-10s %-12s", "SERVICE HOST", "PORT", "STATUS") + RESET);
+        NativeTerminal.printAt(28, 9, WHITE_BOLD + String.format("%-26s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS") + RESET);
         y++;
 
         tui.adjustServicesViewport(2);
@@ -162,7 +162,10 @@ public class TuiRenderer {
                     prefix = "➔ ";
                 }
 
-                String line = String.format("%s%-24s %-10s %-12s", prefix, node.host(), portStr, coloredStatus);
+                String hostStr = node.host() + (node.runtime().isEmpty() ? "" : " [" + node.runtime() + "]");
+                String statusLabel = coloredStatus + (node.status().name().equals("ONLINE") ? " (" + node.latencyMs() + "ms)" : "");
+
+                String line = String.format("%s%-26s %-8s %-14s", prefix, hostStr, portStr, statusLabel);
                 NativeTerminal.printAt(28, y, line);
                 y++;
             }
@@ -229,7 +232,7 @@ public class TuiRenderer {
         NativeTerminal.printAt(4, 12, "Ping Int: " + state.globalPingInterval + "s");
 
         int y = 6;
-        NativeTerminal.printAt(33, y, WHITE_BOLD + String.format("%-22s %-8s %-10s", "SERVICE HOST", "PORT", "STATUS") + RESET);
+        NativeTerminal.printAt(33, y, WHITE_BOLD + String.format("%-22s %-6s %-12s", "SERVICE HOST", "PORT", "STATUS") + RESET);
         y++;
 
         tui.adjustServicesViewport(6);
@@ -253,7 +256,10 @@ public class TuiRenderer {
                 String portStr = node.port() == 0 ? "-" : String.valueOf(node.port());
                 String prefix = index == state.selectedNodeIndex ? "➔ " : "  ";
 
-                String line = String.format("%s%-20s %-8s %-10s", prefix, node.host(), portStr, coloredStatus);
+                String hostStr = node.host() + (node.runtime().isEmpty() ? "" : " [" + node.runtime() + "]");
+                String statusLabel = coloredStatus + (node.status().name().equals("ONLINE") ? " (" + node.latencyMs() + "ms)" : "");
+
+                String line = String.format("%s%-22s %-6s %-12s", prefix, hostStr, portStr, statusLabel);
                 NativeTerminal.printAt(33, y, line);
                 y++;
             }
@@ -358,8 +364,8 @@ public class TuiRenderer {
         // Top half: configuration parameters
         drawBox(2, 5, 79, 13, "NODE CONFIGURATION PANEL - " + node.getFullHost(), true);
 
-        NativeTerminal.printAt(4, 6, WHITE_BOLD + "Node Host Address: " + RESET + node.host());
-        NativeTerminal.printAt(4, 7, "Port Number:       " + node.port());
+        NativeTerminal.printAt(4, 6, WHITE_BOLD + "Host:   " + RESET + node.host());
+        NativeTerminal.printAt(4, 7, WHITE_BOLD + "Port:   " + RESET + node.port());
         
         String coloredStatus = GREEN + "ONLINE" + RESET;
         if (node.status().name().equals("OFFLINE")) {
@@ -367,17 +373,52 @@ public class TuiRenderer {
         } else if (node.status().name().equals("UNSTABLE")) {
             coloredStatus = YELLOW + "UNSTABLE" + RESET;
         }
-        NativeTerminal.printAt(4, 8, "Current Status:    " + coloredStatus);
+        NativeTerminal.printAt(4, 8, WHITE_BOLD + "Status: " + RESET + coloredStatus);
 
         boolean canEdit = !tui.readOnly() && tui.nodeConfigurationEnabled();
 
-        NativeTerminal.printAt(4, 9, (canEdit ? WHITE_BOLD + "[P] " : "") + "Ping Monitoring:  " + RESET + (node.pingEnabled() ? GREEN + "Enabled" + RESET : RED + "Disabled" + RESET));
-        NativeTerminal.printAt(4, 10, (canEdit ? WHITE_BOLD + "[E] " : "") + "Ping Path Route:  " + RESET + CYAN + node.pingPath() + RESET);
+        String protocolColor = GREEN;
+        if (node.pingProtocol() == hexacloud.core.model.PingProtocol.NONE) {
+            protocolColor = RED;
+        } else if (node.pingProtocol() == hexacloud.core.model.PingProtocol.WEBSOCKET) {
+            protocolColor = CYAN;
+        } else if (node.pingProtocol() == hexacloud.core.model.PingProtocol.TCP) {
+            protocolColor = YELLOW;
+        } else if (node.pingProtocol() == hexacloud.core.model.PingProtocol.UDP) {
+            protocolColor = CYAN;
+        } else if (node.pingProtocol() == hexacloud.core.model.PingProtocol.GRPC) {
+            protocolColor = WHITE_BOLD;
+        }
+        NativeTerminal.printAt(4, 9, (canEdit ? WHITE_BOLD + "[P] " : "") + "Ping Proto: " + RESET + protocolColor + node.pingProtocol() + RESET);
+        NativeTerminal.printAt(4, 10, (canEdit ? WHITE_BOLD + "[E] " : "") + "Path/Route: " + RESET + CYAN + node.pingPath() + RESET);
         
         String headerName = node.pingHeaderName() == null ? "None" : node.pingHeaderName();
         String headerVal = node.pingHeaderValue() == null ? "None" : node.pingHeaderValue();
-        NativeTerminal.printAt(4, 11, (canEdit ? WHITE_BOLD + "[H] " : "") + "Auth Header Name: " + RESET + CYAN + headerName + RESET);
-        NativeTerminal.printAt(4, 12, (canEdit ? WHITE_BOLD + "[V] " : "") + "Token Value:      " + RESET + CYAN + headerVal + RESET);
+        NativeTerminal.printAt(4, 11, (canEdit ? WHITE_BOLD + "[H] " : "") + "Header: " + RESET + CYAN + headerName + RESET);
+        NativeTerminal.printAt(4, 12, (canEdit ? WHITE_BOLD + "[V] " : "") + "Token:  " + RESET + CYAN + headerVal + RESET);
+
+        // Sep & Right half: Live Telemetry
+        for (int row = 6; row <= 12; row++) {
+            NativeTerminal.printAt(40, row, "│");
+        }
+        NativeTerminal.printAt(42, 6, WHITE_BOLD + "Live Telemetry Metrics:" + RESET);
+        String defaultLang = "HTTP";
+        if (node.host().startsWith("ws://") || node.host().startsWith("wss://")) {
+            defaultLang = "WebSocket";
+        } else if (node.host().startsWith("tcp://")) {
+            defaultLang = "TCP";
+        }
+        String runtimeDisplay = node.runtime().isEmpty() ? defaultLang : node.runtime();
+        NativeTerminal.printAt(42, 7, "Runtime/Lang: " + CYAN + runtimeDisplay + RESET);
+        
+        String latencyStr = node.status().name().equals("ONLINE") ? node.latencyMs() + " ms" : "-";
+        NativeTerminal.printAt(42, 8, "Latency(RTT): " + GREEN + latencyStr + RESET);
+        
+        String cpuStr = node.status().name().equals("ONLINE") ? String.format("%.1f %%", node.cpuUsage()) : "-";
+        NativeTerminal.printAt(42, 9, "CPU Load:     " + YELLOW + cpuStr + RESET);
+        
+        String ramStr = node.status().name().equals("ONLINE") ? String.format("%.1f MB", node.ramUsage()) : "-";
+        NativeTerminal.printAt(42, 10, "RAM Memory:   " + CYAN + ramStr + RESET);
 
         // Bottom half: console logs for this node/service
         drawBox(2, 14, 79, 22, "CONSOLE LOGS FOR SERVICE " + node.getFullHost(), false);

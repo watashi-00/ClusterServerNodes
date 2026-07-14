@@ -1,0 +1,84 @@
+# DevOps Gateway - Ping Health-Check Contracts
+
+This document defines the health-check connection contracts and validation rules supported by the DevOps Gateway for all service node protocols: **HTTP**, **WEBSOCKET**, **TCP**, **UDP**, **GRPC**, and **NONE**.
+
+---
+
+## 1. Supported Ping Protocols
+
+The Gateway allows operators to configure a specific health-check protocol per Service Node. The active protocol is displayed in the node details screen and can be cycled in runtime.
+
+### Summary of Protocol Contracts
+
+| Protocol | Health-Check Validation | Latency (RTT) | Telemetry Collection |
+|---|---|---|---|
+| **`HTTP`** | HTTP GET returns status code `2xx` | Time until response headers read | Parsed from response JSON body |
+| **`WEBSOCKET`**| Successful WS handshake & connection | Time until socket handshake opens | Parsed from first incoming Text message |
+| **`TCP`** | Successful TCP three-way socket connection | Time to establish TCP handshake | Not supported |
+| **`UDP`** | Datagram packet successfully dispatched | Time to send datagram packet | Not supported |
+| **`GRPC`** | gRPC endpoint port is open/reachable | Time to establish TCP port check | Not supported |
+| **`NONE`** | No active health-check performed | Not monitored (0 ms) | Disabled |
+
+---
+
+## 2. Protocol Specifications
+
+### 2.1. HTTP Contract
+
+- **Method:** `GET`
+- **Path:** Customizable (default: `/`).
+- **Headers:** Optional custom authorization header (e.g. `X-Cluster-Token: token_secret`).
+- **ONLINE criteria:** HTTP response status code is `200` to `299`.
+- **Telemetry Payload Schema (JSON):**
+  - `status` (String, Optional): `"UP"`
+  - `language` (String, Optional): `"NodeJS"`, `"Python"`, etc.
+  - `cpu` (Number, Optional): CPU load percentage (e.g., `5.2`).
+  - `ram` (Number, Optional): RAM usage in MB (e.g., `42.1`).
+
+### 2.2. WEBSOCKET (WS) Contract
+
+- **Connection:** Standard WebSocket handshake over `ws://` or `wss://`.
+- **Flow:**
+  1. Gateway establishes connection and measures handshake latency.
+  2. Gateway sends a text frame containing `"ping"`.
+  3. Service node optionally responds with a text frame containing the **Telemetry JSON Payload** (same format as HTTP schema above).
+  4. Gateway parses telemetry and closes the connection cleanly.
+- **ONLINE criteria:** WebSocket handshake completes successfully.
+
+### 2.3. TCP Contract
+
+- **Connection:** Raw socket connection to the node's host IP and port.
+- **ONLINE criteria:** Connection succeeds within the configured socket timeout.
+
+### 2.4. UDP Contract
+
+- **Connection:** Socketless Datagram transmission.
+- **Flow:** Gateway dispatches a 1-byte datagram packet to the node host IP and port.
+- **ONLINE criteria:** Packet is sent successfully without throwing local network or DNS exceptions.
+
+### 2.5. GRPC Contract
+
+- **Connection:** TCP socket connectivity check to verify gRPC server port availability.
+- **ONLINE criteria:** TCP handshake succeeds on the gRPC port.
+
+### 2.6. NONE Contract
+
+- **Behavior:** The gateway skips scheduling any health checks.
+- **ONLINE criteria:** Stays registered in the status assigned during registration.
+
+---
+
+## 3. Telemetry Schema (For HTTP and WebSocket)
+
+When a node uses `HTTP` or `WEBSOCKET` and is `ONLINE`, the Gateway parses the response body or text frame as JSON. All fields are optional:
+
+```json
+{
+  "status": "UP",
+  "language": "Go",
+  "cpu": 2.1,
+  "ram": 18.6,
+  "message": "Dynamic telemetry update"
+}
+```
+If `language` is omitted, the DevOps Panel falls back to displaying the transport protocol (`HTTP` or `WebSocket`).

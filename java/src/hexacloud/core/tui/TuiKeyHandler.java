@@ -174,10 +174,8 @@ public class TuiKeyHandler {
         ServerNode node = state.nodes.get(state.selectedNodeIndex);
 
         if (key == 'p' || key == 'P') {
-            ServerNode updated = new ServerNode(
-                node.host(), node.port(), node.status(), node.isExternal(),
-                !node.pingEnabled(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
-            );
+            hexacloud.core.model.PingProtocol nextProto = nextProtocol(node.pingProtocol());
+            ServerNode updated = node.withPingProtocol(nextProto);
             cluster.updateServerNode(updated);
             tui.fetchNodeStatus();
         } else if (key == 'e' || key == 'E') {
@@ -187,6 +185,12 @@ public class TuiKeyHandler {
         } else if (key == 'v' || key == 'V') {
             tui.prompts().changeNodePingHeaderValuePrompt(cluster, node);
         }
+    }
+
+    private hexacloud.core.model.PingProtocol nextProtocol(hexacloud.core.model.PingProtocol current) {
+        hexacloud.core.model.PingProtocol[] values = hexacloud.core.model.PingProtocol.values();
+        int nextOrdinal = (current.ordinal() + 1) % values.length;
+        return values[nextOrdinal];
     }
 
     private void deregisterSelectedNode() {

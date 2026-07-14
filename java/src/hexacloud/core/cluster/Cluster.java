@@ -207,7 +207,9 @@ public class Cluster {
             return null;
         }
 
-        if(!host.startsWith("http://") && !host.startsWith("https://")) {
+        if(!host.startsWith("http://") && !host.startsWith("https://") 
+           && !host.startsWith("ws://") && !host.startsWith("wss://") 
+           && !host.startsWith("tcp://")) {
             host = "http://" + host;
         }
         if(host.endsWith("/")) {

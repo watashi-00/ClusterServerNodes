@@ -13,11 +13,14 @@ TOKEN = "watashi_secretKey"
 
 class MockServiceHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
-        # Respond to gateway ping check requests
+        import random
+        cpu = round(random.uniform(1.0, 9.0), 1)
+        ram = round(random.uniform(25.0, 45.0), 1)
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(b'{"status": "UP", "language": "Python", "message": "Hello from Python mock service"}')
+        response_json = f'{{"status": "UP", "language": "Python", "cpu": {cpu}, "ram": {ram}, "message": "Hello from Python mock service"}}'
+        self.wfile.write(response_json.encode('utf-8'))
 
     def log_message(self, format, *args):
         # Prevent default logging to keep terminal output clean

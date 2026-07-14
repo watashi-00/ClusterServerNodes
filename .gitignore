@@ -4,3 +4,11 @@
 *.dylib
 *.class
 /tmp/
+
+# Ignore Maven build output directories
+target/
+**/target/
+
+# Ignore developer configuration files and state properties
+**/hexacloud.properties
+**/*-state.properties

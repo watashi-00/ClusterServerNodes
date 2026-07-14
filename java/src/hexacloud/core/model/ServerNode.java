@@ -2,38 +2,51 @@ package hexacloud.core.model;
 
 /**
  * Represents a registered service node inside a cluster.
- * Contains connection coordinates, status metadata, and ping health-check configurations.
+ * Contains connection coordinates, status metadata, and health-check configurations.
  */
 public class ServerNode {
     private final String host;
     private final int port;
     private final NodeStatus status;
     private final boolean isExternal;
-    private final boolean pingEnabled;
+    private final PingProtocol pingProtocol;
     private final String pingPath;
     private final String pingHeaderName;
     private final String pingHeaderValue;
+
+    private int latencyMs = 0;
+    private double cpuUsage = 0.0;
+    private double ramUsage = 0.0;
+    private String runtime = "";
 
     /**
      * Complete constructor to specify custom health check parameters.
      */
     public ServerNode(String host, int port, NodeStatus status, boolean isExternal,
-                      boolean pingEnabled, String pingPath, String pingHeaderName, String pingHeaderValue) {
+                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue) {
         this.host = host;
         this.port = port;
         this.status = status;
         this.isExternal = isExternal;
-        this.pingEnabled = pingEnabled;
+        this.pingProtocol = pingProtocol != null ? pingProtocol : PingProtocol.HTTP;
         this.pingPath = pingPath != null ? pingPath : "/";
         this.pingHeaderName = pingHeaderName;
         this.pingHeaderValue = pingHeaderValue;
     }
 
     /**
+     * Compatibility constructor using boolean pingEnabled.
+     */
+    public ServerNode(String host, int port, NodeStatus status, boolean isExternal,
+                      boolean pingEnabled, String pingPath, String pingHeaderName, String pingHeaderValue) {
+        this(host, port, status, isExternal, pingEnabled ? PingProtocol.HTTP : PingProtocol.NONE, pingPath, pingHeaderName, pingHeaderValue);
+    }
+
+    /**
      * Constructor for default health-check settings.
      */
     public ServerNode(String host, int port, NodeStatus status, boolean isExternal) {
-        this(host, port, status, isExternal, true, "/", null, null);
+        this(host, port, status, isExternal, PingProtocol.HTTP, "/", null, null);
     }
 
     /**
@@ -65,10 +78,17 @@ public class ServerNode {
     }
 
     /**
+     * Returns the selected health-check ping protocol.
+     */
+    public PingProtocol pingProtocol() {
+        return pingProtocol != null ? pingProtocol : PingProtocol.HTTP;
+    }
+
+    /**
      * Returns true if health-check ping requests are enabled for this node.
      */
     public boolean pingEnabled() {
-        return pingEnabled;
+        return pingProtocol != PingProtocol.NONE;
     }
 
     /**
@@ -92,12 +112,62 @@ public class ServerNode {
         return pingHeaderValue;
     }
 
+    public int latencyMs() {
+        return latencyMs;
+    }
+
+    public void setLatencyMs(int latencyMs) {
+        this.latencyMs = latencyMs;
+    }
+
+    public double cpuUsage() {
+        return cpuUsage;
+    }
+
+    public void setCpuUsage(double cpuUsage) {
+        this.cpuUsage = cpuUsage;
+    }
+
+    public double ramUsage() {
+        return ramUsage;
+    }
+
+    public void setRamUsage(double ramUsage) {
+        this.ramUsage = ramUsage;
+    }
+
+    public String runtime() {
+        return runtime != null ? runtime : "";
+    }
+
+    public void setRuntime(String runtime) {
+        this.runtime = runtime;
+    }
+
     /**
      * Create a new immutable ServerNode instance with an updated status.
      */
     public ServerNode withStatus(NodeStatus newStatus) {
-        return new ServerNode(this.host, this.port, newStatus, this.isExternal,
-                this.pingEnabled, this.pingPath, this.pingHeaderName, this.pingHeaderValue);
+        ServerNode node = new ServerNode(this.host, this.port, newStatus, this.isExternal,
+                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue);
+        node.setLatencyMs(this.latencyMs);
+        node.setCpuUsage(this.cpuUsage);
+        node.setRamUsage(this.ramUsage);
+        node.setRuntime(this.runtime);
+        return node;
+    }
+
+    /**
+     * Create a new immutable ServerNode instance with an updated ping protocol.
+     */
+    public ServerNode withPingProtocol(PingProtocol newProtocol) {
+        ServerNode node = new ServerNode(this.host, this.port, this.status, this.isExternal,
+                newProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue);
+        node.setLatencyMs(this.latencyMs);
+        node.setCpuUsage(this.cpuUsage);
+        node.setRamUsage(this.ramUsage);
+        node.setRuntime(this.runtime);
+        return node;
     }
 
     /**
@@ -114,7 +184,7 @@ public class ServerNode {
                 ", port=" + port +
                 ", status=" + status +
                 ", isExternal=" + isExternal +
-                ", pingEnabled=" + pingEnabled +
+                ", pingProtocol=" + pingProtocol +
                 ", pingPath='" + pingPath + '\'' +
                 '}';
     }

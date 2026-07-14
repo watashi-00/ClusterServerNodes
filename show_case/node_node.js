@@ -7,8 +7,16 @@ const TOKEN = 'watashi_secretKey';
 
 // 1. Create HTTP server to respond to gateway pings
 const server = http.createServer((req, res) => {
+    const cpu = (1.5 + Math.random() * 8.5).toFixed(1);
+    const ram = (35.2 + Math.random() * 15.6).toFixed(1);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'UP', language: 'NodeJS', message: 'Hello from Node mock service' }));
+    res.end(JSON.stringify({ 
+        status: 'UP', 
+        language: 'NodeJS', 
+        cpu: parseFloat(cpu), 
+        ram: parseFloat(ram),
+        message: 'Hello from Node mock service' 
+    }));
 });
 
 // 2. Function to register to Telnet Gateway
