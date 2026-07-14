@@ -11,19 +11,20 @@ import java.util.concurrent.CompletionStage;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.model.PingProtocol;
+import hexacloud.core.ports.PingClientPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.ThreadManager;
 import hexacloud.core.config.ClusterConfig;
 
 /**
- * Custom health-check client that performs asynchronous ping requests 
- * and extracts telemetry data for HTTP, WebSocket, TCP, UDP, and gRPC nodes.
+ * Infrastructure adapter implementing PingClientPort to execute health-check pings
+ * over multiple protocols (HTTP, WebSocket, TCP, UDP, gRPC).
  */
-class HttpCli {
+public class MultiProtocolPingAdapter implements PingClientPort {
 
     private final HttpClient client;
 
-    public HttpCli() {
+    public MultiProtocolPingAdapter() {
         this.client = HttpClient.newBuilder()
             .connectTimeout(ClusterConfig.HTTP_CONNECT_TIMEOUT)
             .version(ClusterConfig.HTTP_VERSION)
@@ -31,7 +32,8 @@ class HttpCli {
             .build();
     }
 
-    CompletableFuture<NodeStatus> fetchPingAsync(String clusterName, ServerNode node) {
+    @Override
+    public CompletableFuture<NodeStatus> fetchPingAsync(String clusterName, ServerNode node) {
         String uriStr = node.getFullHost();
 
         if (node.pingProtocol() == PingProtocol.NONE) {

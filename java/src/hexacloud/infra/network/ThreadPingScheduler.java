@@ -9,23 +9,28 @@ import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.cluster.event.NodeStatusChanged;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.ports.PingClientPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.ThreadManager;
 import hexacloud.core.config.ClusterConfig;
 
+/**
+ * Thread ping scheduler that schedules health check tasks at fixed rates 
+ * using decoupled PingClientPort adapters.
+ */
 public class ThreadPingScheduler {
 
     private ScheduledExecutorService scheduler;
     private int interval = ClusterConfig.DEFAULT_PING_INTERVAL_SECONDS;
 
     private final String clusterName;
-    private final HttpCli httpcli;
+    private final PingClientPort pingClient;
     private final ClusterEventBusManager eventManager;
 
     public ThreadPingScheduler(String clusterName, ClusterEventBusManager eventManager) {
         this.clusterName = clusterName;
         this.eventManager = eventManager;
-        this.httpcli = new HttpCli();
+        this.pingClient = new MultiProtocolPingAdapter();
     }
     
     public void startPingScheduler(Supplier<List<ServerNode>> clusterSupplier) {
@@ -68,7 +73,7 @@ public class ThreadPingScheduler {
         if (!node.pingEnabled()) {
             return;
         }
-        CompletableFuture<NodeStatus> response = httpcli.fetchPingAsync(clusterName, node);
+        CompletableFuture<NodeStatus> response = pingClient.fetchPingAsync(clusterName, node);
 
         response.thenAccept(status -> {
             if(node.status() != status) {
