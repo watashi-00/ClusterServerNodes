@@ -1,6 +1,5 @@
 package hexacloud.core.tui;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import hexacloud.core.cluster.Cluster;
