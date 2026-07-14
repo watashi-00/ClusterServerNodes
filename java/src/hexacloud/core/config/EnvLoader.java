@@ -15,42 +15,58 @@ public class EnvLoader {
     private static final Map<String, String> configCache = new ConcurrentHashMap<>();
 
     static {
-        try (InputStream input = EnvLoader.class.getClassLoader().getResourceAsStream("hexacloud.properties")) {
-            if(input != null) {
-                properties.load(input);
-                DebugUtils.info("EnvLoader: Loaded configurations from classpath resource 'hexacloud.properties'");
-            }
-        } catch(IOException e) {
-            // Ignore classpath loading error and try local files
-            DebugUtils.log("EnvLoader: Failed to load from classpath. " + e.getMessage());
-        }
+        boolean loaded = false;
+        String propFileName = "hexacloud.properties";
+        String customPath = System.getProperty("hexacloud.config.file");
 
-        // 2. Try loading from resources/ folder, java/resources/ or CWD
-        if(properties.isEmpty()) {
+        if (customPath == null)
+            customPath = System.getenv("HEXACLOUD_CONFIG_FILE");
+        // 1. Try loading from custom path
+        if(customPath != null)
+            loaded = loadEnvPath(customPath);
+        
+        // 2. Try loading from classpath
+        if(!loaded)
+            loaded = loadEnvPath(propFileName, true);
+
+        // 3. Try loading from resources/ folder, java/resources/ or CWD
+        if(!loaded) {
             String[] possiblePaths = {
-                "resources/hexacloud.properties",
-                "java/resources/hexacloud.properties",
-                "hexacloud.properties"
+                "resources/" + propFileName,
+                "java/resources/" + propFileName,
+                propFileName
             };
 
-            boolean loaded = false;
-
             for(String path : possiblePaths) {
-                try(InputStream input = new FileInputStream(path)) {
-                    properties.load(input);
-                    DebugUtils.info("EnvLoader: Loaded configurations from local file '" + path + "'");
+                if(loadEnvPath(path)) {
                     loaded = true;
                     break;
-                } catch(IOException ex) {
-                    DebugUtils.log("EnvLoader: File not found or unreadable at '" + path + "'");
                 }
             }
-
-            if (!loaded) {
-                DebugUtils.error("EnvLoader: No 'hexacloud.properties' found. Using system environment variables and defaults.");
-            }
+        }
+        if (!loaded) {
+            DebugUtils.error("EnvLoader: No '"+propFileName+"' found. Using system environment variables and defaults.");
         }
     }
+
+    private static boolean loadEnvPath(String path) {
+        return loadEnvPath(path, false);
+    }
+
+    private static boolean loadEnvPath(String path, Boolean stream) {
+        if(path == null || path.trim().isEmpty()) return false;
+
+        try(InputStream input = stream ? EnvLoader.class.getClassLoader().getResourceAsStream(path) : new FileInputStream(path)) {
+            if(input == null) throw new IOException("Resource not found: " + path);
+            properties.load(input);
+            DebugUtils.info("EnvLoader: Loaded configurations from file '" + path + "'");
+            return true;
+        } catch( IOException ex ) {
+            DebugUtils.error("Envloader: No " + path + "found.", ex);
+            return false;
+        }
+    }
+
     public static String get(String clusterName, String propertyName, String defaultValue) {
         
         String cacheKey = clusterName + ":" + propertyName;
@@ -61,33 +77,34 @@ public class EnvLoader {
     }
 
     private static String resolveProperty(String clusterName, String propertyName, String defaultValue) {
-        String key = "cluster." + clusterName + "." + propertyName;
-        String value = properties.getProperty(key);
-        if(value != null) return value.trim();
-
+        
         String envKey = ("cluster_" + clusterName + "_" + propertyName).toUpperCase().replace("-", "_");
-        value = System.getenv(envKey);
+        String value = System.getenv(envKey);
         if(value != null) return value.trim();
 
-        String defaultKey = "cluster.default." + propertyName;
-        value = properties.getProperty(defaultKey);
+        String key = "cluster." + clusterName + "." + propertyName;
+        value = properties.getProperty(key);
         if(value != null) return value.trim();
 
         String defaultEnvKey = ("cluster_default_" + propertyName).toUpperCase();
         value = System.getenv(defaultEnvKey);
         if(value != null) return value.trim();
 
+        String defaultKey = "cluster.default." + propertyName;
+        value = properties.getProperty(defaultKey);
+        if(value != null) return value.trim();
+
         return defaultValue;
     }
 
     public static boolean getBoolean(String clusterName, String propertyName, boolean defaultValue) {
-        String value = get(clusterName, propertyName, null);
+        String value = get(clusterName, propertyName, String.valueOf(defaultValue));
         if(value == null) return defaultValue;
         return Boolean.parseBoolean(value);
     }
 
     public static int getInt(String clusterName, String propertyName, int defaultValue) {
-        String value = get(clusterName, propertyName, null);
+        String value = get(clusterName, propertyName, String.valueOf(defaultValue));
         if(value == null) return defaultValue;
         try {
             return Integer.parseInt(value);
