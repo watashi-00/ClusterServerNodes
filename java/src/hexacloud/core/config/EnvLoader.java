@@ -19,25 +19,32 @@ public class EnvLoader {
             }
         } catch(IOException e) {
             // Ignore classpath loading error and try local files
+            DebugUtils.log("EnvLoader: Failed to load from classpath. " + e.getMessage());
         }
 
         // 2. Try loading from resources/ folder, java/resources/ or CWD
         if(properties.isEmpty()) {
-            try (InputStream input = new FileInputStream("resources/hexacloud.properties")) {
-                properties.load(input);
-                DebugUtils.info("EnvLoader: Loaded configurations from local file 'resources/hexacloud.properties'");
-            } catch(IOException e) {
-                try (InputStream input = new FileInputStream("java/resources/hexacloud.properties")) {
+            String[] possiblePaths = {
+                "resources/hexacloud.properties",
+                "java/resources/hexacloud.properties",
+                "hexacloud.properties"
+            };
+
+            boolean loaded = false;
+
+            for(String path : possiblePaths) {
+                try(InputStream input = new FileInputStream(path)) {
                     properties.load(input);
-                    DebugUtils.info("EnvLoader: Loaded configurations from local file 'java/resources/hexacloud.properties'");
+                    DebugUtils.info("EnvLoader: Loaded configurations from local file '" + path + "'");
+                    loaded = true;
+                    break;
                 } catch(IOException ex) {
-                    try (InputStream input = new FileInputStream("hexacloud.properties")) {
-                        properties.load(input);
-                        DebugUtils.info("EnvLoader: Loaded configurations from local file 'hexacloud.properties'");
-                    } catch(IOException ex2) {
-                        DebugUtils.info("EnvLoader: No 'hexacloud.properties' found in resources/ or CWD. Using system environment variables and defaults.");
-                    }
+                    DebugUtils.log("EnvLoader: File not found or unreadable at '" + path + "'");
                 }
+            }
+
+            if (!loaded) {
+                DebugUtils.error("EnvLoader: No 'hexacloud.properties' found. Using system environment variables and defaults.");
             }
         }
     }
