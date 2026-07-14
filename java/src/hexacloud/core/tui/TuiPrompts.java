@@ -10,27 +10,41 @@ import static hexacloud.core.tui.TuiConstants.*;
 
 /**
  * Handles all interactive CLI prompts and input reading for the Terminal UI.
+ * Replaces nested loops and Arrow anti-patterns with a flat, exception-based cancellation flow.
  */
 public class TuiPrompts {
 
     private final TerminalUI tui;
 
+    private static class CancellationException extends Exception {}
+
     public TuiPrompts(TerminalUI tui) {
         this.tui = tui;
+    }
+
+    private void askPressEnterToContinue() {
+        System.out.print("\n" + WHITE_BOLD + "Press Enter to continue..." + RESET);
+        TerminalScanner.readLine();
+    }
+
+    private String readInput(String prompt) throws CancellationException {
+        System.out.print(prompt);
+        String input = TerminalScanner.readLine();
+        if (input != null && input.equalsIgnoreCase("/cancel")) {
+            throw new CancellationException();
+        }
+        return input;
     }
 
     public void createNewClusterPrompt() {
         TuiState state = tui.state();
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter unique name for new cluster (or /cancel to abort): " + RESET);
-        String name = TerminalScanner.readLine();
-        if (name.equalsIgnoreCase("/cancel") || name.isEmpty()) {
-            System.out.println(YELLOW + "Operation cancelled." + RESET);
-            try { Thread.sleep(800); } catch (Exception e) {}
-        } else {
-            if (ClusterRegistry.getInstance().getCluster(name) != null) {
+        try {
+            String name = readInput("\n" + CYAN + ">> Enter unique name for new cluster (or /cancel to abort): " + RESET);
+            if (name.isEmpty()) {
+                System.out.println(YELLOW + "Operation cancelled." + RESET);
+            } else if (ClusterRegistry.getInstance().getCluster(name) != null) {
                 System.out.println(RED + "ERROR: Cluster '" + name + "' already exists." + RESET);
-                try { Thread.sleep(1500); } catch (Exception e) {}
             } else {
                 ClusterRegistry.getInstance().createCluster(name);
                 System.out.println(GREEN + "SUCCESS: Created cluster '" + name + "'" + RESET);
@@ -43,9 +57,11 @@ public class TuiPrompts {
                         return;
                     }
                 }
-                try { Thread.sleep(800); } catch (Exception e) {}
             }
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
         }
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchClusterNames();
         state.selectedClusterIndex = 0;
@@ -56,7 +72,7 @@ public class TuiPrompts {
         if (state.selectedClusterName.isEmpty()) {
             NativeTerminal.resetTerminal();
             System.out.println(YELLOW + "Please select or create a cluster first." + RESET);
-            try { Thread.sleep(800); } catch (Exception e) {}
+            askPressEnterToContinue();
             NativeTerminal.initTerminal();
             return;
         }
@@ -64,45 +80,41 @@ public class TuiPrompts {
         GatewayPort currentGw = tui.activeGateways().get(state.selectedClusterName);
         NativeTerminal.resetTerminal();
         System.out.println("\n" + WHITE_BOLD + "=== Gateway Setup for Cluster: " + state.selectedClusterName + " ===" + RESET);
+        boolean didOperation = false;
         if (currentGw != null) {
             System.out.println("Status: " + GREEN + "ONLINE" + RESET);
-            System.out.print("Do you want to STOP the gateway? (y/n) [/cancel]: ");
-            String ans = TerminalScanner.readLine();
-            if (ans.equalsIgnoreCase("y")) {
-                currentGw.stop();
-                tui.activeGateways().remove(state.selectedClusterName);
-                System.out.println(GREEN + "SUCCESS: Gateway stopped." + RESET);
-                try { Thread.sleep(800); } catch (Exception e) {}
+            try {
+                String ans = readInput("Do you want to STOP the gateway? (y/n) [/cancel]: ");
+                if (ans.equalsIgnoreCase("y")) {
+                    currentGw.stop();
+                    tui.activeGateways().remove(state.selectedClusterName);
+                    System.out.println(GREEN + "SUCCESS: Gateway stopped." + RESET);
+                } else {
+                    System.out.println(YELLOW + "Operation cancelled." + RESET);
+                }
+                didOperation = true;
+            } catch (CancellationException e) {
+                System.out.println(YELLOW + "Operation cancelled." + RESET);
+                didOperation = true;
             }
         } else {
             System.out.println("Status: " + RED + "OFFLINE" + RESET);
-            System.out.print("Do you want to START the gateway? (y/n) [/cancel]: ");
-            String ans = TerminalScanner.readLine();
-            if (ans.equalsIgnoreCase("y")) {
-                try {
-                    System.out.print("Enter base port (default 3000) [/cancel]: ");
-                    String portStr = TerminalScanner.readLine();
-                    if (portStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+            try {
+                String ans = readInput("Do you want to START the gateway? (y/n) [/cancel]: ");
+                if (ans.equalsIgnoreCase("y")) {
+                    String portStr = readInput("Enter base port (default 3000) [/cancel]: ");
                     int port = portStr.isEmpty() ? 3000 : Integer.parseInt(portStr);
 
-                    System.out.print("Enter ping check interval in seconds (default 5) [/cancel]: ");
-                    String intStr = TerminalScanner.readLine();
-                    if (intStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    String intStr = readInput("Enter ping check interval in seconds (default 5) [/cancel]: ");
                     int pingInt = intStr.isEmpty() ? 5 : Integer.parseInt(intStr);
 
-                    System.out.print("Enable Telnet? (y/n, default y) [/cancel]: ");
-                    String telnetStr = TerminalScanner.readLine();
-                    if (telnetStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    String telnetStr = readInput("Enable Telnet? (y/n, default y) [/cancel]: ");
                     boolean telnet = !telnetStr.equalsIgnoreCase("n");
 
-                    System.out.print("Enable HTTP? (y/n, default y) [/cancel]: ");
-                    String httpStr = TerminalScanner.readLine();
-                    if (httpStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    String httpStr = readInput("Enable HTTP? (y/n, default y) [/cancel]: ");
                     boolean http = !httpStr.equalsIgnoreCase("n");
 
-                    System.out.print("Enable WS? (y/n, default y) [/cancel]: ");
-                    String wsStr = TerminalScanner.readLine();
-                    if (wsStr.equalsIgnoreCase("/cancel")) { NativeTerminal.initTerminal(); return; }
+                    String wsStr = readInput("Enable WS? (y/n, default y) [/cancel]: ");
                     boolean ws = !wsStr.equalsIgnoreCase("n");
 
                     GatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(state.selectedClusterName)
@@ -116,12 +128,20 @@ public class TuiPrompts {
 
                     tui.activeGateways().put(state.selectedClusterName, newGw);
                     System.out.println(GREEN + "SUCCESS: Gateway started successfully." + RESET);
-                    try { Thread.sleep(1000); } catch (Exception e) {}
-                } catch (Exception e) {
-                    System.out.println(RED + "ERROR: Failed to start gateway: " + e.getMessage() + RESET);
-                    try { Thread.sleep(1500); } catch (Exception ex) {}
+                } else {
+                    System.out.println(YELLOW + "Operation cancelled." + RESET);
                 }
+                didOperation = true;
+            } catch (CancellationException e) {
+                System.out.println(YELLOW + "Operation cancelled." + RESET);
+                didOperation = true;
+            } catch (Exception e) {
+                System.out.println(RED + "ERROR: Failed to start gateway: " + e.getMessage() + RESET);
+                didOperation = true;
             }
+        }
+        if (didOperation) {
+            askPressEnterToContinue();
         }
         NativeTerminal.initTerminal();
         tui.fetchNodeStatus();
@@ -131,23 +151,24 @@ public class TuiPrompts {
         TuiState state = tui.state();
         if (state.selectedClusterName.isEmpty()) return;
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter port to register new service node in " + state.selectedClusterName + " (or /cancel to abort): " + RESET);
-        String input = TerminalScanner.readLine();
-        if (input.equalsIgnoreCase("/cancel") || input.isEmpty()) {
-            System.out.println(YELLOW + "Operation cancelled." + RESET);
-        } else {
-            try {
+        try {
+            String input = readInput("\n" + CYAN + ">> Enter port to register new service node in " + state.selectedClusterName + " (or /cancel to abort): " + RESET);
+            if (input.isEmpty()) {
+                System.out.println(YELLOW + "Operation cancelled." + RESET);
+            } else {
                 int port = Integer.parseInt(input);
                 Cluster c = ClusterRegistry.getInstance().getCluster(state.selectedClusterName);
                 if (c != null) {
                     c.registerServer(port);
                     System.out.println(GREEN + "SUCCESS: Registered service node." + RESET);
                 }
-            } catch (NumberFormatException e) {
-                System.out.println(RED + "Invalid port format." + RESET);
             }
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
+        } catch (NumberFormatException e) {
+            System.out.println(RED + "Invalid port format." + RESET);
         }
-        try { Thread.sleep(800); } catch (Exception e) {}
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchNodeStatus();
     }
@@ -156,18 +177,17 @@ public class TuiPrompts {
         TuiState state = tui.state();
         if (state.selectedClusterName.isEmpty()) return;
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter Allowed IPs (comma-separated, or /cancel to abort): " + RESET);
-        String ips = TerminalScanner.readLine();
-        if (ips.equalsIgnoreCase("/cancel")) {
-            System.out.println(YELLOW + "Operation cancelled." + RESET);
-        } else {
+        try {
+            String ips = readInput("\n" + CYAN + ">> Enter Allowed IPs (comma-separated, or /cancel to abort): " + RESET);
             Cluster c = ClusterRegistry.getInstance().getCluster(state.selectedClusterName);
             if (c != null) {
                 c.setAllowedIps(ips);
                 System.out.println(GREEN + "SUCCESS: Allowed IPs updated." + RESET);
             }
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
         }
-        try { Thread.sleep(800); } catch (Exception e) {}
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchClusterConfig(state.selectedClusterName);
     }
@@ -176,23 +196,24 @@ public class TuiPrompts {
         TuiState state = tui.state();
         if (state.selectedClusterName.isEmpty()) return;
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter Timeout in ms (or /cancel to abort): " + RESET);
-        String input = TerminalScanner.readLine();
-        if (input.equalsIgnoreCase("/cancel") || input.isEmpty()) {
-            System.out.println(YELLOW + "Operation cancelled." + RESET);
-        } else {
-            try {
+        try {
+            String input = readInput("\n" + CYAN + ">> Enter Timeout in ms (or /cancel to abort): " + RESET);
+            if (input.isEmpty()) {
+                System.out.println(YELLOW + "Operation cancelled." + RESET);
+            } else {
                 int timeout = Integer.parseInt(input);
                 Cluster c = ClusterRegistry.getInstance().getCluster(state.selectedClusterName);
                 if (c != null) {
                     c.setTimeoutMs(timeout);
                     System.out.println(GREEN + "SUCCESS: Timeout updated." + RESET);
                 }
-            } catch (NumberFormatException e) {
-                System.out.println(RED + "Invalid timeout format." + RESET);
             }
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
+        } catch (NumberFormatException e) {
+            System.out.println(RED + "Invalid timeout format." + RESET);
         }
-        try { Thread.sleep(800); } catch (Exception e) {}
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchClusterConfig(state.selectedClusterName);
     }
@@ -201,12 +222,11 @@ public class TuiPrompts {
         TuiState state = tui.state();
         if (state.selectedClusterName.isEmpty()) return;
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter Rate Limit (format: <requests> <durationSeconds>, or /cancel to abort): " + RESET);
-        String line = TerminalScanner.readLine();
-        if (line.equalsIgnoreCase("/cancel") || line.isEmpty()) {
-            System.out.println(YELLOW + "Operation cancelled." + RESET);
-        } else {
-            try {
+        try {
+            String line = readInput("\n" + CYAN + ">> Enter Rate Limit (format: <requests> <durationSeconds>, or /cancel to abort): " + RESET);
+            if (line.isEmpty()) {
+                System.out.println(YELLOW + "Operation cancelled." + RESET);
+            } else {
                 String[] parts = line.split(" ");
                 if (parts.length >= 2) {
                     int requests = Integer.parseInt(parts[0]);
@@ -219,37 +239,39 @@ public class TuiPrompts {
                 } else {
                     System.out.println(RED + "Invalid format. Expected: <requests> <durationSeconds>" + RESET);
                 }
-            } catch (Exception e) {
-                System.out.println(RED + "ERROR: Update failed." + RESET);
             }
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
+        } catch (Exception e) {
+            System.out.println(RED + "ERROR: Update failed." + RESET);
         }
-        try { Thread.sleep(800); } catch (Exception e) {}
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchClusterConfig(state.selectedClusterName);
     }
 
     public void changeNodePingPathPrompt(Cluster cluster, ServerNode node) {
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter new ping endpoint route (or /cancel to abort): " + RESET);
-        String path = TerminalScanner.readLine();
-        if (!path.equalsIgnoreCase("/cancel")) {
+        try {
+            String path = readInput("\n" + CYAN + ">> Enter new ping endpoint route (or /cancel to abort): " + RESET);
             ServerNode updated = new ServerNode(
                 node.host(), node.port(), node.status(), node.isExternal(),
                 node.pingEnabled(), path, node.pingHeaderName(), node.pingHeaderValue()
             );
             cluster.updateServerNode(updated);
             System.out.println(GREEN + "SUCCESS: Ping endpoint path updated." + RESET);
-            try { Thread.sleep(800); } catch (Exception e) {}
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
         }
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchNodeStatus();
     }
 
     public void changeNodePingHeaderNamePrompt(Cluster cluster, ServerNode node) {
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter new ping auth header name (or /cancel to abort, empty for None): " + RESET);
-        String name = TerminalScanner.readLine();
-        if (!name.equalsIgnoreCase("/cancel")) {
+        try {
+            String name = readInput("\n" + CYAN + ">> Enter new ping auth header name (or /cancel to abort, empty for None): " + RESET);
             String val = name.isEmpty() ? null : node.pingHeaderValue();
             ServerNode updated = new ServerNode(
                 node.host(), node.port(), node.status(), node.isExternal(),
@@ -257,25 +279,28 @@ public class TuiPrompts {
             );
             cluster.updateServerNode(updated);
             System.out.println(GREEN + "SUCCESS: Ping header name updated." + RESET);
-            try { Thread.sleep(800); } catch (Exception e) {}
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
         }
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchNodeStatus();
     }
 
     public void changeNodePingHeaderValuePrompt(Cluster cluster, ServerNode node) {
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter new ping header token value (or /cancel to abort, empty for None): " + RESET);
-        String val = TerminalScanner.readLine();
-        if (!val.equalsIgnoreCase("/cancel")) {
+        try {
+            String val = readInput("\n" + CYAN + ">> Enter new ping header token value (or /cancel to abort, empty for None): " + RESET);
             ServerNode updated = new ServerNode(
                 node.host(), node.port(), node.status(), node.isExternal(),
                 node.pingEnabled(), node.pingPath(), node.pingHeaderName(), val.isEmpty() ? null : val
             );
             cluster.updateServerNode(updated);
             System.out.println(GREEN + "SUCCESS: Ping header value updated." + RESET);
-            try { Thread.sleep(800); } catch (Exception e) {}
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
         }
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchNodeStatus();
     }
@@ -284,18 +309,17 @@ public class TuiPrompts {
         TuiState state = tui.state();
         if (state.selectedClusterName.isEmpty()) return;
         NativeTerminal.resetTerminal();
-        System.out.print("\n" + CYAN + ">> Enter new cluster secret API token (or /cancel to abort): " + RESET);
-        String secret = TerminalScanner.readLine();
-        if (secret.equalsIgnoreCase("/cancel")) {
-            System.out.println(YELLOW + "Operation cancelled." + RESET);
-        } else {
+        try {
+            String secret = readInput("\n" + CYAN + ">> Enter new cluster secret API token (or /cancel to abort): " + RESET);
             Cluster c = ClusterRegistry.getInstance().getCluster(state.selectedClusterName);
             if (c != null) {
                 c.setSecret(secret);
                 System.out.println(GREEN + "SUCCESS: Cluster secret API token updated." + RESET);
             }
+        } catch (CancellationException e) {
+            System.out.println(YELLOW + "Operation cancelled." + RESET);
         }
-        try { Thread.sleep(800); } catch (Exception e) {}
+        askPressEnterToContinue();
         NativeTerminal.initTerminal();
         tui.fetchClusterConfig(state.selectedClusterName);
     }
