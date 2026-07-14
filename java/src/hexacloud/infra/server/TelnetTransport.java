@@ -1,4 +1,4 @@
-package hexacloud.core.server;
+package hexacloud.infra.server;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -8,10 +8,15 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 
+import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.ThreadManager;
 
+/**
+ * Concrete Telnet implementation of ServerTransport bound to a local port
+ * and using virtual threads for socket connection handling and command routing.
+ */
 public class TelnetTransport implements ServerTransport {
 
     private boolean clusterActive = true;

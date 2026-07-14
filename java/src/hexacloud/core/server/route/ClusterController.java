@@ -33,6 +33,78 @@ public class ClusterController implements RouteController {
         }
     }
 
+    @RouteMapping("TELEMETRY")
+    public void telemetry(String args, PrintWriter out) {
+        if (args == null || args.trim().isEmpty()) {
+            out.println("ERROR: Missing arguments. Expected format: <host> <port> [key=value]...");
+            return;
+        }
+
+        String[] parts = args.trim().split("\\s+");
+        if (parts.length < 2) {
+            out.println("ERROR: Host and port are required. Format: <host> <port> [key=value]...");
+            return;
+        }
+
+        String host = parts[0];
+        int port;
+        try {
+            port = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException e) {
+            out.println("ERROR: Invalid port format: " + parts[1]);
+            return;
+        }
+
+        ServerNode targetNode = null;
+        for (ServerNode node : cluster.getCluster()) {
+            String normalizedNodeHost = node.host().replace("http://", "").replace("https://", "").replace("ws://", "").replace("wss://", "").replace("tcp://", "").replace("udp://", "").replace("grpc://", "");
+            String normalizedTargetHost = host.replace("http://", "").replace("https://", "").replace("ws://", "").replace("wss://", "").replace("tcp://", "").replace("udp://", "").replace("grpc://", "");
+            
+            if (normalizedNodeHost.equals(normalizedTargetHost) && node.port() == port) {
+                targetNode = node;
+                break;
+            }
+        }
+
+        if (targetNode == null) {
+            out.println("ERROR: Node not registered: " + host + ":" + port);
+            return;
+        }
+
+        for (int i = 2; i < parts.length; i++) {
+            String kv = parts[i];
+            if (!kv.contains("=")) continue;
+            String[] kvParts = kv.split("=", 2);
+            String key = kvParts[0].toLowerCase();
+            String val = kvParts[1];
+
+            try {
+                if (key.equals("cpu")) {
+                    targetNode.setCpuUsage(Double.parseDouble(val));
+                } else if (key.equals("ram")) {
+                    targetNode.setRamUsage(Double.parseDouble(val));
+                } else if (key.equals("language") || key.equals("lang")) {
+                    targetNode.setRuntime(val);
+                } else if (key.equals("latency")) {
+                    targetNode.setLatencyMs(Integer.parseInt(val));
+                } else if (key.equals("status")) {
+                    hexacloud.core.model.NodeStatus newStatus = hexacloud.core.model.NodeStatus.valueOf(val.toUpperCase());
+                    if (targetNode.status() != newStatus) {
+                        cluster.dispatchEvent(new hexacloud.core.cluster.event.NodeStatusChanged(targetNode.getFullHost(), newStatus));
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore parameter format errors
+            }
+        }
+
+        if (targetNode.status() != hexacloud.core.model.NodeStatus.ONLINE) {
+            cluster.dispatchEvent(new hexacloud.core.cluster.event.NodeStatusChanged(targetNode.getFullHost(), hexacloud.core.model.NodeStatus.ONLINE));
+        }
+
+        out.println("SUCCESS: Telemetry updated for " + host + ":" + port);
+    }
+
     @RouteMapping("DEREGISTER")
     public void deregister(String args, PrintWriter out) {
         if (args == null || args.trim().isEmpty()) {

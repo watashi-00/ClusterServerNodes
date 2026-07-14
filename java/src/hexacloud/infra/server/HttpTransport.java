@@ -1,4 +1,4 @@
-package hexacloud.core.server;
+package hexacloud.infra.server;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -9,10 +9,15 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 
+import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.ThreadManager;
 
+/**
+ * Concrete HTTP implementation of ServerTransport bound to a local port
+ * and using virtual threads for routing and rate-limiting incoming traffic.
+ */
 public class HttpTransport implements ServerTransport {
 
     private HttpServer server;

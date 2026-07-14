@@ -1,8 +1,12 @@
-package hexacloud.core.server;
+package hexacloud.infra.server;
 
+import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.DebugUtils;
 
+/**
+ * Concrete WsTransport implementation of ServerTransport simulating WebSocket protocol simulation.
+ */
 public class WsTransport implements ServerTransport {
     private boolean running = false;
 

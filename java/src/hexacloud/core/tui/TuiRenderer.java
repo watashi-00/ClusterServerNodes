@@ -62,9 +62,18 @@ public class TuiRenderer {
 
     private void drawHeader(String viewTitle) {
         String boxColor = CYAN;
-        NativeTerminal.printAt(1, 1, boxColor + "╔══════════════════════════════════════════════════════════════════════════════╗" + RESET);
+        StringBuilder borderTop = new StringBuilder("╔");
+        StringBuilder borderBottom = new StringBuilder("╚");
+        for (int i = 0; i < 108; i++) {
+            borderTop.append("═");
+            borderBottom.append("═");
+        }
+        borderTop.append("╗");
+        borderBottom.append("╝");
         
-        int width = 78;
+        NativeTerminal.printAt(1, 1, boxColor + borderTop.toString() + RESET);
+        
+        int width = 108;
         int padding = Math.max(0, (width - viewTitle.length()) / 2);
         StringBuilder sb = new StringBuilder();
         sb.append("║");
@@ -74,7 +83,7 @@ public class TuiRenderer {
         sb.append("║");
         
         NativeTerminal.printAt(1, 2, boxColor + sb.toString() + RESET);
-        NativeTerminal.printAt(1, 3, boxColor + "╚══════════════════════════════════════════════════════════════════════════════╝" + RESET);
+        NativeTerminal.printAt(1, 3, boxColor + borderBottom.toString() + RESET);
     }
 
     private void renderDashboardView() {
@@ -83,6 +92,7 @@ public class TuiRenderer {
         drawBox(2, 5, 24, 13, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
         drawBox(26, 5, 79, 13, "CLUSTER CONFIG & SERVICES", state.activePanel == PANEL_SERVICES);
         drawBox(2, 14, 79, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
+        drawBox(81, 5, 110, 22, "GATEWAYS & SYSTEM", false);
 
         int y = 6;
         if (state.clusterNames.isEmpty()) {
@@ -201,6 +211,64 @@ public class TuiRenderer {
             }
         }
 
+        // Render GATEWAYS & SYSTEM Live Metrics
+        int sysY = 6;
+        NativeTerminal.printAt(83, sysY, WHITE_BOLD + "SYSTEM RESOURCES" + RESET);
+        sysY++;
+        long usedMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
+        long allocatedMem = Runtime.getRuntime().totalMemory() / (1024 * 1024);
+        long maxMem = Runtime.getRuntime().maxMemory() / (1024 * 1024);
+        
+        NativeTerminal.printAt(83, sysY, "RAM Used:   " + CYAN + usedMem + " MB" + RESET);
+        sysY++;
+        NativeTerminal.printAt(83, sysY, "RAM Alloc:  " + CYAN + allocatedMem + " MB" + RESET);
+        sysY++;
+        NativeTerminal.printAt(83, sysY, "RAM Max:    " + CYAN + maxMem + " MB" + RESET);
+        sysY++;
+
+        double cpu = -1;
+        try {
+            java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
+                cpu = sunBean.getProcessCpuLoad() * 100;
+            }
+        } catch (Throwable t) {}
+        String cpuStr = cpu >= 0 ? String.format("%.1f %%", cpu) : "N/A";
+        NativeTerminal.printAt(83, sysY, "CPU Load:   " + YELLOW + cpuStr + RESET);
+        sysY++;
+
+        int threads = java.lang.management.ManagementFactory.getThreadMXBean().getThreadCount();
+        NativeTerminal.printAt(83, sysY, "OS Threads: " + threads);
+        sysY++;
+
+        NativeTerminal.printAt(81, sysY, "├────────────────────────────┤");
+        sysY++;
+
+        NativeTerminal.printAt(83, sysY, WHITE_BOLD + "ACTIVE GATEWAYS (" + tui.activeGateways().size() + ")" + RESET);
+        sysY++;
+
+        int gwY = sysY;
+        if (tui.activeGateways().isEmpty()) {
+            NativeTerminal.printAt(83, gwY, RED + "No active gateways." + RESET);
+            gwY++;
+        } else {
+            for (java.util.Map.Entry<String, GatewayPort> entry : tui.activeGateways().entrySet()) {
+                if (gwY >= 22) break;
+                String clName = entry.getKey();
+                int port = entry.getValue().getPort();
+                String line = clName;
+                if (line.length() > 14) {
+                    line = line.substring(0, 11) + "...";
+                }
+                String content = String.format("%-14s:%-5d %s", line, port, GREEN + "●" + RESET);
+                NativeTerminal.printAt(83, gwY, content);
+                gwY++;
+            }
+        }
+        for (int row = gwY; row < 22; row++) {
+            NativeTerminal.printAt(83, row, "                           ");
+        }
+
         StringBuilder controlsStr = new StringBuilder();
         controlsStr.append(" [Tab] Focus  [Enter] Console");
         if (tui.gatewayManagementEnabled() && !tui.readOnly()) controlsStr.append("  [G] Gateway");
@@ -213,8 +281,8 @@ public class TuiRenderer {
         TuiState state = tui.state();
 
         drawBox(2, 5, 29, 13, "POLICIES & LIMITS", false);
-        drawBox(31, 5, 79, 13, "SERVICES / TELEMETRY (" + state.nodes.size() + ")", true);
-        drawBox(2, 14, 79, 22, "CONSOLE LOGS FOR " + state.selectedClusterName, false);
+        drawBox(31, 5, 110, 13, "SERVICES / TELEMETRY (" + state.nodes.size() + ")", true);
+        drawBox(2, 14, 110, 22, "CONSOLE LOGS FOR " + state.selectedClusterName, false);
 
         NativeTerminal.printAt(4, 6, WHITE_BOLD + "Active:   " + RESET + state.selectedClusterName);
         NativeTerminal.printAt(4, 7, "Security: " + (state.targetRequireToken ? GREEN + "Token Required" + RESET : YELLOW + "Optional" + RESET));
@@ -264,10 +332,10 @@ public class TuiRenderer {
                 y++;
             }
             if (state.servicesViewportStart > 0) {
-                NativeTerminal.printAt(77, 7, WHITE_BOLD + "▲" + RESET);
+                NativeTerminal.printAt(108, 7, WHITE_BOLD + "▲" + RESET);
             }
             if (state.servicesViewportStart + 6 < state.nodes.size()) {
-                NativeTerminal.printAt(77, 12, WHITE_BOLD + "▼" + RESET);
+                NativeTerminal.printAt(108, 12, WHITE_BOLD + "▼" + RESET);
             }
         }
 
@@ -280,9 +348,9 @@ public class TuiRenderer {
             for (int i = startIdx; i < filteredLogs.size(); i++) {
                 DebugUtils.LogEntry entry = filteredLogs.get(i);
                 String logLine = entry.toString();
-                String clearedLine = logLine + "                                                                                ";
-                if (clearedLine.length() > 72) {
-                    clearedLine = clearedLine.substring(0, 72);
+                String clearedLine = logLine + "                                                                                                    ";
+                if (clearedLine.length() > 103) {
+                    clearedLine = clearedLine.substring(0, 103);
                 }
                 if (entry.getLevel().equals("ERROR")) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
@@ -311,7 +379,7 @@ public class TuiRenderer {
 
     private void renderFullLogsView() {
         TuiState state = tui.state();
-        drawBox(2, 5, 79, 22, "DETAILED SYSTEM LOGS", true);
+        drawBox(2, 5, 110, 22, "DETAILED SYSTEM LOGS", true);
 
         List<DebugUtils.LogEntry> logs = DebugUtils.getAllLogs();
         int y = 6;
@@ -328,9 +396,9 @@ public class TuiRenderer {
                 DebugUtils.LogEntry entry = logs.get(index);
                 String logLine = entry.toString();
                 String prefix = index == state.selectedLogIndex ? "➔ " : "  ";
-                String clearedLine = prefix + logLine + "                                                                                ";
-                if (clearedLine.length() > 72) {
-                    clearedLine = clearedLine.substring(0, 72);
+                String clearedLine = prefix + logLine + "                                                                                                    ";
+                if (clearedLine.length() > 103) {
+                    clearedLine = clearedLine.substring(0, 103);
                 }
 
                 if (entry.getLevel().equals("ERROR")) {
@@ -343,10 +411,10 @@ public class TuiRenderer {
                 y++;
             }
             if (state.logViewportStart > 0) {
-                NativeTerminal.printAt(77, 6, WHITE_BOLD + "▲" + RESET);
+                NativeTerminal.printAt(108, 6, WHITE_BOLD + "▲" + RESET);
             }
             if (state.logViewportStart + 16 < logs.size()) {
-                NativeTerminal.printAt(77, 21, WHITE_BOLD + "▼" + RESET);
+                NativeTerminal.printAt(108, 21, WHITE_BOLD + "▼" + RESET);
             }
         }
 
@@ -362,7 +430,7 @@ public class TuiRenderer {
         ServerNode node = state.nodes.get(state.selectedNodeIndex);
 
         // Top half: configuration parameters
-        drawBox(2, 5, 79, 13, "NODE CONFIGURATION PANEL - " + node.getFullHost(), true);
+        drawBox(2, 5, 110, 13, "NODE CONFIGURATION PANEL - " + node.getFullHost(), true);
 
         NativeTerminal.printAt(4, 6, WHITE_BOLD + "Host:   " + RESET + node.host());
         NativeTerminal.printAt(4, 7, WHITE_BOLD + "Port:   " + RESET + node.port());
@@ -399,9 +467,9 @@ public class TuiRenderer {
 
         // Sep & Right half: Live Telemetry
         for (int row = 6; row <= 12; row++) {
-            NativeTerminal.printAt(40, row, "│");
+            NativeTerminal.printAt(55, row, "│");
         }
-        NativeTerminal.printAt(42, 6, WHITE_BOLD + "Live Telemetry Metrics:" + RESET);
+        NativeTerminal.printAt(57, 6, WHITE_BOLD + "Live Telemetry Metrics:" + RESET);
         String defaultLang = "HTTP";
         if (node.host().startsWith("ws://") || node.host().startsWith("wss://")) {
             defaultLang = "WebSocket";
@@ -409,19 +477,19 @@ public class TuiRenderer {
             defaultLang = "TCP";
         }
         String runtimeDisplay = node.runtime().isEmpty() ? defaultLang : node.runtime();
-        NativeTerminal.printAt(42, 7, "Runtime/Lang: " + CYAN + runtimeDisplay + RESET);
+        NativeTerminal.printAt(57, 7, "Runtime/Lang: " + CYAN + runtimeDisplay + RESET);
         
         String latencyStr = node.status().name().equals("ONLINE") ? node.latencyMs() + " ms" : "-";
-        NativeTerminal.printAt(42, 8, "Latency(RTT): " + GREEN + latencyStr + RESET);
+        NativeTerminal.printAt(57, 8, "Latency(RTT): " + GREEN + latencyStr + RESET);
         
         String cpuStr = node.status().name().equals("ONLINE") ? String.format("%.1f %%", node.cpuUsage()) : "-";
-        NativeTerminal.printAt(42, 9, "CPU Load:     " + YELLOW + cpuStr + RESET);
+        NativeTerminal.printAt(57, 9, "CPU Load:     " + YELLOW + cpuStr + RESET);
         
         String ramStr = node.status().name().equals("ONLINE") ? String.format("%.1f MB", node.ramUsage()) : "-";
-        NativeTerminal.printAt(42, 10, "RAM Memory:   " + CYAN + ramStr + RESET);
+        NativeTerminal.printAt(57, 10, "RAM Memory:   " + CYAN + ramStr + RESET);
 
         // Bottom half: console logs for this node/service
-        drawBox(2, 14, 79, 22, "CONSOLE LOGS FOR SERVICE " + node.getFullHost(), false);
+        drawBox(2, 14, 110, 22, "CONSOLE LOGS FOR SERVICE " + node.getFullHost(), false);
 
         int y = 15;
         List<DebugUtils.LogEntry> serviceLogs = DebugUtils.getServiceLogs(state.selectedClusterName, node.getFullHost());
@@ -432,9 +500,9 @@ public class TuiRenderer {
             for (int i = startIdx; i < serviceLogs.size(); i++) {
                 DebugUtils.LogEntry entry = serviceLogs.get(i);
                 String logLine = entry.toString();
-                String clearedLine = logLine + "                                                                                ";
-                if (clearedLine.length() > 72) {
-                    clearedLine = clearedLine.substring(0, 72);
+                String clearedLine = logLine + "                                                                                                    ";
+                if (clearedLine.length() > 103) {
+                    clearedLine = clearedLine.substring(0, 103);
                 }
                 if (entry.getLevel().equals("ERROR")) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);

@@ -185,6 +185,9 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             long lastFetch = 0;
             boolean needRedraw = true;
 
+            // Load persisted state configuration files from disk
+            hexacloud.core.config.ClusterStatePersistence.loadState();
+
             // Fetch initial configuration & clusters list
             fetchClusterNames();
             fetchGlobalConfig();

@@ -9,6 +9,9 @@ import hexacloud.core.contracts.ServerOperations;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.infra.server.HttpTransport;
+import hexacloud.infra.server.TelnetTransport;
+import hexacloud.infra.server.WsTransport;
 
 public class ServerManager implements ServerOperations {
 

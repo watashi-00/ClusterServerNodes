@@ -312,4 +312,10 @@ public class Cluster {
         securityManager.setRequireToken(requireToken);
         ClusterStatePersistence.saveState();
     }
+
+    public void dispatchEvent(hexacloud.core.cluster.event.ClusterEvent event) {
+        if (this.eventManager != null) {
+            this.eventManager.dispatch(event);
+        }
+    }
 }
