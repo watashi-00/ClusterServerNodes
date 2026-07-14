@@ -37,9 +37,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
         String uriStr = node.getFullHost();
 
         if (node.pingProtocol() == PingProtocol.NONE) {
-            node.setLatencyMs(0);
-            node.setCpuUsage(0.0);
-            node.setRamUsage(0.0);
+            setNode(node);
             return CompletableFuture.completedFuture(node.status());
         }
         if (node.pingProtocol() == PingProtocol.WEBSOCKET) {
@@ -100,15 +98,12 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                     }
                     return NodeStatus.ONLINE;
                 } else {
-                    node.setCpuUsage(0.0);
-                    node.setRamUsage(0.0);
+                    setNode(node);
                     return NodeStatus.UNSTABLE;
                 }
             })
             .exceptionally(ex -> {
-                node.setLatencyMs(0);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
+                setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "Ping connection failed for host: " + node.getFullHost(), ex);
                 return NodeStatus.OFFLINE;
             });
@@ -158,9 +153,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
 
                 @Override
                 public void onError(WebSocket webSocket, Throwable error) {
-                    node.setLatencyMs(0);
-                    node.setCpuUsage(0.0);
-                    node.setRamUsage(0.0);
+                    setNode(node);
                     DebugUtils.error(clusterName, node.getFullHost(), "WS connection failed for host: " + node.getFullHost(), error);
                     future.complete(NodeStatus.OFFLINE);
                 }
@@ -168,9 +161,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
 
         return future.orTimeout(ClusterConfig.HTTP_REQUEST_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS)
             .exceptionally(ex -> {
-                node.setLatencyMs(0);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
+                setNode(node);
                 return NodeStatus.OFFLINE;
             });
     }
@@ -185,15 +176,10 @@ public class MultiProtocolPingAdapter implements PingClientPort {
             try (java.net.Socket socket = new java.net.Socket()) {
                 socket.connect(new java.net.InetSocketAddress(hostPart, node.port()), (int) ClusterConfig.HTTP_CONNECT_TIMEOUT.toMillis());
                 long latency = System.currentTimeMillis() - startTime;
-                node.setLatencyMs((int) latency);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
-                node.setRuntime("TCP");
+                setNode(node, (int) latency, "TCP");
                 return NodeStatus.ONLINE;
             } catch (Exception e) {
-                node.setLatencyMs(0);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
+                setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "TCP connection failed for host: " + node.getFullHost(), e);
                 return NodeStatus.OFFLINE;
             }
@@ -214,15 +200,10 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 java.net.DatagramPacket packet = new java.net.DatagramPacket(buf, buf.length, address, node.port());
                 socket.send(packet);
                 long latency = System.currentTimeMillis() - startTime;
-                node.setLatencyMs((int) latency);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
-                node.setRuntime("UDP");
+                setNode(node, (int) latency, "UDP");
                 return NodeStatus.ONLINE;
             } catch (Exception e) {
-                node.setLatencyMs(0);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
+                setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "UDP connection failed for host: " + node.getFullHost(), e);
                 return NodeStatus.OFFLINE;
             }
@@ -239,15 +220,10 @@ public class MultiProtocolPingAdapter implements PingClientPort {
             try (java.net.Socket socket = new java.net.Socket()) {
                 socket.connect(new java.net.InetSocketAddress(hostPart, node.port()), (int) ClusterConfig.HTTP_CONNECT_TIMEOUT.toMillis());
                 long latency = System.currentTimeMillis() - startTime;
-                node.setLatencyMs((int) latency);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
-                node.setRuntime("gRPC");
+                setNode(node, (int) latency,"gRPC");
                 return NodeStatus.ONLINE;
             } catch (Exception e) {
-                node.setLatencyMs(0);
-                node.setCpuUsage(0.0);
-                node.setRamUsage(0.0);
+                setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "gRPC connection failed for host: " + node.getFullHost(), e);
                 return NodeStatus.OFFLINE;
             }
@@ -263,5 +239,24 @@ public class MultiProtocolPingAdapter implements PingClientPort {
             if (matcher.group(2) != null) return matcher.group(2);
         }
         return null;
+    }
+
+    private void setNode(ServerNode node) {
+        setNode(node, 0, 0.0, 0.0);
+    }
+
+    private void setNode(ServerNode node, int latency, String runtime) {
+        setNode(node, latency, 0.0, 0.0, runtime);
+    }
+
+    private void setNode(ServerNode node, int latency, double cpuUsage, double ramUsage) {
+        node.setLatencyMs(latency);
+        node.setCpuUsage(cpuUsage);
+        node.setRamUsage(ramUsage);
+    }
+
+    private void setNode(ServerNode node, int latency, double cpuUsage, double ramUsage, String runtime) {
+        setNode(node, latency, cpuUsage, ramUsage);
+        node.setRuntime(runtime);
     }
 }
