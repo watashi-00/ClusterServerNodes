@@ -82,7 +82,7 @@ public class ClusterManager implements ClusterListener, ClusterOperations {
     @Override
     public void onClusterEvent(ClusterEvent event) {
         if(event instanceof NodeStatusChanged statusEvent) {
-            DebugUtils.info("Node status changed: " + statusEvent.host() + " -> " + statusEvent.status());
+            DebugUtils.info(this.cluster.getClusterName(), statusEvent.host(), "Node status changed: " + statusEvent.host() + " -> " + statusEvent.status());
             this.cluster.updateStatusServer(statusEvent.host(), statusEvent.status());
         }
     }

@@ -81,16 +81,16 @@ public class TuiRenderer {
     private void renderDashboardView() {
         TuiState state = tui.state();
 
-        drawBox(2, 5, 24, 17, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
-        drawBox(26, 5, 79, 17, "CLUSTER CONFIG & SERVICES", state.activePanel == PANEL_SERVICES);
-        drawBox(2, 18, 79, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
+        drawBox(2, 5, 24, 13, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
+        drawBox(26, 5, 79, 13, "CLUSTER CONFIG & SERVICES", state.activePanel == PANEL_SERVICES);
+        drawBox(2, 14, 79, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
 
         int y = 6;
         if (state.clusterNames.isEmpty()) {
             NativeTerminal.printAt(4, y, RED + "No clusters." + RESET);
         } else {
             for (int i = 0; i < state.clusterNames.size(); i++) {
-                if (y >= 17) break;
+                if (y >= 13) break;
                 String name = state.clusterNames.get(i);
                 
                 String displayName = name;
@@ -139,12 +139,12 @@ public class TuiRenderer {
         NativeTerminal.printAt(28, y, WHITE_BOLD + String.format("%-26s %-10s %-12s", "SERVICE HOST", "PORT", "STATUS") + RESET);
         y++;
 
-        tui.adjustServicesViewport(6);
+        tui.adjustServicesViewport(2);
 
         if (state.nodes.isEmpty()) {
             NativeTerminal.printAt(28, y, RED + "No services registered." + RESET);
         } else {
-            for (int i = 0; i < 6; i++) {
+            for (int i = 0; i < 2; i++) {
                 int index = state.servicesViewportStart + i;
                 if (index >= state.nodes.size()) break;
 
@@ -170,26 +170,27 @@ public class TuiRenderer {
             if (state.servicesViewportStart > 0) {
                 NativeTerminal.printAt(77, 10, WHITE_BOLD + "▲" + RESET);
             }
-            if (state.servicesViewportStart + 6 < state.nodes.size()) {
-                NativeTerminal.printAt(77, 16, WHITE_BOLD + "▼" + RESET);
+            if (state.servicesViewportStart + 2 < state.nodes.size()) {
+                NativeTerminal.printAt(77, 12, WHITE_BOLD + "▼" + RESET);
             }
         }
 
-        y = 19;
-        List<String> logs = DebugUtils.getRecentLogs();
-        if (logs.isEmpty()) {
+        y = 15;
+        List<DebugUtils.LogEntry> dashboardLogs = DebugUtils.getDashboardLogs();
+        if (dashboardLogs.isEmpty()) {
             NativeTerminal.printAt(4, y, "No logs recorded yet.");
         } else {
-            int startIdx = Math.max(0, logs.size() - 3);
-            for (int i = startIdx; i < logs.size(); i++) {
-                String logLine = logs.get(i);
+            int startIdx = Math.max(0, dashboardLogs.size() - 7);
+            for (int i = startIdx; i < dashboardLogs.size(); i++) {
+                DebugUtils.LogEntry entry = dashboardLogs.get(i);
+                String logLine = entry.toString();
                 String clearedLine = logLine + "                                                                                ";
                 if (clearedLine.length() > 72) {
                     clearedLine = clearedLine.substring(0, 72);
                 }
-                if (logLine.contains("[ERROR]")) {
+                if (entry.getLevel().equals("ERROR")) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
-                } else if (logLine.contains("[INFO]")) {
+                } else if (entry.getLevel().equals("INFO")) {
                     NativeTerminal.printAt(4, y, CYAN + clearedLine + RESET);
                 } else {
                     NativeTerminal.printAt(4, y, clearedLine);
@@ -266,20 +267,21 @@ public class TuiRenderer {
         }
 
         y = 14;
-        List<String> filteredLogs = getFilteredLogs(state.selectedClusterName);
+        List<DebugUtils.LogEntry> filteredLogs = DebugUtils.getClusterLogs(state.selectedClusterName);
         if (filteredLogs.isEmpty()) {
             NativeTerminal.printAt(4, y, "No logs recorded for this cluster.");
         } else {
             int startIdx = Math.max(0, filteredLogs.size() - 8);
             for (int i = startIdx; i < filteredLogs.size(); i++) {
-                String logLine = filteredLogs.get(i);
+                DebugUtils.LogEntry entry = filteredLogs.get(i);
+                String logLine = entry.toString();
                 String clearedLine = logLine + "                                                                                ";
                 if (clearedLine.length() > 72) {
                     clearedLine = clearedLine.substring(0, 72);
                 }
-                if (logLine.contains("[ERROR]")) {
+                if (entry.getLevel().equals("ERROR")) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
-                } else if (logLine.contains("[INFO]")) {
+                } else if (entry.getLevel().equals("INFO")) {
                     NativeTerminal.printAt(4, y, CYAN + clearedLine + RESET);
                 } else {
                     NativeTerminal.printAt(4, y, clearedLine);
@@ -306,7 +308,7 @@ public class TuiRenderer {
         TuiState state = tui.state();
         drawBox(2, 5, 79, 22, "DETAILED SYSTEM LOGS", true);
 
-        List<String> logs = DebugUtils.getRecentLogs();
+        List<DebugUtils.LogEntry> logs = DebugUtils.getAllLogs();
         int y = 6;
         
         tui.adjustLogsViewport(logs.size(), 16);
@@ -318,16 +320,17 @@ public class TuiRenderer {
                 int index = state.logViewportStart + i;
                 if (index >= logs.size()) break;
 
-                String logLine = logs.get(index);
+                DebugUtils.LogEntry entry = logs.get(index);
+                String logLine = entry.toString();
                 String prefix = index == state.selectedLogIndex ? "➔ " : "  ";
                 String clearedLine = prefix + logLine + "                                                                                ";
                 if (clearedLine.length() > 72) {
                     clearedLine = clearedLine.substring(0, 72);
                 }
 
-                if (logLine.contains("[ERROR]")) {
+                if (entry.getLevel().equals("ERROR")) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
-                } else if (logLine.contains("[INFO]")) {
+                } else if (entry.getLevel().equals("INFO")) {
                     NativeTerminal.printAt(4, y, CYAN + clearedLine + RESET);
                 } else {
                     NativeTerminal.printAt(4, y, clearedLine);
@@ -353,10 +356,11 @@ public class TuiRenderer {
 
         ServerNode node = state.nodes.get(state.selectedNodeIndex);
 
-        drawBox(10, 6, 70, 18, "NODE CONFIGURATION PANEL", true);
+        // Top half: configuration parameters
+        drawBox(2, 5, 79, 13, "NODE CONFIGURATION PANEL - " + node.getFullHost(), true);
 
-        NativeTerminal.printAt(13, 8, WHITE_BOLD + "Node Host Address: " + RESET + node.host());
-        NativeTerminal.printAt(13, 9, WHITE_BOLD + "Port Number:       " + RESET + node.port());
+        NativeTerminal.printAt(4, 6, WHITE_BOLD + "Node Host Address: " + RESET + node.host());
+        NativeTerminal.printAt(4, 7, "Port Number:       " + node.port());
         
         String coloredStatus = GREEN + "ONLINE" + RESET;
         if (node.status().name().equals("OFFLINE")) {
@@ -364,19 +368,44 @@ public class TuiRenderer {
         } else if (node.status().name().equals("UNSTABLE")) {
             coloredStatus = YELLOW + "UNSTABLE" + RESET;
         }
-        NativeTerminal.printAt(13, 10, WHITE_BOLD + "Current Status:    " + RESET + coloredStatus);
+        NativeTerminal.printAt(4, 8, "Current Status:    " + coloredStatus);
 
         boolean canEdit = !tui.readOnly() && tui.nodeConfigurationEnabled();
 
-        NativeTerminal.printAt(13, 12, (canEdit ? WHITE_BOLD + "[P] " : "") + "Ping Monitoring:  " + RESET + (node.pingEnabled() ? GREEN + "Enabled" + RESET : RED + "Disabled" + RESET));
-        NativeTerminal.printAt(13, 13, (canEdit ? WHITE_BOLD + "[E] " : "") + "Ping Path Route:  " + RESET + CYAN + node.pingPath() + RESET);
+        NativeTerminal.printAt(4, 9, (canEdit ? WHITE_BOLD + "[P] " : "") + "Ping Monitoring:  " + RESET + (node.pingEnabled() ? GREEN + "Enabled" + RESET : RED + "Disabled" + RESET));
+        NativeTerminal.printAt(4, 10, (canEdit ? WHITE_BOLD + "[E] " : "") + "Ping Path Route:  " + RESET + CYAN + node.pingPath() + RESET);
         
         String headerName = node.pingHeaderName() == null ? "None" : node.pingHeaderName();
         String headerVal = node.pingHeaderValue() == null ? "None" : node.pingHeaderValue();
-        NativeTerminal.printAt(13, 14, (canEdit ? WHITE_BOLD + "[H] " : "") + "Auth Header Name: " + RESET + CYAN + headerName + RESET);
-        NativeTerminal.printAt(13, 15, (canEdit ? WHITE_BOLD + "[V] " : "") + "Token Value:      " + RESET + CYAN + headerVal + RESET);
+        NativeTerminal.printAt(4, 11, (canEdit ? WHITE_BOLD + "[H] " : "") + "Auth Header Name: " + RESET + CYAN + headerName + RESET);
+        NativeTerminal.printAt(4, 12, (canEdit ? WHITE_BOLD + "[V] " : "") + "Token Value:      " + RESET + CYAN + headerVal + RESET);
 
-        NativeTerminal.printAt(13, 17, WHITE_BOLD + "Press [Backspace / Esc] to return to Cluster Console" + RESET);
+        // Bottom half: console logs for this node/service
+        drawBox(2, 14, 79, 22, "CONSOLE LOGS FOR SERVICE " + node.getFullHost(), false);
+
+        int y = 15;
+        List<DebugUtils.LogEntry> serviceLogs = DebugUtils.getServiceLogs(state.selectedClusterName, node.getFullHost());
+        if (serviceLogs.isEmpty()) {
+            NativeTerminal.printAt(4, y, "No logs recorded for this service.");
+        } else {
+            int startIdx = Math.max(0, serviceLogs.size() - 7);
+            for (int i = startIdx; i < serviceLogs.size(); i++) {
+                DebugUtils.LogEntry entry = serviceLogs.get(i);
+                String logLine = entry.toString();
+                String clearedLine = logLine + "                                                                                ";
+                if (clearedLine.length() > 72) {
+                    clearedLine = clearedLine.substring(0, 72);
+                }
+                if (entry.getLevel().equals("ERROR")) {
+                    NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
+                } else if (entry.getLevel().equals("INFO")) {
+                    NativeTerminal.printAt(4, y, CYAN + clearedLine + RESET);
+                } else {
+                    NativeTerminal.printAt(4, y, clearedLine);
+                }
+                y++;
+            }
+        }
 
         StringBuilder controlsStr = new StringBuilder();
         controlsStr.append(" [Backspace] Console");
@@ -384,33 +413,5 @@ public class TuiRenderer {
             controlsStr.append("  [P] Toggle Ping  [E] Change Path  [H] Header Name  [V] Value");
         }
         NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
-    }
-
-    private List<String> getFilteredLogs(String clusterName) {
-        List<String> allLogs = DebugUtils.getRecentLogs();
-        List<String> filtered = new ArrayList<>();
-        Cluster c = ClusterRegistry.getInstance().getCluster(clusterName);
-        List<Integer> ports = new ArrayList<>();
-        if (c != null) {
-            for (ServerNode node : c.getCluster()) {
-                ports.add(node.port());
-            }
-        }
-
-        for (String log : allLogs) {
-            boolean matches = log.contains("'" + clusterName + "'") || log.contains(" " + clusterName + " ");
-            if (!matches) {
-                for (int port : ports) {
-                    if (log.contains(":" + port)) {
-                        matches = true;
-                        break;
-                    }
-                }
-            }
-            if (matches) {
-                filtered.add(log);
-            }
-        }
-        return filtered;
     }
 }

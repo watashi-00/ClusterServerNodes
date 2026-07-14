@@ -18,10 +18,12 @@ public class ThreadPingScheduler {
     private ScheduledExecutorService scheduler;
     private int interval = ClusterConfig.DEFAULT_PING_INTERVAL_SECONDS;
 
+    private final String clusterName;
     private final HttpCli httpcli;
     private final ClusterEventBusManager eventManager;
 
-    public ThreadPingScheduler(ClusterEventBusManager eventManager) {
+    public ThreadPingScheduler(String clusterName, ClusterEventBusManager eventManager) {
+        this.clusterName = clusterName;
         this.eventManager = eventManager;
         this.httpcli = new HttpCli();
     }
@@ -38,7 +40,7 @@ public class ThreadPingScheduler {
                         }
                     }
                 } catch (Exception e) {
-                    DebugUtils.error("Unexpected error in ping scheduler execution", e);
+                    DebugUtils.error(clusterName, null, "Unexpected error in ping scheduler execution", e);
                 }
             }, 0, this.interval, java.util.concurrent.TimeUnit.SECONDS);
         }
@@ -66,11 +68,10 @@ public class ThreadPingScheduler {
         if (!node.pingEnabled()) {
             return;
         }
-        CompletableFuture<NodeStatus> response = httpcli.fetchPingAsync(node);
+        CompletableFuture<NodeStatus> response = httpcli.fetchPingAsync(clusterName, node);
 
         response.thenAccept(status -> {
             if(node.status() != status) {
-                // event dispatch NodeStatusChanged
                 eventManager.dispatch(new NodeStatusChanged(node.getFullHost(), status));
             }
         });

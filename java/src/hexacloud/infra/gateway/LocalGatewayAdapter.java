@@ -34,7 +34,7 @@ class LocalGatewayAdapter implements GatewayPort {
         }
         
         this.clusterManager = new ClusterManager(cluster, this.clusterEventManager);
-        this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
+        this.schedulerPing = new ThreadPingScheduler(clusterName, this.clusterEventManager);
     }
 
     public LocalGatewayAdapter(String clusterName, int port) {
@@ -50,7 +50,7 @@ class LocalGatewayAdapter implements GatewayPort {
         }
         
         this.clusterManager = new ClusterManager(cluster, this.clusterEventManager);
-        this.schedulerPing = new ThreadPingScheduler(this.clusterEventManager);
+        this.schedulerPing = new ThreadPingScheduler(clusterName, this.clusterEventManager);
         this.port = port;
         this.serverManager = new ServerManager(port, this.clusterManager.getCluster(), this.clusterEventManager);
     }

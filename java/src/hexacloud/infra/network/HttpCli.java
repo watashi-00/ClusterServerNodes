@@ -24,7 +24,7 @@ class HttpCli {
             .build();
     }
 
-    CompletableFuture<NodeStatus> fetchPingAsync(ServerNode node) {
+    CompletableFuture<NodeStatus> fetchPingAsync(String clusterName, ServerNode node) {
         String uriStr = node.getFullHost();
         String path = node.pingPath();
         if (path != null && !path.isEmpty()) {
@@ -57,7 +57,7 @@ class HttpCli {
                 }
             })
             .exceptionally(ex -> {
-                DebugUtils.error("Ping connection failed for host: " + node.getFullHost(), ex);
+                DebugUtils.error(clusterName, node.getFullHost(), "Ping connection failed for host: " + node.getFullHost(), ex);
                 return NodeStatus.OFFLINE;
             });
     }

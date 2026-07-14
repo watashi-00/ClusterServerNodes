@@ -84,7 +84,7 @@ public class TuiKeyHandler {
             tui.prompts().createNewClusterPrompt();
         } else if (key == 'l' || key == 'L') {
             state.currentView = VIEW_FULL_LOGS;
-            state.selectedLogIndex = DebugUtils.getRecentLogs().size() - 1;
+            state.selectedLogIndex = DebugUtils.getAllLogs().size() - 1;
             state.logViewportStart = 0;
         } else if (key == 'q' || key == 'Q' || key == 27) {
             state.running = false;
@@ -136,7 +136,7 @@ public class TuiKeyHandler {
 
     private void handleKeyPressFullLogs(int key) {
         TuiState state = tui.state();
-        List<String> logs = DebugUtils.getRecentLogs();
+        List<DebugUtils.LogEntry> logs = DebugUtils.getAllLogs();
         if (key == 1000) { // UP Arrow
             state.selectedLogIndex--;
             if (state.selectedLogIndex < 0) {

@@ -25,7 +25,7 @@ public class ClusterSecurityManager {
         this.rateLimitDurationSeconds = EnvLoader.getInt(clusterName, "rateLimitDurationSeconds", 60);
         this.rateLimiter = new RateLimiter(this.rateLimitRequests, this.rateLimitDurationSeconds);
 
-        DebugUtils.info("ClusterSecurityManager initialized for '" + clusterName + "' -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "], rateLimit: " + rateLimitRequests + "/" + rateLimitDurationSeconds + "s");
+        DebugUtils.info(clusterName, null, "ClusterSecurityManager initialized for '" + clusterName + "' -> requireToken: " + requireToken + ", timeoutMs: " + timeoutMs + ", allowedIps: [" + allowedIps + "], rateLimit: " + rateLimitRequests + "/" + rateLimitDurationSeconds + "s");
     }
 
     public boolean authenticate(String token) {
@@ -33,12 +33,12 @@ public class ClusterSecurityManager {
             return true;
         }
         if(secret == null || secret.isEmpty()) {
-            DebugUtils.error("Cluster '" + clusterName + "' access barred: Token is required but no secret key is configured.");
+            DebugUtils.error(clusterName, null, "Cluster '" + clusterName + "' access barred: Token is required but no secret key is configured.");
             return false;
         }
         boolean authorized = secret.equals(token);
         if(!authorized) {
-            DebugUtils.error("Cluster '" + clusterName + "' access barred: Invalid API token provided.");
+            DebugUtils.error(clusterName, null, "Cluster '" + clusterName + "' access barred: Invalid API token provided.");
         }
         return authorized;
     }
@@ -53,14 +53,14 @@ public class ClusterSecurityManager {
                 return true;
             }
         }
-        DebugUtils.error("Cluster '" + clusterName + "' access barred: IP '" + ipAddress + "' is not allowed.");
+        DebugUtils.error(clusterName, null, "Cluster '" + clusterName + "' access barred: IP '" + ipAddress + "' is not allowed.");
         return false;
     }
 
     public boolean checkRateLimit(String clientId) {
         boolean allowed = rateLimiter.allowRequest(clientId);
         if(!allowed) {
-            DebugUtils.error("Cluster '" + clusterName + "' access barred: Too many requests from '" + clientId + "'.");
+            DebugUtils.error(clusterName, null, "Cluster '" + clusterName + "' access barred: Too many requests from '" + clientId + "'.");
         }
         return allowed;
     }
