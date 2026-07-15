@@ -35,8 +35,10 @@ public class MinimalApplication {
         System.out.println("=== Starting GateBridge Minimal Demo Application (No TUI) ===");
 
         // 1. Programmatic Bootstrapping with Fluent Config API
+        // Style A: With custom gatewayName (e.g. "minimal-gw")
+        // Style B: Without .gatewayName(), falls back to default "gw-" + port (e.g. "gw-4000")
         GatewayBuilderPort builder = GatewayFactory.createGateway("demo-cluster")
-            .gatewayName("minimal-gw")
+            .gatewayName("minimal-gw")     // Custom gateway name
             .port(4000)                   // Base Telnet port (HTTP runs on 4001, Websocket on 4002)
             .pingInterval(3)              // Ping checks scheduled every 3 seconds
             .enableHttp(true)             // Enable HTTP API mapping
