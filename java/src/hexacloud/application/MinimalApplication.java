@@ -98,6 +98,11 @@ public class MinimalApplication {
                 }
             }
         });
+
+        // 6. Launch the DevOps Dashboard in non-blocking toggle mode (detach/reattach with ENTER)
+        hexacloud.core.tui.TerminalUiFactory.createTui("GateBridge Minimal DevOps Panel")
+            .seedGateway(runningGateway)
+            .startToggleMode();
     }
 
     // ==========================================
