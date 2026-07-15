@@ -31,6 +31,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     private boolean nodeManagementEnabled = true;
     private boolean nodeConfigurationEnabled = true;
     private boolean tokenManagementEnabled = true;
+    private boolean isToggleMode = false;
 
     private static final Map<String, RunningGatewayPort> activeGateways = new ConcurrentHashMap<>();
     private static final Map<String, Integer> gatewayPorts = new ConcurrentHashMap<>();
@@ -175,6 +176,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
 
     @Override
     public void startToggleMode() {
+        this.isToggleMode = true;
         System.out.println("\n>>> GateBridge Gateway is running in background.");
         System.out.println(">>> Standard logging is active. Press ENTER to open the DevOps TUI Dashboard anytime.");
 
@@ -349,8 +351,8 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             }
             NativeTerminal.resetTerminal();
             DebugUtils.setTuiModeActive(false);
-            if (!readOnly) {
-                // Stop all gateways if not read-only
+            if (!readOnly && !isToggleMode) {
+                // Stop all gateways if not read-only and not toggle mode
                 for (RunningGatewayPort gw : activeGateways.values()) {
                     try {
                         gw.stop();
