@@ -54,12 +54,18 @@ public class CustomApiController implements RouteController {
 }
 ```
 
-### 2. Register with the Gateway
+### 2. Automatic Registration (Classpath Scanner - Recommended)
 
-Register the controller instance using the `.registerController()` method on your gateway builder:
+The framework automatically scans the application classpath at startup for any public class implementing `RouteController` (that has a default no-argument constructor or a constructor accepting a `Cluster` parameter). 
+
+No registration code is needed! Simply define the class, compile it, and the framework will automatically register its `@RouteMapping` endpoints.
+
+### 3. Manual Registration (Alternative)
+
+If you prefer to register controller instances manually (for example, to inject custom dependencies or manage instantiation manually), you can use the `.registerController()` method on your gateway builder:
 
 ```java
 gateway.registerController(new CustomApiController());
 ```
 
-Once registered, commands matching the `@RouteMapping` value (e.g. `HELLO <arguments>`) will automatically be routed to your handler when received via HTTP, Telnet, or WebSocket connection listeners!
+Once registered (either automatically or manually), commands matching the `@RouteMapping` value (e.g. `HELLO <arguments>`) will automatically be routed to your handler when received via HTTP, Telnet, or WebSocket connection listeners!

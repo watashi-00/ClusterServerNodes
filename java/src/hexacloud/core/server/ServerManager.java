@@ -30,6 +30,40 @@ public class ServerManager implements ServerOperations {
         this.eventManager = eventManager;
         this.routeRegistry = new RouteRegistry();
         this.routeRegistry.registerController(new ClusterController(cluster));
+        autoRegisterControllers();
+    }
+
+    private void autoRegisterControllers() {
+        try {
+            List<Class<?>> controllers = hexacloud.core.utils.PathUtils.scanClasspathForImplementations(hexacloud.core.server.route.RouteController.class);
+            for (Class<?> clazz : controllers) {
+                if (clazz.getName().equals(ClusterController.class.getName())) {
+                    continue;
+                }
+                
+                try {
+                    hexacloud.core.server.route.RouteController controller = null;
+                    try {
+                        java.lang.reflect.Constructor<?> ctor = clazz.getDeclaredConstructor(Cluster.class);
+                        ctor.setAccessible(true);
+                        controller = (hexacloud.core.server.route.RouteController) ctor.newInstance(cluster);
+                    } catch (NoSuchMethodException e) {
+                        java.lang.reflect.Constructor<?> ctor = clazz.getDeclaredConstructor();
+                        ctor.setAccessible(true);
+                        controller = (hexacloud.core.server.route.RouteController) ctor.newInstance();
+                    }
+
+                    if (controller != null) {
+                        this.routeRegistry.registerController(controller);
+                        DebugUtils.log("RouteScanner: Auto-discovered and registered controller: " + clazz.getName());
+                    }
+                } catch (Exception e) {
+                    DebugUtils.error("RouteScanner: Failed to auto-instantiate controller " + clazz.getName(), e);
+                }
+            }
+        } catch (Exception e) {
+            DebugUtils.error("RouteScanner: Failed to scan classpath for RouteControllers", e);
+        }
     }
 
     public ServerManager(int port, Cluster cluster, ClusterEventBusManager eventManager) {

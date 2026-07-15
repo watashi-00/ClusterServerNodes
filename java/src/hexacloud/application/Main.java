@@ -51,15 +51,6 @@ public class Main {
         // Register the event listener controller before registering nodes
         hexacloud.eventManager().registerListener(new CustomEventListener());
 
-        // Define a custom developer endpoint controller
-        class CustomAppController implements RouteController {
-            @RouteMapping("HELLO")
-            public void sayHello(String args, PrintWriter out) {
-                out.println("HELLO FROM DEVELOPER ROUTE! Args: " + args);
-            }
-        }
-        hexacloud.registerController(new CustomAppController());
-
         // Register servers (will trigger NodeRegistered event for each node!)
         hexacloud.registerServer(3001, NodeStatus.OFFLINE)
             .registerServer(3002, NodeStatus.OFFLINE)
@@ -71,5 +62,13 @@ public class Main {
             .startPingScheduler();
 
         hexacloud.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
+    }
+
+    // Custom developer endpoint controller - automatically discovered by PathUtils scanner
+    public static class CustomAppController implements RouteController {
+        @RouteMapping("HELLO")
+        public void sayHello(String args, PrintWriter out) {
+            out.println("HELLO FROM DEVELOPER ROUTE! Args: " + args);
+        }
     }
 }
