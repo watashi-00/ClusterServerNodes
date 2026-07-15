@@ -105,7 +105,7 @@ public class ClusterController implements RouteController {
 
         ServerNode targetNode = null;
         for (ServerNode node : cluster.getCluster()) {
-            String normalizedNodeHost = node.host().replaceAll("^[a-zA-Z]+://", "");
+            String normalizedNodeHost = node.getHostWithoutProtocol();
             String normalizedTargetHost = host.replaceAll("^[a-zA-Z]+://", "");
 
             if (normalizedNodeHost.equals(normalizedTargetHost) && node.port() == port) {

@@ -186,7 +186,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
     private CompletableFuture<NodeStatus> fetchTcpPingAsync(String clusterName, ServerNode node, String uriStr) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
-            String hostPart = node.host().replace("tcp://", "").replace("http://", "");
+            String hostPart = node.getHostWithoutProtocol();
             if (hostPart.contains("/")) {
                 hostPart = hostPart.substring(0, hostPart.indexOf("/"));
             }
@@ -206,7 +206,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
     private CompletableFuture<NodeStatus> fetchUdpPingAsync(String clusterName, ServerNode node, String uriStr) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
-            String hostPart = node.host().replace("udp://", "").replace("http://", "");
+            String hostPart = node.getHostWithoutProtocol();
             if (hostPart.contains("/")) {
                 hostPart = hostPart.substring(0, hostPart.indexOf("/"));
             }
@@ -230,7 +230,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
     private CompletableFuture<NodeStatus> fetchGrpcPingAsync(String clusterName, ServerNode node, String uriStr) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
-            String hostPart = node.host().replace("grpc://", "").replace("http://", "");
+            String hostPart = node.getHostWithoutProtocol();
             if (hostPart.contains("/")) {
                 hostPart = hostPart.substring(0, hostPart.indexOf("/"));
             }

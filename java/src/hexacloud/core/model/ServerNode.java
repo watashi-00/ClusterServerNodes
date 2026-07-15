@@ -177,6 +177,14 @@ public class ServerNode {
         return this.host + ":" + this.port;
     }
 
+    /**
+     * Returns the host string without its protocol/scheme prefix (e.g. "localhost" instead of "http://localhost").
+     */
+    public String getHostWithoutProtocol() {
+        if (host == null) return "";
+        return host.replaceAll("^[a-zA-Z]+://", "");
+    }
+
     @Override
     public String toString() {
         return "ServerNode{" +
