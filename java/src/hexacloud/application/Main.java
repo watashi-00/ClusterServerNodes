@@ -1,7 +1,8 @@
 package hexacloud.application;
 
 import hexacloud.core.model.NodeStatus;
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.GatewayBuilderPort;
+import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.infra.gateway.GatewayFactory;
 import hexacloud.core.event.Event;
@@ -21,7 +22,7 @@ public class Main {
     public void start() {
         DebugUtils.setDebugEnabled(false);
         
-        GatewayPort hexacloud = GatewayFactory.createGateway("watashi-00")
+        GatewayBuilderPort builder = GatewayFactory.createGateway("watashi-00")
             .port(3000)
             .pingInterval(5)
             .enableTelnet(true)
@@ -33,16 +34,17 @@ public class Main {
             .timeout(4500);
 
         // Register servers (will trigger NodeRegistered event for each node!)
-        hexacloud.registerServer(3001, NodeStatus.OFFLINE)
+        builder.registerServer(3001, NodeStatus.OFFLINE)
             .registerServer(3002, NodeStatus.OFFLINE)
             .registerServer(3003, NodeStatus.OFFLINE)
             .registerServer(3004, NodeStatus.OFFLINE)
-            .registerServer(3005, NodeStatus.OFFLINE)
+            .registerServer(3005, NodeStatus.OFFLINE);
+
+        RunningGatewayPort runningGateway = builder.listen()
             .listClusterNodes()
-            .listen()
             .startPingScheduler();
 
-        hexacloud.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
+        runningGateway.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
     }
 
     // Custom event verification

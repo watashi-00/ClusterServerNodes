@@ -7,7 +7,8 @@ import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.server.route.RouteController;
 import hexacloud.core.server.route.RouteMapping;
 import hexacloud.core.model.NodeStatus;
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.GatewayBuilderPort;
+import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.ThreadManager;
 import hexacloud.infra.gateway.GatewayFactory;
@@ -34,7 +35,7 @@ public class MinimalApplication {
         System.out.println("=== Starting GateBridge Minimal Demo Application (No TUI) ===");
 
         // 1. Programmatic Bootstrapping with Fluent Config API
-        GatewayPort gateway = GatewayFactory.createGateway("demo-cluster")
+        GatewayBuilderPort builder = GatewayFactory.createGateway("demo-cluster")
             .port(4000)                   // Base Telnet port (HTTP runs on 4001, Websocket on 4002)
             .pingInterval(3)              // Ping checks scheduled every 3 seconds
             .enableHttp(true)             // Enable HTTP API mapping
@@ -46,17 +47,17 @@ public class MinimalApplication {
             .timeout(3000);               // Connection timeout threshold of 3 seconds
 
         // 2. Register Server Nodes
-        gateway.registerServer(3001, NodeStatus.OFFLINE)
+        builder.registerServer(3001, NodeStatus.OFFLINE)
             .registerServer(3002, NodeStatus.OFFLINE);
 
         // 3. Start listeners and schedule pings
-        gateway.listen()
+        RunningGatewayPort runningGateway = builder.listen()
             .startPingScheduler();
 
         System.out.println("Gateway successfully listening on port 4000 (Telnet), 4001 (HTTP), 4002 (WS)");
 
         // 4. Dispatch a custom event to verify listener registration
-        gateway.eventManager().dispatch(new DeveloperCustomEvent("GateBridge Bootstrapped Successfully!"));
+        runningGateway.eventManager().dispatch(new DeveloperCustomEvent("GateBridge Bootstrapped Successfully!"));
 
         // 5. Run a background monitoring loop to print system stats and thread breakdown every 5 seconds
         ThreadManager.startVirtual("SystemMonitor", () -> {
