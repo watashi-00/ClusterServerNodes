@@ -1,7 +1,5 @@
 package hexacloud.core.ports;
 
-import hexacloud.core.model.ServerNode;
-
 public interface NodeBuilderPort {
     
     /**
@@ -25,7 +23,7 @@ public interface NodeBuilderPort {
     NodeBuilderPort external(boolean external);
     
     /**
-     * Register the node in the cluster and return the registered ServerNode instance.
+     * Register the node in the cluster and return the parent GatewayBuilderPort for fluent chaining.
      */
-    ServerNode register();
+    GatewayBuilderPort register();
 }
