@@ -14,6 +14,14 @@ public class DebugUtils {
     private static boolean tuiModeActive = false;
     private static final Queue<LogEntry> recentLogs = new ConcurrentLinkedQueue<>();
 
+    public interface LogListener {
+        void onLogAdded();
+    }
+    private static LogListener logListener;
+    public static void setLogListener(LogListener listener) {
+        logListener = listener;
+    }
+
     public static class LogEntry {
         private final long timestamp;
         private final String level;
@@ -152,6 +160,9 @@ public class DebugUtils {
             } else {
                 System.out.println(formatted);
             }
+        }
+        if (logListener != null) {
+            logListener.onLogAdded();
         }
     }
 

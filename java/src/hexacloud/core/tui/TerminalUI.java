@@ -36,8 +36,16 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     private static final Map<String, RunningGatewayPort> activeGateways = new ConcurrentHashMap<>();
     private static final Map<String, Integer> gatewayPorts = new ConcurrentHashMap<>();
     private final java.util.concurrent.Semaphore redrawSemaphore = new java.util.concurrent.Semaphore(0);
+    private volatile boolean bypassDebounce = false;
 
     public void triggerRedraw() {
+        triggerRedraw(false);
+    }
+
+    public void triggerRedraw(boolean immediate) {
+        if (immediate) {
+            bypassDebounce = true;
+        }
         redrawSemaphore.release();
     }
 
@@ -266,6 +274,9 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             // Load persisted state configuration files from disk
             hexacloud.core.config.ClusterStatePersistence.loadState();
 
+            // Direct logs notifications to trigger TUI redraws
+            DebugUtils.setLogListener(() -> triggerRedraw(false));
+
             // Fetch initial configuration & clusters list
             fetchClusterNames();
             fetchGlobalConfig();
@@ -304,7 +315,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                         synchronized (state) {
                             keyHandler.handleKeyPress(key);
                         }
-                        triggerRedraw();
+                        triggerRedraw(true);
                     }
                     try {
                         Thread.sleep(50);
@@ -323,8 +334,12 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                     // Block until an event releases the semaphore
                     redrawSemaphore.acquire();
                     
-                    // Debounce/Coalesce: sleep 15ms to group rapid multiple events
-                    Thread.sleep(15);
+                    if (bypassDebounce) {
+                        bypassDebounce = false;
+                    } else {
+                        // Debounce/Coalesce: sleep 15ms to group rapid multiple events
+                        Thread.sleep(15);
+                    }
                     redrawSemaphore.drainPermits();
 
                     if (state.running) {
@@ -346,6 +361,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             NativeTerminal.resetTerminal();
             e.printStackTrace();
         } finally {
+            DebugUtils.setLogListener(null);
             if (interceptor != null) {
                 hexacloud.core.event.EventBusManager.getGlobal().removeInterceptor(interceptor);
             }
