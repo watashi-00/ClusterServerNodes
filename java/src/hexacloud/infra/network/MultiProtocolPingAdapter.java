@@ -57,13 +57,35 @@ public class MultiProtocolPingAdapter implements PingClientPort {
         // Standard HTTP fallback
         String path = node.pingPath();
         if (path != null && !path.isEmpty()) {
-            if (!path.startsWith("/")) {
-                path = "/" + path;
-            }
-            if (!uriStr.endsWith("/") && !path.equals("/")) {
-                uriStr = uriStr + path;
-            } else if (uriStr.endsWith("/") && !path.equals("/")) {
-                uriStr = uriStr.substring(0, uriStr.length() - 1) + path;
+            try {
+                java.net.URI baseUri = java.net.URI.create(uriStr);
+                if (!path.startsWith("/")) {
+                    path = "/" + path;
+                }
+                String basePath = baseUri.getPath();
+                if (basePath == null) basePath = "";
+                if (basePath.endsWith("/")) {
+                    basePath = basePath.substring(0, basePath.length() - 1);
+                }
+                String finalPath = basePath + path;
+                java.net.URI finalUri = new java.net.URI(
+                    baseUri.getScheme(),
+                    baseUri.getUserInfo(),
+                    baseUri.getHost(),
+                    baseUri.getPort(),
+                    finalPath,
+                    baseUri.getQuery(),
+                    baseUri.getFragment()
+                );
+                uriStr = finalUri.toString();
+            } catch (Exception e) {
+                if (!uriStr.endsWith("/") && !path.startsWith("/")) {
+                    uriStr = uriStr + "/" + path;
+                } else if (uriStr.endsWith("/") && path.startsWith("/")) {
+                    uriStr = uriStr + path.substring(1);
+                } else {
+                    uriStr = uriStr + path;
+                }
             }
         }
 

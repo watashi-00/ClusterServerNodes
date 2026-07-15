@@ -3,6 +3,7 @@ package hexacloud.core.cluster;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
@@ -20,10 +21,12 @@ public class Cluster {
     private final ClusterEventBusManager eventManager;
     private final ClusterSecurityManager securityManager;
     private final RouteRegistry routeRegistry;
+    private final ReentrantLock lock = new ReentrantLock();
 
     private String clusterName = ClusterConfig.DEFAULT_CLUSTER_NAME;
     private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
     private List<ServerNode> tempCluster;
+    private boolean batchMode = false;
 
     public Cluster() {
         this(ClusterConfig.DEFAULT_CLUSTER_NAME, null);
@@ -52,65 +55,115 @@ public class Cluster {
     }
 
     public void registerServer(ServerNode node) {
-        if (node == null) return;
-        if(this.tempCluster != null && !this.tempCluster.isEmpty()) {
-            DebugUtils.error(this.clusterName, null, "Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
-            return;
-        }
-        String host = validHost(node.host());
-        if (host == null) return;
+        lock.lock();
+        try {
+            if (node == null) return;
+            if (this.tempCluster != null && !this.tempCluster.isEmpty()) {
+                DebugUtils.error(this.clusterName, null, "Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
+                return;
+            }
+            String host = validHost(node.host());
+            if (host == null) return;
 
-        ServerNode validNode = new ServerNode(
-            host, node.port(), node.status(), node.isExternal(),
-            node.pingEnabled(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
-        );
-        addClusterNode(validNode);
+            ServerNode validNode = new ServerNode(
+                host, node.port(), node.status(), node.isExternal(),
+                node.pingEnabled(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
+            );
+            addClusterNode(validNode);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void registerServer(int port) {
-        centralizedRegister(port, clusterUri, NodeStatus.OFFLINE, false);
+        lock.lock();
+        try {
+            centralizedRegister(port, clusterUri, NodeStatus.OFFLINE, false);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void registerServer(int port, NodeStatus status) {
-        centralizedRegister(port, clusterUri, status, false);
+        lock.lock();
+        try {
+            centralizedRegister(port, clusterUri, status, false);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void deregisterServer(String fullHost) {
-        DebugUtils.log("Deregistering server " + fullHost);
-        removeClusterNode(fullHost);
+        lock.lock();
+        try {
+            DebugUtils.log("Deregistering server " + fullHost);
+            removeClusterNode(fullHost);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void deregisterLastServer() {
-        DebugUtils.log("Deregistering last server in the cluster");
-        removeClusterNode();
+        lock.lock();
+        try {
+            DebugUtils.log("Deregistering last server in the cluster");
+            removeClusterNode();
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void deregisterAllServers() {
-        toggleAllServers(false);
+        lock.lock();
+        try {
+            toggleAllServers(false);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void registerAllServers() {
-        toggleAllServers(true);
+        lock.lock();
+        try {
+            toggleAllServers(true);
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void listClusterNodes() {
-        for (ServerNode node : cluster.values()) {
-            if(node != null) {
-                DebugUtils.log(node.toString());
+        lock.lock();
+        try {
+            for (ServerNode node : cluster.values()) {
+                if (node != null) {
+                    DebugUtils.log(node.toString());
+                }
             }
+        } finally {
+            lock.unlock();
         }
     }
 
     public List<ServerNode> getCluster() {
-        return new ArrayList<>(cluster.values());
+        lock.lock();
+        try {
+            return new ArrayList<>(cluster.values());
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void updateStatusServer(String host, NodeStatus status) {
-        if (!this.cluster.containsKey(host)) {
-            DebugUtils.error(this.clusterName, host, "Cannot update status: Server host '" + host + "' is not registered in the cluster.");
-            return;
+        lock.lock();
+        try {
+            if (!this.cluster.containsKey(host)) {
+                DebugUtils.error(this.clusterName, host, "Cannot update status: Server host '" + host + "' is not registered in the cluster.");
+                return;
+            }
+            this.cluster.computeIfPresent(host, (key, serverNode) -> serverNode.withStatus(status));
+        } finally {
+            lock.unlock();
         }
-        this.cluster.computeIfPresent(host, (key, serverNode) -> serverNode.withStatus(status));
     }
 
     /**
@@ -118,71 +171,94 @@ public class Cluster {
      */
     public void updateServerNode(ServerNode updatedNode) {
         if (updatedNode == null) return;
-        String key = updatedNode.getFullHost();
-        if (this.cluster.containsKey(key)) {
-            this.cluster.put(key, updatedNode);
-            DebugUtils.log("Updated server node configuration: " + updatedNode);
-            ClusterStatePersistence.saveState();
+        lock.lock();
+        try {
+            String key = updatedNode.getFullHost();
+            if (this.cluster.containsKey(key)) {
+                this.cluster.put(key, updatedNode);
+                DebugUtils.log("Updated server node configuration: " + updatedNode);
+                if (!batchMode) {
+                    ClusterStatePersistence.saveState();
+                }
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
     private void toggleAllServers(boolean start) {
-        if(!start) {
-            this.tempCluster = new ArrayList<>(cluster.values());
-        }
+        lock.lock();
+        try {
+            this.batchMode = true;
+            if (!start) {
+                this.tempCluster = new ArrayList<>(cluster.values());
+            }
 
-        if(start && (this.tempCluster == null || this.tempCluster.isEmpty())) {
-            DebugUtils.error(this.clusterName, null, "All servers are already running or no existing servers to start.");
-            return;
-        }
+            if (start && (this.tempCluster == null || this.tempCluster.isEmpty())) {
+                DebugUtils.error(this.clusterName, null, "All servers are already running or no existing servers to start.");
+                return;
+            }
 
-        if(!start && (cluster.isEmpty())) {
-            DebugUtils.error(this.clusterName, null, "All servers are already stopped or no existing servers to stop.");
-            return;
-        }
+            if (!start && (cluster.isEmpty())) {
+                DebugUtils.error(this.clusterName, null, "All servers are already stopped or no existing servers to stop.");
+                return;
+            }
 
-        for(ServerNode node : start ? tempCluster : cluster.values()) {
-            if(node != null) {
-                if(start) {
-                    registerServer(node);
-                } else {
-                    deregisterServer(node.getFullHost());
+            for (ServerNode node : start ? tempCluster : cluster.values()) {
+                if (node != null) {
+                    if (start) {
+                        registerServer(node);
+                    } else {
+                        deregisterServer(node.getFullHost());
+                    }
                 }
             }
-        }
 
-        if(start) {
-            this.tempCluster = null;
+            if (start) {
+                this.tempCluster = null;
+            }
+            this.batchMode = false;
+            ClusterStatePersistence.saveState();
+        } finally {
+            this.batchMode = false;
+            lock.unlock();
         }
     }
 
     private void centralizedRegister(int port, String host, NodeStatus status, boolean isExternal) {
-        if(this.tempCluster != null && !this.tempCluster.isEmpty()) {
-            DebugUtils.error(this.clusterName, null, "Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
-            return;
+        lock.lock();
+        try {
+            if (this.tempCluster != null && !this.tempCluster.isEmpty()) {
+                DebugUtils.error(this.clusterName, null, "Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
+                return;
+            }
+            DebugUtils.log("Registering server on host: " + host + ", port: " + port);
+            host = validHost(host);
+            addClusterNode(new ServerNode(host, port, status, isExternal));
+        } finally {
+            lock.unlock();
         }
-        DebugUtils.log("Registering server on host: " + host + ", port: " + port);
-        host = validHost(host);
-        addClusterNode(new ServerNode(host, port, status, isExternal));
     }
 
     private void addClusterNode(ServerNode node) {
-        if (!validServer(node)) {return;}
+        if (!validServer(node)) { return; }
 
-        if(cluster.size() >= ClusterConfig.MAX_CLUSTER_SIZE) {
+        if (cluster.size() >= ClusterConfig.MAX_CLUSTER_SIZE) {
             DebugUtils.error(this.clusterName, null, "Cluster is full. Cannot add more nodes.");
             return;
         }
 
         cluster.put(node.getFullHost(), node);
-        if(eventManager != null) {
+        if (eventManager != null) {
             eventManager.dispatch(new NodeRegistered(node));
         }
-        ClusterStatePersistence.saveState();
+        if (!batchMode) {
+            ClusterStatePersistence.saveState();
+        }
     }
     
     private void removeClusterNode() {
-        if(cluster.isEmpty()) {
+        if (cluster.isEmpty()) {
             DebugUtils.error(this.clusterName, null, "Cluster is empty. No nodes to remove.");
             return;
         }
@@ -190,25 +266,29 @@ public class Cluster {
             .reduce((first, second) -> second)
             .ifPresent(lastKey -> {
                 cluster.remove(lastKey);
-                if(eventManager != null) {
+                if (eventManager != null) {
                     eventManager.dispatch(new hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered(lastKey));
                 }
-                ClusterStatePersistence.saveState();
+                if (!batchMode) {
+                    ClusterStatePersistence.saveState();
+                }
             });
     }
 
     private void removeClusterNode(String fullHost) {
-        if(cluster.containsKey(fullHost)) {
+        if (cluster.containsKey(fullHost)) {
             cluster.remove(fullHost);
-            if(eventManager != null) {
+            if (eventManager != null) {
                 eventManager.dispatch(new hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered(fullHost));
             }
-            ClusterStatePersistence.saveState();
+            if (!batchMode) {
+                ClusterStatePersistence.saveState();
+            }
         }
     }
 
     private String validHost(String host) {
-        if(host == null || host.isEmpty()) {
+        if (host == null || host.isEmpty()) {
             DebugUtils.error(this.clusterName, null, "Invalid host: null or empty");
             return null;
         }
@@ -223,15 +303,15 @@ public class Cluster {
     }
 
     private boolean validServer(ServerNode node) {
-        if(node == null) {
+        if (node == null) {
             DebugUtils.error(this.clusterName, null, "Invalid server node: null");
             return false;
         }
-        if(node.host() == null || node.host().isEmpty()) {
+        if (node.host() == null || node.host().isEmpty()) {
             DebugUtils.error(this.clusterName, null, "Invalid server node: host is null or empty");
             return false;
         }
-        if(node.port() < 0 || node.port() > 65535) {
+        if (node.port() < 0 || node.port() > 65535) {
             DebugUtils.error(this.clusterName, null, "Invalid server node: port is out of range");
             return false;
         }

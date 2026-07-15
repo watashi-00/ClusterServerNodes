@@ -33,7 +33,7 @@ public class ClusterStatePersistence {
         return stateLoaded;
     }
 
-    private static String getStateDicrectory() {
+    private static String getStateDirectory() {
         String dir = System.getProperty("hexacloud.state.dir");
         if(dir == null) {
             dir = System.getenv("HEXACLOUD_STATE_DIR");
@@ -57,7 +57,7 @@ public class ClusterStatePersistence {
     }
 
     private static String resolveStateFilePath(String clusterName) {
-        return getStateDicrectory()+ File.separator + clusterName + "-state.properties";
+        return getStateDirectory()+ File.separator + clusterName + "-state.properties";
     }
 
     /**
@@ -120,7 +120,7 @@ public class ClusterStatePersistence {
         try {
             List<File> filesToLoad = new ArrayList<>();
             
-            File stateDir = new File(getStateDicrectory());
+            File stateDir = new File(getStateDirectory());
             findStateFiles(stateDir, filesToLoad);
 
             if (filesToLoad.isEmpty()) {
