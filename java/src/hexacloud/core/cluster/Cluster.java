@@ -28,7 +28,7 @@ public class Cluster {
     private List<ServerNode> tempCluster;
     private boolean batchMode = false;
 
-    public static record NodeUpdateResult(String host, boolean statusChanged, boolean telemetryUpdated) {}
+    public static record NodeUpdateResult(String host, String protocol, boolean statusChanged, boolean telemetryUpdated) {}
 
     public Cluster() {
         this(ClusterConfig.DEFAULT_CLUSTER_NAME, null);
@@ -69,7 +69,7 @@ public class Cluster {
 
             ServerNode validNode = new ServerNode(
                 host, node.port(), node.status(), node.isExternal(),
-                node.pingEnabled(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
+                node.pingProtocol(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
             );
             addClusterNode(validNode);
         } finally {
@@ -193,7 +193,7 @@ public class Cluster {
             if (!batchMode) {
                 ClusterStatePersistence.saveState();
             }
-            return new NodeUpdateResult(updated.getFullHost(), statusChanged, telemetryUpdated);
+            return new NodeUpdateResult(updated.getFullHost(), updated.pingProtocol().getFriendlyName(), statusChanged, telemetryUpdated);
         } finally {
             lock.unlock();
         }

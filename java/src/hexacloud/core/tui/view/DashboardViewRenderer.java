@@ -305,6 +305,7 @@ public class DashboardViewRenderer {
                 switch (event.type()) {
                     case "NodeStatusChanged": shortName = "Status"; break;
                     case "NodeTelemetryUpdated": shortName = "Telemetry"; break;
+                    case "NodeEventSubmitted": shortName = "NodeEvent"; break;
                     case "NodeRegistered": shortName = "NodeReg"; break;
                     case "NodeDeregistered": shortName = "NodeDereg"; break;
                     case "ClusterRegistered": shortName = "ClusterReg"; break;
@@ -326,6 +327,8 @@ public class DashboardViewRenderer {
                 } else if (event.type().contains("Registered") || event.type().contains("Reg")) {
                     color = GREEN;
                 } else if (event.type().contains("Custom")) {
+                    color = MAGENTA;
+                } else if (event.type().contains("NodeEvent")) {
                     color = MAGENTA;
                 } else if (event.type().contains("Telemetry")) {
                     color = CYAN;

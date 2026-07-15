@@ -244,6 +244,8 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                     detail = e.host().replaceAll("^[a-zA-Z]+://", "") + " -> " + e.status();
                 } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated e) {
                     detail = e.host().replaceAll("^[a-zA-Z]+://", "") + " updated";
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeEventSubmitted e) {
+                    detail = e.event() + " [" + e.protocol() + "/" + e.format() + "] from " + e.host().replaceAll("^[a-zA-Z]+://", "");
                 } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeRegistered e) {
                     detail = e.node().getFullHost().replaceAll("^[a-zA-Z]+://", "");
                 } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered e) {
@@ -292,6 +294,10 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             });
 
             hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeEventSubmitted.class, event -> {
                 triggerRedraw();
             });
 
