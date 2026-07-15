@@ -3,7 +3,8 @@ package hexacloud.core.tui;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.RunningGatewayPort;
+import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.utils.NativeTerminal;
 import hexacloud.core.utils.TerminalScanner;
 import static hexacloud.core.tui.TuiConstants.*;
@@ -77,7 +78,7 @@ public class TuiPrompts {
             return;
         }
 
-        GatewayPort currentGw = tui.activeGateways().get(state.selectedClusterName);
+        RunningGatewayPort currentGw = tui.activeGateways().get(state.selectedClusterName);
         NativeTerminal.resetTerminal();
         System.out.println("\n" + WHITE_BOLD + "=== Gateway Setup for Cluster: " + state.selectedClusterName + " ===" + RESET);
         boolean didOperation = false;
@@ -103,10 +104,10 @@ public class TuiPrompts {
                 String ans = readInput("Do you want to START the gateway? (y/n) [/cancel]: ");
                 if (ans.equalsIgnoreCase("y")) {
                     String portStr = readInput("Enter base port (default 3000) [/cancel]: ");
-                    int port = portStr.isEmpty() ? 3000 : Integer.parseInt(portStr);
+                    int port = portStr.isEmpty() ? 3000 : java.lang.Integer.parseInt(portStr);
 
                     String intStr = readInput("Enter ping check interval in seconds (default 5) [/cancel]: ");
-                    int pingInt = intStr.isEmpty() ? 5 : Integer.parseInt(intStr);
+                    int pingInt = intStr.isEmpty() ? 5 : java.lang.Integer.parseInt(intStr);
 
                     String telnetStr = readInput("Enable Telnet? (y/n, default y) [/cancel]: ");
                     boolean telnet = !telnetStr.equalsIgnoreCase("n");
@@ -117,7 +118,7 @@ public class TuiPrompts {
                     String wsStr = readInput("Enable WS? (y/n, default y) [/cancel]: ");
                     boolean ws = !wsStr.equalsIgnoreCase("n");
 
-                    GatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(state.selectedClusterName)
+                    RunningGatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(state.selectedClusterName)
                         .port(port)
                         .pingInterval(pingInt)
                         .enableTelnet(telnet)

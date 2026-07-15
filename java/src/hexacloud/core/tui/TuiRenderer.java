@@ -5,7 +5,7 @@ import java.util.List;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import static hexacloud.core.tui.TuiConstants.*;
@@ -105,7 +105,7 @@ public class TuiRenderer {
                 String displayName = name;
                 String gwIndicator;
                 if (tui.isGatewayActive(name)) {
-                    GatewayPort gw = tui.activeGateways().get(name);
+                    RunningGatewayPort gw = tui.activeGateways().get(name);
                     int port = (gw != null) ? gw.getPort() : 3000;
                     String suffix = " [" + port + "]";
                     int maxLen = 16 - suffix.length();
@@ -267,7 +267,7 @@ public class TuiRenderer {
             NativeTerminal.printAt(83, gwY, RED + "No active gateways." + RESET);
             gwY++;
         } else {
-            for (java.util.Map.Entry<String, GatewayPort> entry : tui.activeGateways().entrySet()) {
+            for (java.util.Map.Entry<String, RunningGatewayPort> entry : tui.activeGateways().entrySet()) {
                 if (gwY >= 22) break;
                 String clName = entry.getKey();
                 int port = entry.getValue().getPort();

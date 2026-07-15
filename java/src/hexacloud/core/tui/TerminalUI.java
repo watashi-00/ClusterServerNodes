@@ -9,7 +9,7 @@ import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.RunningGatewayPort;
 
 /**
  * Main coordinator for the DevOps TUI console dashboard.
@@ -32,7 +32,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     private boolean nodeConfigurationEnabled = true;
     private boolean tokenManagementEnabled = true;
 
-    private static final Map<String, GatewayPort> activeGateways = new ConcurrentHashMap<>();
+    private static final Map<String, RunningGatewayPort> activeGateways = new ConcurrentHashMap<>();
     private final java.util.concurrent.Semaphore redrawSemaphore = new java.util.concurrent.Semaphore(0);
 
     public void triggerRedraw() {
@@ -47,9 +47,9 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     }
 
     /**
-     * Start the Terminal UI client seeding it with an already started GatewayPort instance.
+     * Start the Terminal UI client seeding it with an already started RunningGatewayPort instance.
      */
-    public static void startTerminal(String displayName, GatewayPort gateway) {
+    public static void startTerminal(String displayName, RunningGatewayPort gateway) {
         if (gateway != null) {
             activeGateways.put(gateway.getClusterName(), gateway);
         }
@@ -82,7 +82,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         return prompts;
     }
 
-    public Map<String, GatewayPort> activeGateways() {
+    public Map<String, RunningGatewayPort> activeGateways() {
         return activeGateways;
     }
 
@@ -158,7 +158,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     }
 
     @Override
-    public hexacloud.core.ports.TerminalUiPort seedGateway(GatewayPort gateway) {
+    public hexacloud.core.ports.TerminalUiPort seedGateway(RunningGatewayPort gateway) {
         if (gateway != null) {
             activeGateways.put(gateway.getClusterName(), gateway);
         }
