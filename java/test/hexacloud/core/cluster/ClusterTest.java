@@ -9,9 +9,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import hexacloud.core.cluster.event.ClusterEventBusManager;
+import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.server.route.ClusterController;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
@@ -108,5 +114,54 @@ public class ClusterTest {
     public void testTimeoutDelegation() {
         cluster.setTimeoutMs(4500);
         assertEquals(4500, cluster.getTimeoutMs());
+    }
+
+    @Test
+    public void testTelemetryPushUpdatesStatusAndMetricsAtomically() {
+        ServerNode node = new ServerNode("127.0.0.1", 7001, NodeStatus.OFFLINE, false);
+        cluster.registerServer(node);
+
+        ClusterController controller = new ClusterController(cluster);
+        StringWriter response = new StringWriter();
+        controller.telemetry("host=127.0.0.1&port=7001&status=ONLINE&cpu=33.5&ram=77.2&language=Java&latency=42", new PrintWriter(response, true));
+
+        ServerNode updated = cluster.getCluster().stream()
+            .filter(n -> n.getFullHost().equals("http://127.0.0.1:7001"))
+            .findFirst()
+            .orElseThrow();
+
+        assertEquals(NodeStatus.ONLINE, updated.status());
+        assertEquals(33.5, updated.cpuUsage());
+        assertEquals(77.2, updated.ramUsage());
+        assertEquals("Java", updated.runtime());
+        assertEquals(42, updated.latencyMs());
+        assertTrue(response.toString().contains("SUCCESS"));
+    }
+
+    @Test
+    public void testStatePersistenceDoesNotWriteSecrets() throws Exception {
+        Path stateDir = Files.createTempDirectory("gatebridge-state-test");
+        String previousStateDir = System.getProperty("hexacloud.state.dir");
+        System.setProperty("hexacloud.state.dir", stateDir.toString());
+        try {
+            cluster.setSecret("super-secret");
+            cluster.registerServer(new ServerNode("127.0.0.1", 7101, NodeStatus.OFFLINE, false,
+                hexacloud.core.model.PingProtocol.HTTP, "/", "X-Test-Token", "node-secret"));
+
+            ClusterStatePersistence.saveState();
+
+            Path stateFile = stateDir.resolve("test-cluster-env-state.properties");
+            String state = Files.readString(stateFile);
+            assertFalse(state.contains("super-secret"));
+            assertFalse(state.contains("node-secret"));
+            assertFalse(state.contains(".secret="));
+            assertFalse(state.contains("pingHeaderValue"));
+        } finally {
+            if (previousStateDir == null) {
+                System.clearProperty("hexacloud.state.dir");
+            } else {
+                System.setProperty("hexacloud.state.dir", previousStateDir);
+            }
+        }
     }
 }

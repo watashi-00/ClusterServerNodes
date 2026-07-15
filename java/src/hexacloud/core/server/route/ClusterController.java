@@ -3,6 +3,7 @@ package hexacloud.core.server.route;
 import java.io.PrintWriter;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
+import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 
@@ -43,10 +44,10 @@ public class ClusterController implements RouteController {
 
         String host = null;
         int port = 0;
-        double cpu = -1;
-        double ram = -1;
+        Double cpu = null;
+        Double ram = null;
         String lang = null;
-        int latency = -1;
+        Integer latency = null;
         String statusStr = null;
 
         if (args.contains("&") || args.contains("host=")) {
@@ -103,45 +104,27 @@ public class ClusterController implements RouteController {
             return;
         }
 
-        ServerNode targetNode = null;
-        for (ServerNode node : cluster.getCluster()) {
-            String normalizedNodeHost = node.getHostWithoutProtocol();
-            String normalizedTargetHost = host.replaceAll("^[a-zA-Z]+://", "");
-
-            if (normalizedNodeHost.equals(normalizedTargetHost) && node.port() == port) {
-                targetNode = node;
-                break;
-            }
-        }
-
-        if (targetNode == null) {
-            out.println("ERROR: Node not registered: " + host + ":" + port);
-            return;
-        }
-
-        if (cpu >= 0) targetNode.setCpuUsage(cpu);
-        if (ram >= 0) targetNode.setRamUsage(ram);
-        if (lang != null) targetNode.setRuntime(lang);
-        if (latency >= 0) targetNode.setLatencyMs(latency);
-
-        boolean wasOnline = targetNode.status() == hexacloud.core.model.NodeStatus.ONLINE;
-
+        NodeStatus requestedStatus = null;
         if (statusStr != null) {
             try {
-                hexacloud.core.model.NodeStatus newStatus = hexacloud.core.model.NodeStatus.valueOf(statusStr.toUpperCase());
-                if (targetNode.status() != newStatus) {
-                    cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged(targetNode.getFullHost(), newStatus));
-                    wasOnline = newStatus == hexacloud.core.model.NodeStatus.ONLINE;
-                }
+                requestedStatus = NodeStatus.valueOf(statusStr.toUpperCase());
             } catch (Exception e) {
                 DebugUtils.error(cluster.getClusterName(), null, "Failed to parse status value: " + statusStr, e);
             }
         }
 
-        if (targetNode.status() != hexacloud.core.model.NodeStatus.ONLINE) {
-            cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged(targetNode.getFullHost(), hexacloud.core.model.NodeStatus.ONLINE));
-        } else if (wasOnline) {
-            cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated(targetNode.getFullHost()));
+        Cluster.NodeUpdateResult result = cluster.updateTelemetryServer(host, port, cpu, ram, lang, latency, requestedStatus);
+        if (result == null) {
+            out.println("ERROR: Node not registered: " + host + ":" + port);
+            return;
+        }
+
+        NodeStatus finalStatus = requestedStatus != null ? requestedStatus : NodeStatus.ONLINE;
+        if (result.statusChanged()) {
+            cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged(result.host(), finalStatus));
+        }
+        if (result.telemetryUpdated()) {
+            cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated(result.host()));
         }
 
         out.println("SUCCESS: Telemetry updated for " + host + ":" + port);

@@ -28,6 +28,8 @@ public class Cluster {
     private List<ServerNode> tempCluster;
     private boolean batchMode = false;
 
+    public static record NodeUpdateResult(String host, boolean statusChanged, boolean telemetryUpdated) {}
+
     public Cluster() {
         this(ClusterConfig.DEFAULT_CLUSTER_NAME, null);
     }
@@ -161,6 +163,37 @@ public class Cluster {
                 return;
             }
             this.cluster.computeIfPresent(host, (key, serverNode) -> serverNode.withStatus(status));
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public NodeUpdateResult updateTelemetryServer(String host, int port, Double cpuUsage, Double ramUsage,
+                                                 String runtime, Integer latencyMs, NodeStatus requestedStatus) {
+        lock.lock();
+        try {
+            String targetKey = findNodeKey(host, port);
+            if (targetKey == null) {
+                DebugUtils.error(this.clusterName, host + ":" + port, "Cannot update telemetry: server node is not registered.");
+                return null;
+            }
+
+            ServerNode current = this.cluster.get(targetKey);
+            NodeStatus nextStatus = requestedStatus != null ? requestedStatus : NodeStatus.ONLINE;
+            boolean statusChanged = current.status() != nextStatus;
+            boolean telemetryUpdated = cpuUsage != null || ramUsage != null || runtime != null || latencyMs != null;
+
+            ServerNode updated = statusChanged ? current.withStatus(nextStatus) : current;
+            if (cpuUsage != null) updated.setCpuUsage(cpuUsage);
+            if (ramUsage != null) updated.setRamUsage(ramUsage);
+            if (runtime != null) updated.setRuntime(runtime);
+            if (latencyMs != null) updated.setLatencyMs(latencyMs);
+
+            this.cluster.put(targetKey, updated);
+            if (!batchMode) {
+                ClusterStatePersistence.saveState();
+            }
+            return new NodeUpdateResult(updated.getFullHost(), statusChanged, telemetryUpdated);
         } finally {
             lock.unlock();
         }
@@ -322,6 +355,18 @@ public class Cluster {
         }
 
         return true;
+    }
+
+    private String findNodeKey(String host, int port) {
+        if (host == null) return null;
+        String normalizedTargetHost = host.replaceAll("^[a-zA-Z]+://", "");
+        for (ServerNode node : cluster.values()) {
+            if (node == null) continue;
+            if (node.getHostWithoutProtocol().equals(normalizedTargetHost) && node.port() == port) {
+                return node.getFullHost();
+            }
+        }
+        return null;
     }
 
     public String getClusterName() {

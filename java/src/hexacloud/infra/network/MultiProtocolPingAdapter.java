@@ -10,7 +10,6 @@ import java.util.concurrent.CompletionStage;
 
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.model.PingProtocol;
 import hexacloud.core.model.PingResult;
 import hexacloud.core.ports.PingClientPort;
 import hexacloud.core.utils.DebugUtils;
@@ -104,12 +103,17 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 if (res.statusCode() >= 200 && res.statusCode() < 300) {
                     String body = res.body();
                     String runtime = extractJsonField(body, "language");
-                    if (runtime != null) node.setRuntime(runtime);
+                    boolean hasTelemetry = false;
+                    if (runtime != null) {
+                        node.setRuntime(runtime);
+                        hasTelemetry = true;
+                    }
                     
                     String cpuStr = extractJsonField(body, "cpu");
                     if (cpuStr != null) {
                         try {
                             node.setCpuUsage(Double.parseDouble(cpuStr));
+                            hasTelemetry = true;
                         } catch (Exception e) {
                             DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse CPU usage value from HTTP ping: " + cpuStr, e);
                         }
@@ -119,11 +123,12 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                     if (ramStr != null) {
                         try {
                             node.setRamUsage(Double.parseDouble(ramStr));
+                            hasTelemetry = true;
                         } catch (Exception e) {
                             DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse RAM usage value from HTTP ping: " + ramStr, e);
                         }
                     }
-                    return new PingResult(NodeStatus.ONLINE, true);
+                    return new PingResult(NodeStatus.ONLINE, hasTelemetry);
                 } else {
                     setNode(node);
                     return new PingResult(NodeStatus.UNSTABLE, false);
@@ -159,12 +164,17 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                     if (last) {
                         String body = payload.toString();
                         String runtime = extractJsonField(body, "language");
-                        if (runtime != null) node.setRuntime(runtime);
+                        boolean hasTelemetry = false;
+                        if (runtime != null) {
+                            node.setRuntime(runtime);
+                            hasTelemetry = true;
+                        }
 
                         String cpuStr = extractJsonField(body, "cpu");
                         if (cpuStr != null) {
                             try {
                                 node.setCpuUsage(Double.parseDouble(cpuStr));
+                                hasTelemetry = true;
                             } catch (Exception e) {
                                 DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse CPU usage value from WS ping: " + cpuStr, e);
                             }
@@ -174,11 +184,12 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                         if (ramStr != null) {
                             try {
                                 node.setRamUsage(Double.parseDouble(ramStr));
+                                hasTelemetry = true;
                             } catch (Exception e) {
                                 DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse RAM usage value from WS ping: " + ramStr, e);
                             }
                         }
-                        future.complete(new PingResult(NodeStatus.ONLINE, true));
+                        future.complete(new PingResult(NodeStatus.ONLINE, hasTelemetry));
                         webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Goodbye");
                     } else {
                         webSocket.request(1);
@@ -212,7 +223,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 socket.connect(new java.net.InetSocketAddress(hostPart, node.port()), (int) ClusterConfig.HTTP_CONNECT_TIMEOUT.toMillis());
                 long latency = System.currentTimeMillis() - startTime;
                 setNode(node, (int) latency, "TCP");
-                return new PingResult(NodeStatus.ONLINE, true);
+                return new PingResult(NodeStatus.ONLINE, false);
             } catch (Exception e) {
                 setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "TCP connection failed for host: " + node.getFullHost(), e);
@@ -236,7 +247,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 socket.send(packet);
                 long latency = System.currentTimeMillis() - startTime;
                 setNode(node, (int) latency, "UDP");
-                return new PingResult(NodeStatus.ONLINE, true);
+                return new PingResult(NodeStatus.ONLINE, false);
             } catch (Exception e) {
                 setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "UDP connection failed for host: " + node.getFullHost(), e);
@@ -256,7 +267,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 socket.connect(new java.net.InetSocketAddress(hostPart, node.port()), (int) ClusterConfig.HTTP_CONNECT_TIMEOUT.toMillis());
                 long latency = System.currentTimeMillis() - startTime;
                 setNode(node, (int) latency,"gRPC");
-                return new PingResult(NodeStatus.ONLINE, true);
+                return new PingResult(NodeStatus.ONLINE, false);
             } catch (Exception e) {
                 setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "gRPC connection failed for host: " + node.getFullHost(), e);
