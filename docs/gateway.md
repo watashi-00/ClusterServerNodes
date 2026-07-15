@@ -45,6 +45,7 @@ builder.registerServer(3001, NodeStatus.OFFLINE);
 The gateway features automatic state persistence:
 - Whenever a cluster is modified, nodes are registered/deregistered, or configurations change (IP lists, rate limits, timeouts), GateBridge serializes the current cluster state to `java/resources/<clusterName>-state.properties`.
 - When `GatewayFactory.createGateway()` is called, it automatically loads any existing configuration. If a state file is loaded, hardcoded developer bootstrap configurations are skipped so user edits are not overwritten.
+- Sensitive values are excluded from state files. Cluster secrets and ping header token values are runtime-only and should be supplied through code, environment configuration, or a secret manager.
 
 ## Lifecycle Management (`stop()`)
 
