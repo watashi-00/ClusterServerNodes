@@ -24,6 +24,7 @@ class LocalGatewayAdapter implements GatewayPort {
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
         this.clusterEventManager = new ClusterEventBusManager();
+        autoRegisterEventListeners();
         
         // Load configurations state from file on startup
         ClusterStatePersistence.loadState();
@@ -40,6 +41,7 @@ class LocalGatewayAdapter implements GatewayPort {
     public LocalGatewayAdapter(String clusterName, int port) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName + " with pre-configured server port " + port);
         this.clusterEventManager = new ClusterEventBusManager();
+        autoRegisterEventListeners();
         
         // Load configurations state from file on startup
         ClusterStatePersistence.loadState();
@@ -157,6 +159,23 @@ class LocalGatewayAdapter implements GatewayPort {
     private void ensureServerManagerInitialized() {
         if(this.serverManager == null) {
             this.serverManager = new ServerManager(this.clusterManager.getCluster(), this.clusterEventManager);
+        }
+    }
+
+    private void autoRegisterEventListeners() {
+        try {
+            java.util.List<Class<?>> controllers = hexacloud.core.utils.PathUtils.scanClasspathForImplementations(hexacloud.core.event.EventController.class);
+            for (Class<?> clazz : controllers) {
+                try {
+                    hexacloud.core.event.EventController listener = (hexacloud.core.event.EventController) clazz.getDeclaredConstructor().newInstance();
+                    this.clusterEventManager.registerListener(listener);
+                    DebugUtils.log("EventScanner: Auto-discovered and registered listener: " + clazz.getName());
+                } catch (Exception e) {
+                    DebugUtils.error("EventScanner: Failed to auto-instantiate listener " + clazz.getName(), e);
+                }
+            }
+        } catch (Exception e) {
+            DebugUtils.error("EventScanner: Failed to scan classpath for EventControllers", e);
         }
     }
 

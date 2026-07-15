@@ -32,25 +32,6 @@ public class Main {
             .allowedIps("127.0.0.1")
             .timeout(4500);
 
-        // Custom event verification
-        record UserCustomEvent(String message) implements Event {}
-
-        // Custom controller listener
-        class CustomEventListener implements EventController {
-            @Subscribe
-            public void onCustomEvent(UserCustomEvent event) {
-                DebugUtils.info("UserCustomEvent handler method invoked: " + event.message());
-            }
-
-            @Subscribe
-            public void onNodeRegistered(NodeRegistered event) {
-                DebugUtils.info("Event received: Node successfully registered at " + event.node().getFullHost());
-            }
-        }
-
-        // Register the event listener controller before registering nodes
-        hexacloud.eventManager().registerListener(new CustomEventListener());
-
         // Register servers (will trigger NodeRegistered event for each node!)
         hexacloud.registerServer(3001, NodeStatus.OFFLINE)
             .registerServer(3002, NodeStatus.OFFLINE)
@@ -62,6 +43,22 @@ public class Main {
             .startPingScheduler();
 
         hexacloud.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
+    }
+
+    // Custom event verification
+    public static record UserCustomEvent(String message) implements Event {}
+
+    // Custom controller listener - automatically discovered by PathUtils scanner
+    public static class CustomEventListener implements EventController {
+        @Subscribe
+        public void onCustomEvent(UserCustomEvent event) {
+            DebugUtils.info("UserCustomEvent handler method invoked: " + event.message());
+        }
+
+        @Subscribe
+        public void onNodeRegistered(NodeRegistered event) {
+            DebugUtils.info("Event received: Node successfully registered at " + event.node().getFullHost());
+        }
     }
 
     // Custom developer endpoint controller - automatically discovered by PathUtils scanner
