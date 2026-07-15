@@ -35,7 +35,13 @@ public class TuiKeyHandler {
     private void handleKeyPressDashboard(int key) {
         TuiState state = tui.state();
         if (key == 9) { // Tab: Switch Focus
-            state.activePanel = (state.activePanel == PANEL_CLUSTERS) ? PANEL_SERVICES : PANEL_CLUSTERS;
+            if (state.activePanel == PANEL_CLUSTERS) {
+                state.activePanel = PANEL_GATEWAYS;
+            } else if (state.activePanel == PANEL_GATEWAYS) {
+                state.activePanel = PANEL_SERVICES;
+            } else {
+                state.activePanel = PANEL_CLUSTERS;
+            }
         } else if (key == 1000) { // UP Arrow
             if (state.activePanel == PANEL_CLUSTERS) {
                 state.selectedClusterIndex--;
@@ -44,6 +50,20 @@ public class TuiKeyHandler {
                 }
                 if (!state.clusterNames.isEmpty()) {
                     state.selectedClusterName = state.clusterNames.get(state.selectedClusterIndex);
+                    state.selectedGatewayIndex = state.selectedClusterIndex;
+                    state.selectedNodeIndex = 0;
+                    tui.fetchNodeStatus();
+                    tui.fetchClusterConfig(state.selectedClusterName);
+                }
+            } else if (state.activePanel == PANEL_GATEWAYS) {
+                state.selectedGatewayIndex--;
+                if (state.selectedGatewayIndex < 0) {
+                    state.selectedGatewayIndex = Math.max(0, state.gateways.size() - 1);
+                }
+                if (!state.gateways.isEmpty()) {
+                    TuiState.GatewayConfig gw = state.gateways.get(state.selectedGatewayIndex);
+                    state.selectedClusterName = gw.clusterName;
+                    state.selectedClusterIndex = state.clusterNames.indexOf(gw.clusterName);
                     state.selectedNodeIndex = 0;
                     tui.fetchNodeStatus();
                     tui.fetchClusterConfig(state.selectedClusterName);
@@ -62,6 +82,20 @@ public class TuiKeyHandler {
                 }
                 if (!state.clusterNames.isEmpty()) {
                     state.selectedClusterName = state.clusterNames.get(state.selectedClusterIndex);
+                    state.selectedGatewayIndex = state.selectedClusterIndex;
+                    state.selectedNodeIndex = 0;
+                    tui.fetchNodeStatus();
+                    tui.fetchClusterConfig(state.selectedClusterName);
+                }
+            } else if (state.activePanel == PANEL_GATEWAYS) {
+                state.selectedGatewayIndex++;
+                if (state.selectedGatewayIndex >= state.gateways.size()) {
+                    state.selectedGatewayIndex = 0;
+                }
+                if (!state.gateways.isEmpty()) {
+                    TuiState.GatewayConfig gw = state.gateways.get(state.selectedGatewayIndex);
+                    state.selectedClusterName = gw.clusterName;
+                    state.selectedClusterIndex = state.clusterNames.indexOf(gw.clusterName);
                     state.selectedNodeIndex = 0;
                     tui.fetchNodeStatus();
                     tui.fetchClusterConfig(state.selectedClusterName);
@@ -82,6 +116,8 @@ public class TuiKeyHandler {
             tui.prompts().manageGatewayPrompt();
         } else if ((key == 'c' || key == 'C') && tui.clusterManagementEnabled() && !tui.readOnly()) {
             tui.prompts().createNewClusterPrompt();
+        } else if ((key == 'a' || key == 'A') && !tui.readOnly()) {
+            tui.prompts().allocateClusterToGatewayPrompt();
         } else if (key == 'l' || key == 'L') {
             state.currentView = VIEW_FULL_LOGS;
             state.selectedLogIndex = DebugUtils.getAllLogs().size() - 1;

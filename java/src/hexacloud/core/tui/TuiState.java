@@ -34,6 +34,19 @@ public class TuiState {
     public boolean running = true;
     public List<ServerNode> nodes = new ArrayList<>();
 
+    public int selectedGatewayIndex = 0;
+    
+    public static class GatewayConfig {
+        public String clusterName = "";
+        public int port = 3000;
+        public int pingInterval = 5;
+        public boolean telnetEnabled = true;
+        public boolean httpEnabled = true;
+        public boolean wsEnabled = true;
+        public boolean running = false;
+    }
+    public final List<GatewayConfig> gateways = new ArrayList<>();
+
     public static record TuiEvent(String type, String detail, long timestamp) {}
     public final List<TuiEvent> recentEvents = new java.util.concurrent.CopyOnWriteArrayList<>();
 }

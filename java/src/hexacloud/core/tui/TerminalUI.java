@@ -33,6 +33,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     private boolean tokenManagementEnabled = true;
 
     private static final Map<String, RunningGatewayPort> activeGateways = new ConcurrentHashMap<>();
+    private static final Map<String, Integer> gatewayPorts = new ConcurrentHashMap<>();
     private final java.util.concurrent.Semaphore redrawSemaphore = new java.util.concurrent.Semaphore(0);
 
     public void triggerRedraw() {
@@ -52,6 +53,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     public static void startTerminal(String displayName, RunningGatewayPort gateway) {
         if (gateway != null) {
             activeGateways.put(gateway.getClusterName(), gateway);
+            gatewayPorts.put(gateway.getClusterName(), gateway.getPort());
         }
         new TerminalUI(displayName).run();
     }
@@ -161,6 +163,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     public hexacloud.core.ports.TerminalUiPort seedGateway(RunningGatewayPort gateway) {
         if (gateway != null) {
             activeGateways.put(gateway.getClusterName(), gateway);
+            gatewayPorts.put(gateway.getClusterName(), gateway.getPort());
         }
         return this;
     }
@@ -395,6 +398,30 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         } else {
             state.selectedClusterIndex = 0;
             state.selectedClusterName = "";
+        }
+        fetchGateways();
+    }
+
+    public void fetchGateways() {
+        state.gateways.clear();
+        for (String clusterName : state.clusterNames) {
+            TuiState.GatewayConfig cfg = new TuiState.GatewayConfig();
+            cfg.clusterName = clusterName;
+            
+            RunningGatewayPort activeGw = activeGateways.get(clusterName);
+            if (activeGw != null) {
+                cfg.port = activeGw.getPort();
+                cfg.telnetEnabled = activeGw.isTelnetEnabled();
+                cfg.httpEnabled = activeGw.isHttpEnabled();
+                cfg.wsEnabled = activeGw.isWsEnabled();
+                cfg.running = activeGw.isRunning();
+                gatewayPorts.put(clusterName, activeGw.getPort());
+            } else {
+                Integer configuredPort = gatewayPorts.get(clusterName);
+                cfg.port = (configuredPort != null) ? configuredPort : 3000;
+                cfg.running = false;
+            }
+            state.gateways.add(cfg);
         }
     }
 

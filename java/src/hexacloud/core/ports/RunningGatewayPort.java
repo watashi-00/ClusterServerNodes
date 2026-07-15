@@ -73,4 +73,9 @@ public interface RunningGatewayPort {
      * Access the event manager to subscribe to cluster node changes or connection pings.
      */
     ClusterEventBusManager eventManager();
+
+    boolean isTelnetEnabled();
+    boolean isHttpEnabled();
+    boolean isWsEnabled();
+    boolean isRunning();
 }

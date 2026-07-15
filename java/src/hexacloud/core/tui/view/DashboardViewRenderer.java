@@ -27,109 +27,179 @@ public class DashboardViewRenderer {
     public void draw() {
         TuiState state = tui.state();
 
-        mainRenderer.drawBox(2, 5, 24, 13, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
-        mainRenderer.drawBox(26, 5, 79, 13, "CLUSTER CONFIG & SERVICES", state.activePanel == PANEL_SERVICES);
+        // 1. Draw all panels/boxes
+        mainRenderer.drawBox(2, 5, 24, 9, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
+        mainRenderer.drawBox(2, 10, 24, 13, "GATEWAYS (" + state.gateways.size() + ")", state.activePanel == PANEL_GATEWAYS);
+        
+        boolean isGatewayFocused = state.activePanel == PANEL_GATEWAYS;
+        String middleTitle = isGatewayFocused ? "GATEWAY CONFIG & TRANSPORTS" : "CLUSTER CONFIG & SERVICES";
+        mainRenderer.drawBox(26, 5, 79, 13, middleTitle, state.activePanel == PANEL_SERVICES || state.activePanel == PANEL_GATEWAYS);
+        
         mainRenderer.drawBox(2, 14, 55, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
         mainRenderer.drawBox(81, 5, 110, 13, "GATEWAYS & SYSTEM", false);
         mainRenderer.drawBox(57, 14, 110, 22, "RECENT EVENTS", false);
 
-        int y = 6;
+        // 2. Render CLUSTERS list
+        int yCluster = 6;
         if (state.clusterNames.isEmpty()) {
-            NativeTerminal.printAt(4, y, RED + "No clusters." + RESET);
+            NativeTerminal.printAt(4, yCluster, RED + "No clusters." + RESET);
         } else {
             for (int i = 0; i < state.clusterNames.size(); i++) {
-                if (y >= 13) break;
+                if (yCluster >= 9) break;
                 String name = state.clusterNames.get(i);
-                
-                String displayName = name;
-                String gwIndicator;
-                if (tui.isGatewayActive(name)) {
-                    RunningGatewayPort gw = tui.activeGateways().get(name);
-                    int port = (gw != null) ? gw.getPort() : 3000;
-                    String suffix = " [" + port + "]";
-                    int maxLen = 16 - suffix.length();
-                    if (displayName.length() > maxLen) {
-                        displayName = displayName.substring(0, maxLen - 3) + "...";
-                    }
-                    displayName = displayName + suffix;
-                    gwIndicator = GREEN + "●" + RESET;
-                } else {
-                    int maxLen = 16;
-                    if (displayName.length() > maxLen) {
-                        displayName = displayName.substring(0, maxLen - 3) + "...";
-                    }
-                    gwIndicator = RED + "○" + RESET;
+                hexacloud.core.cluster.Cluster c = hexacloud.core.cluster.ClusterRegistry.getInstance().getCluster(name);
+                int nodeCount = (c != null) ? c.getCluster().size() : 0;
+                String displayName = name + " (" + nodeCount + ")";
+                if (displayName.length() > 18) {
+                    displayName = displayName.substring(0, 15) + "...";
                 }
-                
-                if (i == state.selectedClusterIndex) {
-                    NativeTerminal.printAt(4, y, CYAN + "➔ " + WHITE_BOLD + displayName + " " + gwIndicator + RESET);
+                String clearedLine = displayName + "      ";
+                if (clearedLine.length() > 20) clearedLine = clearedLine.substring(0, 20);
+
+                if (i == state.selectedClusterIndex && state.activePanel == PANEL_CLUSTERS) {
+                    NativeTerminal.printAt(4, yCluster, CYAN + "➔ " + WHITE_BOLD + clearedLine + RESET);
+                } else if (i == state.selectedClusterIndex) {
+                    NativeTerminal.printAt(4, yCluster, GRAY + "➔ " + RESET + clearedLine);
                 } else {
-                    NativeTerminal.printAt(4, y, "  " + displayName + " " + gwIndicator + RESET);
+                    NativeTerminal.printAt(4, yCluster, "  " + clearedLine);
                 }
-                y++;
+                yCluster++;
             }
         }
+        for (int r = yCluster; r < 9; r++) {
+            NativeTerminal.printAt(4, r, "                     ");
+        }
 
-        String ips = state.targetAllowedIps.isEmpty() ? "Any Client" : state.targetAllowedIps;
-        if (ips.length() > 22) ips = ips.substring(0, 19) + "...";
-
-        String gwStatus = tui.isGatewayActive(state.selectedClusterName) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
-
-        NativeTerminal.printAt(28, 6, WHITE_BOLD + "Active:   " + RESET + state.selectedClusterName + " | Gateway: " + gwStatus);
-        NativeTerminal.printAt(28, 7, "Security: " + (state.targetRequireToken ? GREEN + "Required (Key Hidden)" + RESET : YELLOW + "Optional" + RESET) + " | Allowed: " + CYAN + ips + RESET);
-        NativeTerminal.printAt(28, 8, "Limits:   " + YELLOW + state.targetRateLimitRequests + " reqs / " + state.targetRateLimitDurationSeconds + "s" + RESET + " | Timeout: " + state.targetTimeoutMs + " ms");
-        
-        StringBuilder sep = new StringBuilder();
-        for (int i = 27; i < 79; i++) sep.append("─");
-        NativeTerminal.printAt(26, 9, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
-
-        y = 10;
-        NativeTerminal.printAt(28, 9, WHITE_BOLD + String.format("%-26s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS") + RESET);
-        y++;
-
-        tui.adjustServicesViewport(2);
-
-        if (state.nodes.isEmpty()) {
-            NativeTerminal.printAt(28, y, RED + "No services registered." + RESET);
+        // 3. Render GATEWAYS list
+        int yGateway = 11;
+        if (state.gateways.isEmpty()) {
+            NativeTerminal.printAt(4, yGateway, RED + "No gateways." + RESET);
         } else {
-            for (int i = 0; i < 2; i++) {
-                int index = state.servicesViewportStart + i;
-                if (index >= state.nodes.size()) break;
-
-                ServerNode node = state.nodes.get(index);
-                String statusText = node.status().name();
-                String coloredStatus = GREEN + "ONLINE" + RESET;
-                if (statusText.equals("OFFLINE")) {
-                    coloredStatus = RED + "OFFLINE" + RESET;
-                } else if (statusText.equals("UNSTABLE")) {
-                    coloredStatus = YELLOW + "UNSTABLE" + RESET;
+            for (int i = 0; i < state.gateways.size(); i++) {
+                if (yGateway >= 13) break;
+                TuiState.GatewayConfig gw = state.gateways.get(i);
+                String statusIndicator = gw.running ? GREEN + "●" + RESET : RED + "○" + RESET;
+                String displayName = "[" + gw.port + "] " + (gw.clusterName.isEmpty() ? "None" : gw.clusterName);
+                if (displayName.length() > 14) {
+                    displayName = displayName.substring(0, 11) + "...";
                 }
+                String clearedLine = displayName + "    ";
+                if (clearedLine.length() > 16) clearedLine = clearedLine.substring(0, 16);
 
-                String portStr = node.port() == 0 ? "-" : String.valueOf(node.port());
-                String prefix = "  ";
-                if (index == state.selectedNodeIndex && state.activePanel == PANEL_SERVICES) {
-                    prefix = "➔ ";
+                if (i == state.selectedGatewayIndex && state.activePanel == PANEL_GATEWAYS) {
+                    NativeTerminal.printAt(4, yGateway, CYAN + "➔ " + WHITE_BOLD + clearedLine + " " + statusIndicator + RESET);
+                } else if (i == state.selectedGatewayIndex) {
+                    NativeTerminal.printAt(4, yGateway, GRAY + "➔ " + RESET + clearedLine + " " + statusIndicator);
+                } else {
+                    NativeTerminal.printAt(4, yGateway, "  " + clearedLine + " " + statusIndicator);
                 }
-
-                String hostStr = node.host() + (node.runtime().isEmpty() ? "" : " [" + node.runtime() + "]");
-                String statusLabel = coloredStatus + (node.status().name().equals("ONLINE") ? " (" + node.latencyMs() + "ms)" : "");
-
-                String line = String.format("%s%-26s %-8s %-14s", prefix, hostStr, portStr, statusLabel);
-                NativeTerminal.printAt(28, y, line);
-                y++;
+                yGateway++;
             }
-            if (state.servicesViewportStart > 0) {
-                NativeTerminal.printAt(77, 10, WHITE_BOLD + "▲" + RESET);
+        }
+        for (int r = yGateway; r < 13; r++) {
+            NativeTerminal.printAt(4, r, "                     ");
+        }
+
+        // 4. Render Middle Config & Services/Transports Table
+        if (isGatewayFocused) {
+            TuiState.GatewayConfig gw = !state.gateways.isEmpty() && state.selectedGatewayIndex < state.gateways.size()
+                ? state.gateways.get(state.selectedGatewayIndex) : null;
+            String targetCluster = (gw != null && !gw.clusterName.isEmpty()) ? gw.clusterName : "None";
+            String gwStatusStr = (gw != null && gw.running) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
+            int port = (gw != null) ? gw.port : 3000;
+            int pingInt = (gw != null) ? gw.pingInterval : 5;
+
+            NativeTerminal.printAt(28, 6, WHITE_BOLD + "Gateway:  " + RESET + "Port " + port + " | Target Cluster: " + targetCluster + RESET);
+            NativeTerminal.printAt(28, 7, "Status:   " + gwStatusStr + " | Ping Interval: " + YELLOW + pingInt + "s" + RESET);
+            
+            StringBuilder sep = new StringBuilder();
+            for (int i = 27; i < 79; i++) sep.append("─");
+            NativeTerminal.printAt(26, 8, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
+
+            NativeTerminal.printAt(28, 9, WHITE_BOLD + String.format("%-26s %-8s %-14s", "PROTOCOL / TRANSPORT", "PORT", "STATUS") + RESET);
+
+            int yGw = 10;
+            if (gw != null) {
+                String telnetStatus = (gw.running && gw.telnetEnabled) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
+                String httpStatus = (gw.running && gw.httpEnabled) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
+                String wsStatus = (gw.running && gw.wsEnabled) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
+
+                NativeTerminal.printAt(28, yGw++, String.format("  %-26s %-8d %-14s", "Telnet Console (CLI)", port, telnetStatus));
+                NativeTerminal.printAt(28, yGw++, String.format("  %-26s %-8d %-14s", "HTTP REST API (JSON)", port + 1, httpStatus));
+                NativeTerminal.printAt(28, yGw++, String.format("  %-26s %-8d %-14s", "WebSocket Stream (JSON)", port + 2, wsStatus));
+            } else {
+                NativeTerminal.printAt(28, yGw++, RED + "No gateway selected." + RESET);
             }
-            if (state.servicesViewportStart + 2 < state.nodes.size()) {
-                NativeTerminal.printAt(77, 12, WHITE_BOLD + "▼" + RESET);
+            for (int r = yGw; r <= 12; r++) {
+                NativeTerminal.printAt(28, r, "                                                    ");
+            }
+        } else {
+            String ips = state.targetAllowedIps.isEmpty() ? "Any Client" : state.targetAllowedIps;
+            if (ips.length() > 22) ips = ips.substring(0, 19) + "...";
+
+            String gwStatus = tui.isGatewayActive(state.selectedClusterName) ? GREEN + "ONLINE" : RED + "OFFLINE";
+            RunningGatewayPort activeGw = tui.activeGateways().get(state.selectedClusterName);
+            String portSuffix = (activeGw != null) ? " (:" + activeGw.getPort() + ")" : "";
+
+            NativeTerminal.printAt(28, 6, WHITE_BOLD + "Active:   " + RESET + state.selectedClusterName + " | Gateway: " + gwStatus + portSuffix + RESET);
+            NativeTerminal.printAt(28, 7, "Security: " + (state.targetRequireToken ? GREEN + "Token Required" + RESET : YELLOW + "Optional" + RESET) + " | Allowed: " + CYAN + ips + RESET);
+            
+            StringBuilder sep = new StringBuilder();
+            for (int i = 27; i < 79; i++) sep.append("─");
+            NativeTerminal.printAt(26, 8, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
+
+            NativeTerminal.printAt(28, 9, WHITE_BOLD + String.format("%-26s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS") + RESET);
+
+            tui.adjustServicesViewport(3);
+
+            int yNode = 10;
+            if (state.nodes.isEmpty()) {
+                NativeTerminal.printAt(28, yNode, RED + "No services registered." + RESET);
+                yNode++;
+            } else {
+                for (int i = 0; i < 3; i++) {
+                    int index = state.servicesViewportStart + i;
+                    if (index >= state.nodes.size()) break;
+
+                    ServerNode node = state.nodes.get(index);
+                    String statusText = node.status().name();
+                    String coloredStatus = GREEN + "ONLINE" + RESET;
+                    if (statusText.equals("OFFLINE")) {
+                        coloredStatus = RED + "OFFLINE" + RESET;
+                    } else if (statusText.equals("UNSTABLE")) {
+                        coloredStatus = YELLOW + "UNSTABLE" + RESET;
+                    }
+
+                    String portStr = node.port() == 0 ? "-" : String.valueOf(node.port());
+                    String prefix = "  ";
+                    if (index == state.selectedNodeIndex && state.activePanel == PANEL_SERVICES) {
+                        prefix = "➔ ";
+                    }
+
+                    String hostStr = node.host() + (node.runtime().isEmpty() ? "" : " [" + node.runtime() + "]");
+                    String statusLabel = coloredStatus + (node.status().name().equals("ONLINE") ? " (" + node.latencyMs() + "ms)" : "");
+
+                    String line = String.format("%s%-26s %-8s %-14s", prefix, hostStr, portStr, statusLabel);
+                    NativeTerminal.printAt(28, yNode, line);
+                    yNode++;
+                }
+                if (state.servicesViewportStart > 0) {
+                    NativeTerminal.printAt(77, 9, WHITE_BOLD + "▲" + RESET);
+                }
+                if (state.servicesViewportStart + 3 < state.nodes.size()) {
+                    NativeTerminal.printAt(77, 12, WHITE_BOLD + "▼" + RESET);
+                }
+            }
+            for (int r = yNode; r <= 12; r++) {
+                NativeTerminal.printAt(28, r, "                                                    ");
             }
         }
 
-        y = 15;
+        // 5. Render RECENT SYSTEM LOGS
+        int yLog = 15;
         List<DebugUtils.LogEntry> dashboardLogs = DebugUtils.getDashboardLogs();
         if (dashboardLogs.isEmpty()) {
-            NativeTerminal.printAt(4, y, "No logs recorded yet.");
+            NativeTerminal.printAt(4, yLog, "No logs recorded yet.");
         } else {
             int startIdx = Math.max(0, dashboardLogs.size() - 7);
             for (int i = startIdx; i < dashboardLogs.size(); i++) {
@@ -140,17 +210,17 @@ public class DashboardViewRenderer {
                     clearedLine = clearedLine.substring(0, 50);
                 }
                 if (entry.getLevel().equals("ERROR")) {
-                    NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
+                    NativeTerminal.printAt(4, yLog, RED + clearedLine + RESET);
                 } else if (entry.getLevel().equals("INFO")) {
-                    NativeTerminal.printAt(4, y, CYAN + clearedLine + RESET);
+                    NativeTerminal.printAt(4, yLog, CYAN + clearedLine + RESET);
                 } else {
-                    NativeTerminal.printAt(4, y, clearedLine);
+                    NativeTerminal.printAt(4, yLog, clearedLine);
                 }
-                y++;
+                yLog++;
             }
         }
 
-        // Render GATEWAYS & SYSTEM Live Metrics
+        // 6. Render GATEWAYS & SYSTEM Live Metrics
         NativeTerminal.printAt(83, 6, WHITE_BOLD + "SYSTEM RESOURCES" + RESET);
         long usedMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
         long allocatedMem = Runtime.getRuntime().totalMemory() / (1024 * 1024);
@@ -206,7 +276,7 @@ public class DashboardViewRenderer {
         String summaryPadding = " ".repeat(Math.max(0, 26 - gwSummary.replaceAll("\u001B\\[[;\\d]*m", "").length()));
         NativeTerminal.printAt(83, 12, gwSummary + summaryPadding);
 
-        // Render RECENT EVENTS (Expanded to width 53, starting at column 57)
+        // 7. Render RECENT EVENTS
         int eventY = 15;
         if (state.recentEvents.isEmpty()) {
             NativeTerminal.printAt(59, eventY, GRAY + "No recent events." + RESET);
@@ -271,6 +341,7 @@ public class DashboardViewRenderer {
             NativeTerminal.printAt(59, row, "                                                  ");
         }
 
+        // 8. Render bottom controls
         StringBuilder controlsStr = new StringBuilder();
         controlsStr.append(" [Tab] Focus  [Enter] Console");
         if (tui.gatewayManagementEnabled() && !tui.readOnly()) controlsStr.append("  [G] Gateway");
