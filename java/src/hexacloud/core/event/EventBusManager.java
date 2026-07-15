@@ -8,6 +8,12 @@ import java.util.Map;
 import hexacloud.core.utils.DebugUtils;
 
 public class EventBusManager {
+    private static final EventBusManager GLOBAL = new EventBusManager();
+
+    public static EventBusManager getGlobal() {
+        return GLOBAL;
+    }
+
     private final Map<Class<? extends Event>, List<EventListener<?>>> channels = new HashMap<>();
 
     public <T extends Event> void sub(Class<T> eventType, EventListener<T> listener) {
@@ -19,12 +25,16 @@ public class EventBusManager {
         Class<? extends Event> eventType = event.getClass();
         List<EventListener<?>> listeners = channels.get(eventType);
 
-        DebugUtils.log("Dispatching global event: " + event);
+        DebugUtils.log("Dispatching event: " + event);
 
         if(listeners != null) {
             for(var listener : listeners) {
                 ((EventListener<T>) listener).onEvent(event);
             }
+        }
+
+        if (this != GLOBAL) {
+            GLOBAL.dispatch(event);
         }
     }
 

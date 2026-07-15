@@ -33,6 +33,11 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     private boolean tokenManagementEnabled = true;
 
     private static final Map<String, GatewayPort> activeGateways = new ConcurrentHashMap<>();
+    private final java.util.concurrent.Semaphore redrawSemaphore = new java.util.concurrent.Semaphore(0);
+
+    public void triggerRedraw() {
+        redrawSemaphore.release();
+    }
 
     /**
      * Start the Terminal UI client with the default settings.
@@ -182,9 +187,6 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         }));
 
         try {
-            long lastFetch = 0;
-            boolean needRedraw = true;
-
             // Load persisted state configuration files from disk
             hexacloud.core.config.ClusterStatePersistence.loadState();
 
@@ -197,31 +199,72 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                 fetchClusterConfig(state.selectedClusterName);
             }
 
-            while (state.running) {
-                long now = System.currentTimeMillis();
-                if (now - lastFetch >= 1200) {
-                    fetchClusterNames();
-                    if (!state.selectedClusterName.isEmpty()) {
-                        fetchNodeStatus();
-                        fetchClusterConfig(state.selectedClusterName);
+            // Subscribe to Global Event Bus for event-driven redraw triggers
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeRegistered.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered.class, event -> {
+                triggerRedraw();
+            });
+
+            // Start low-latency non-blocking input listener on a lightweight virtual thread
+            hexacloud.core.utils.ThreadManager.startVirtual("TuiInputReader", () -> {
+                while (state.running) {
+                    int key = NativeTerminal.readKey();
+                    if (key != -1) {
+                        synchronized (state) {
+                            keyHandler.handleKeyPress(key);
+                        }
+                        triggerRedraw();
                     }
-                    fetchGlobalConfig();
-                    lastFetch = now;
-                    needRedraw = true;
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
                 }
+            });
 
-                if (needRedraw) {
-                    renderer.draw();
-                    needRedraw = false;
+            // Initial render
+            renderer.draw();
+
+            // Event-driven loop
+            while (state.running) {
+                try {
+                    // Block until an event releases the semaphore
+                    redrawSemaphore.acquire();
+                    
+                    // Debounce/Coalesce: sleep 15ms to group rapid multiple events
+                    Thread.sleep(15);
+                    redrawSemaphore.drainPermits();
+
+                    if (state.running) {
+                        // Dynamically update state data before drawing
+                        fetchClusterNames();
+                        if (!state.selectedClusterName.isEmpty()) {
+                            fetchNodeStatus();
+                            fetchClusterConfig(state.selectedClusterName);
+                        }
+                        fetchGlobalConfig();
+
+                        renderer.draw();
+                    }
+                } catch (InterruptedException e) {
+                    break;
                 }
-
-                int key = NativeTerminal.readKey();
-                if (key != -1) {
-                    keyHandler.handleKeyPress(key);
-                    needRedraw = true;
-                }
-
-                Thread.sleep(100);
             }
         } catch (Exception e) {
             NativeTerminal.resetTerminal();
