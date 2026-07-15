@@ -224,7 +224,43 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             NativeTerminal.resetTerminal();
         }));
 
+        hexacloud.core.event.EventListener<hexacloud.core.event.Event> interceptor = null;
         try {
+            // Register global event interceptor to capture all events for the UI
+            interceptor = event -> {
+                String name = event.getClass().getSimpleName();
+                String detail = "";
+                if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged e) {
+                    detail = e.host().replaceAll("^(http|https)://", "") + " -> " + e.status();
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated e) {
+                    detail = e.host().replaceAll("^(http|https)://", "") + " updated";
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeRegistered e) {
+                    detail = e.node().getFullHost().replaceAll("^(http|https)://", "");
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered e) {
+                    detail = e.host().replaceAll("^(http|https)://", "");
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered e) {
+                    detail = e.clusterName();
+                } else {
+                    try {
+                        java.lang.reflect.Method m = event.getClass().getMethod("message");
+                        detail = (String) m.invoke(event);
+                    } catch (Exception ex) {
+                        try {
+                            java.lang.reflect.Method m = event.getClass().getMethod("getMessage");
+                            detail = (String) m.invoke(event);
+                        } catch (Exception ex2) {
+                            detail = event.toString();
+                        }
+                    }
+                }
+                state.recentEvents.add(0, new TuiState.TuiEvent(name, detail, System.currentTimeMillis()));
+                while (state.recentEvents.size() > 8) {
+                    state.recentEvents.remove(state.recentEvents.size() - 1);
+                }
+                triggerRedraw();
+            };
+            hexacloud.core.event.EventBusManager.getGlobal().addInterceptor(interceptor);
+
             // Load persisted state configuration files from disk
             hexacloud.core.config.ClusterStatePersistence.loadState();
 
@@ -308,6 +344,9 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             NativeTerminal.resetTerminal();
             e.printStackTrace();
         } finally {
+            if (interceptor != null) {
+                hexacloud.core.event.EventBusManager.getGlobal().removeInterceptor(interceptor);
+            }
             NativeTerminal.resetTerminal();
             DebugUtils.setTuiModeActive(false);
             if (!readOnly) {
