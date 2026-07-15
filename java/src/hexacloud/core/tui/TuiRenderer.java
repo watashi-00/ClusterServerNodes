@@ -68,10 +68,12 @@ public class TuiRenderer {
     }
 
     public void drawHeader(String viewTitle) {
+        int width = NativeTerminal.getTerminalWidth() - 2;
+        if (width < 40) width = 40; // Hard minimum
         String boxColor = CYAN;
         StringBuilder borderTop = new StringBuilder("╔");
         StringBuilder borderBottom = new StringBuilder("╚");
-        for (int i = 0; i < 108; i++) {
+        for (int i = 0; i < width; i++) {
             borderTop.append("═");
             borderBottom.append("═");
         }
@@ -80,7 +82,6 @@ public class TuiRenderer {
         
         NativeTerminal.printAt(1, 1, boxColor + borderTop.toString() + RESET);
         
-        int width = 108;
         int padding = Math.max(0, (width - viewTitle.length()) / 2);
         StringBuilder sb = new StringBuilder();
         sb.append("║");

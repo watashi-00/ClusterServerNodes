@@ -5,14 +5,26 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Structured logging utility. Supports filtering by cluster and service host.
  */
 public class DebugUtils {
 
+    private static final Logger logger = LoggerFactory.getLogger(DebugUtils.class);
+
     private static boolean debugEnabled = false;
     private static boolean tuiModeActive = false;
     private static final Queue<LogEntry> recentLogs = new ConcurrentLinkedQueue<>();
+
+    public enum LogLevel {
+        DEBUG,
+        INFO,
+        WARN,
+        ERROR
+    }
 
     public interface LogListener {
         void onLogAdded();
@@ -24,12 +36,12 @@ public class DebugUtils {
 
     public static class LogEntry {
         private final long timestamp;
-        private final String level;
+        private final LogLevel level;
         private final String clusterName;
         private final String serviceHost;
         private final String message;
 
-        public LogEntry(String level, String clusterName, String serviceHost, String message) {
+        public LogEntry(LogLevel level, String clusterName, String serviceHost, String message) {
             this.timestamp = System.currentTimeMillis();
             this.level = level;
             this.clusterName = clusterName != null ? clusterName : "";
@@ -38,7 +50,7 @@ public class DebugUtils {
         }
 
         public long getTimestamp() { return timestamp; }
-        public String getLevel() { return level; }
+        public LogLevel getLevel() { return level; }
         public String getClusterName() { return clusterName; }
         public String getServiceHost() { return serviceHost; }
         public String getMessage() { return message; }
@@ -98,9 +110,9 @@ public class DebugUtils {
                 String line = new String(bytes, java.nio.charset.StandardCharsets.UTF_8).trim();
                 if (!line.isEmpty()) {
                     if (isError) {
-                        captureLog("ERROR", null, null, line);
+                        captureLog(LogLevel.ERROR, null, null, line);
                     } else {
-                        captureLog("INFO", null, null, line);
+                        captureLog(LogLevel.INFO, null, null, line);
                     }
                 }
             }
@@ -114,7 +126,7 @@ public class DebugUtils {
     public static List<LogEntry> getDashboardLogs() {
         List<LogEntry> result = new ArrayList<>();
         for (LogEntry entry : recentLogs) {
-            if (entry.getLevel().equals("INFO") || entry.getLevel().equals("ERROR")) {
+            if (entry.getLevel() == LogLevel.INFO || entry.getLevel() == LogLevel.ERROR) {
                 result.add(entry);
             }
         }
@@ -147,18 +159,41 @@ public class DebugUtils {
         return result;
     }
 
-    private static void captureLog(String level, String clusterName, String serviceHost, String message) {
+    private static void captureLog(LogLevel level, String clusterName, String serviceHost, String message) {
+        captureLog(level, clusterName, serviceHost, message, null);
+    }
+
+    private static void captureLog(LogLevel level, String clusterName, String serviceHost, String message, Throwable t) {
         LogEntry entry = new LogEntry(level, clusterName, serviceHost, message);
         recentLogs.offer(entry);
         while (recentLogs.size() > 1000) {
             recentLogs.poll();
         }
         if (!tuiModeActive) {
-            String formatted = entry.toString();
-            if (level.equals("ERROR")) {
-                System.err.println(formatted);
+            if (level == LogLevel.ERROR) {
+                if (t != null) {
+                    logger.error(message, t);
+                } else {
+                    logger.error(message);
+                }
+            } else if (level == LogLevel.WARN) {
+                if (t != null) {
+                    logger.warn(message, t);
+                } else {
+                    logger.warn(message);
+                }
+            } else if (level == LogLevel.DEBUG) {
+                if (t != null) {
+                    logger.debug(message, t);
+                } else {
+                    logger.debug(message);
+                }
             } else {
-                System.out.println(formatted);
+                if (t != null) {
+                    logger.info(message, t);
+                } else {
+                    logger.info(message);
+                }
             }
         }
         if (logListener != null) {
@@ -168,24 +203,24 @@ public class DebugUtils {
 
     public static void log(String message) {
         if (debugEnabled) {
-            captureLog("DEBUG", null, null, message);
+            captureLog(LogLevel.DEBUG, null, null, message);
         }
     }
 
     public static void info(String message) {
-        captureLog("INFO", null, null, message);
+        captureLog(LogLevel.INFO, null, null, message);
     }
 
     public static void info(String clusterName, String serviceHost, String message) {
-        captureLog("INFO", clusterName, serviceHost, message);
+        captureLog(LogLevel.INFO, clusterName, serviceHost, message);
     }
 
     public static void error(String message) {
-        captureLog("ERROR", null, null, message);
+        captureLog(LogLevel.ERROR, null, null, message);
     }
 
     public static void error(String clusterName, String serviceHost, String message) {
-        captureLog("ERROR", clusterName, serviceHost, message);
+        captureLog(LogLevel.ERROR, clusterName, serviceHost, message);
     }
 
     public static void error(String message, Throwable t) {
@@ -203,9 +238,9 @@ public class DebugUtils {
             } else {
                 details = " -> " + cause.toString();
             }
-            captureLog("ERROR", clusterName, serviceHost, message + details);
+            captureLog(LogLevel.ERROR, clusterName, serviceHost, message + details, t);
         } else {
-            captureLog("ERROR", clusterName, serviceHost, message);
+            captureLog(LogLevel.ERROR, clusterName, serviceHost, message, null);
         }
     }
 }

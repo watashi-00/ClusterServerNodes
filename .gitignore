@@ -5,6 +5,9 @@
 *.class
 /tmp/
 
+# Whitelist native libraries packed in resources
+!**/resources/native/**
+
 # Ignore Maven build output directories
 target/
 **/target/
@@ -12,3 +15,6 @@ target/
 # Ignore developer configuration files and state properties
 **/hexacloud.properties
 **/*-state.properties
+
+# Ignore code review reports
+CODE_REVIEW.md

@@ -110,11 +110,30 @@ JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig0(
     return JNI_TRUE;
 }
 
+JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_getTerminalWidth0(JNIEnv *env, jclass clazz) {
+    if (hStdout == NULL) hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(hStdout, &csbi)) {
+        return (jint)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+    }
+    return 110;
+}
+
+JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_getTerminalHeight0(JNIEnv *env, jclass clazz) {
+    if (hStdout == NULL) hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    if (GetConsoleScreenBufferInfo(hStdout, &csbi)) {
+        return (jint)(csbi.srWindow.Bottom - csbi.srWindow.Top + 1);
+    }
+    return 24;
+}
+
 #else
 
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
 
 static struct termios orig_termios;
 static int raw_mode_active = 0;
@@ -206,6 +225,22 @@ JNIEXPORT jboolean JNICALL Java_hexacloud_core_utils_NativeTerminal_saveConfig0(
     (*env)->ReleaseStringUTFChars(env, filepath, path);
     (*env)->ReleaseStringUTFChars(env, content, body);
     return JNI_TRUE;
+}
+
+JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_getTerminalWidth0(JNIEnv *env, jclass clazz) {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
+        return (jint)w.ws_col;
+    }
+    return 110;
+}
+
+JNIEXPORT jint JNICALL Java_hexacloud_core_utils_NativeTerminal_getTerminalHeight0(JNIEnv *env, jclass clazz) {
+    struct winsize w;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0) {
+        return (jint)w.ws_row;
+    }
+    return 24;
 }
 
 #endif
