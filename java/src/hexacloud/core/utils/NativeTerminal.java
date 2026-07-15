@@ -5,6 +5,7 @@ import java.io.FileWriter;
 
 public class NativeTerminal {
     private static boolean loaded = false;
+    private static boolean sttyRawModeActive = false;
 
     static {
         // Try loading from packaged JAR resource first
@@ -86,9 +87,23 @@ public class NativeTerminal {
         if (loaded) {
             try {
                 initTerminal0();
+                return;
             } catch (UnsatisfiedLinkError e) {
                 // Fallback
             }
+        }
+        // Fallback Unix stty raw mode
+        try {
+            String osName = System.getProperty("os.name").toLowerCase();
+            if (osName.contains("linux") || osName.contains("mac") || osName.contains("nix") || osName.contains("nux")) {
+                new ProcessBuilder("sh", "-c", "stty raw -echo < /dev/tty").start().waitFor();
+                sttyRawModeActive = true;
+                // Clear screen and hide cursor using ANSI escape code
+                System.out.print("\033[2J\033[H\033[3J\033[?25l");
+                System.out.flush();
+            }
+        } catch (Exception e) {
+            // Ignore
         }
     }
 
@@ -96,8 +111,20 @@ public class NativeTerminal {
         if (loaded) {
             try {
                 resetTerminal0();
+                return;
             } catch (UnsatisfiedLinkError e) {
                 // Fallback
+            }
+        }
+        if (sttyRawModeActive) {
+            try {
+                new ProcessBuilder("sh", "-c", "stty sane < /dev/tty").start().waitFor();
+                sttyRawModeActive = false;
+                // Show cursor
+                System.out.print("\033[?25h\033[0m\n");
+                System.out.flush();
+            } catch (Exception e) {
+                // Ignore
             }
         }
     }
@@ -142,13 +169,24 @@ public class NativeTerminal {
             if (System.in.available() > 0) {
                 int c = System.in.read();
                 if (c == 27) { // Escape sequence parser for fallback mode
+                    // Wait up to 50ms for the next bytes of the escape sequence to arrive
+                    long start = System.currentTimeMillis();
+                    while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
+                        Thread.onSpinWait();
+                    }
                     if (System.in.available() > 0) {
                         int c2 = System.in.read();
                         if (c2 == '[') {
+                            start = System.currentTimeMillis();
+                            while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
+                                Thread.onSpinWait();
+                            }
                             if (System.in.available() > 0) {
                                 int c3 = System.in.read();
                                 if (c3 == 'A') return 1000; // UP Arrow
                                 if (c3 == 'B') return 1001; // DOWN Arrow
+                                if (c3 == 'C') return 1002; // RIGHT Arrow
+                                if (c3 == 'D') return 1003; // LEFT Arrow
                             }
                         }
                     }
