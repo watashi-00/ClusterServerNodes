@@ -1,6 +1,5 @@
 package hexacloud.application;
 
-import hexacloud.core.model.NodeStatus;
 import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.utils.DebugUtils;
@@ -34,11 +33,11 @@ public class Main {
             .timeout(4500);
 
         // Register servers (will trigger NodeRegistered event for each node!)
-        builder.registerServer(3001, NodeStatus.OFFLINE)
-            .registerServer(3002, NodeStatus.OFFLINE)
-            .registerServer(3003, NodeStatus.OFFLINE)
-            .registerServer(3004, NodeStatus.OFFLINE)
-            .registerServer(3005, NodeStatus.OFFLINE);
+        builder.registerServer(3001)
+            .registerServer(3002)
+            .registerServer(3003)
+            .registerServer(3004)
+            .registerServer(3005);
 
         RunningGatewayPort runningGateway = builder.listen()
             .listClusterNodes()

@@ -4,7 +4,6 @@ import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.RunningGatewayPort;
-import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.utils.NativeTerminal;
 import hexacloud.core.utils.TerminalScanner;
 import static hexacloud.core.tui.TuiConstants.*;
