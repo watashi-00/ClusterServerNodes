@@ -41,12 +41,62 @@ public class DebugUtils {
         }
     }
 
+    private static final java.io.PrintStream originalOut = System.out;
+    private static final java.io.PrintStream originalErr = System.err;
+
     public static void setDebugEnabled(boolean enabled) {
         debugEnabled = enabled;
     }
 
     public static void setTuiModeActive(boolean active) {
         tuiModeActive = active;
+        if (active) {
+            System.setOut(new java.io.PrintStream(new RedirectorOutputStream(false), true, java.nio.charset.StandardCharsets.UTF_8));
+            System.setErr(new java.io.PrintStream(new RedirectorOutputStream(true), true, java.nio.charset.StandardCharsets.UTF_8));
+        } else {
+            System.setOut(originalOut);
+            System.setErr(originalErr);
+        }
+    }
+
+    private static class RedirectorOutputStream extends java.io.OutputStream {
+        private final boolean isError;
+        private final java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+
+        public RedirectorOutputStream(boolean isError) {
+            this.isError = isError;
+        }
+
+        @Override
+        public void write(int b) {
+            if (b == '\n') {
+                flushBuffer();
+            } else if (b != '\r') {
+                buffer.write(b);
+            }
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) {
+            for (int i = 0; i < len; i++) {
+                write(b[off + i]);
+            }
+        }
+
+        private void flushBuffer() {
+            byte[] bytes = buffer.toByteArray();
+            buffer.reset();
+            if (bytes.length > 0) {
+                String line = new String(bytes, java.nio.charset.StandardCharsets.UTF_8).trim();
+                if (!line.isEmpty()) {
+                    if (isError) {
+                        captureLog("ERROR", null, null, line);
+                    } else {
+                        captureLog("INFO", null, null, line);
+                    }
+                }
+            }
+        }
     }
 
     public static List<LogEntry> getAllLogs() {
