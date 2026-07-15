@@ -197,9 +197,9 @@ public class TuiRenderer {
             for (int i = startIdx; i < dashboardLogs.size(); i++) {
                 DebugUtils.LogEntry entry = dashboardLogs.get(i);
                 String logLine = entry.toString();
-                String clearedLine = logLine + "                                                                                ";
-                if (clearedLine.length() > 72) {
-                    clearedLine = clearedLine.substring(0, 72);
+                String clearedLine = logLine + "                                                    ";
+                if (clearedLine.length() > 50) {
+                    clearedLine = clearedLine.substring(0, 50);
                 }
                 if (entry.getLevel().equals("ERROR")) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
@@ -259,10 +259,10 @@ public class TuiRenderer {
         String summaryPadding = " ".repeat(Math.max(0, 26 - gwSummary.replaceAll("\u001B\\[[;\\d]*m", "").length()));
         NativeTerminal.printAt(83, 12, gwSummary + summaryPadding);
 
-        // Render RECENT EVENTS
+        // Render RECENT EVENTS (Expanded to width 53, starting at column 57)
         int eventY = 15;
         if (state.recentEvents.isEmpty()) {
-            NativeTerminal.printAt(83, eventY, GRAY + "No recent events." + RESET);
+            NativeTerminal.printAt(59, eventY, GRAY + "No recent events." + RESET);
             eventY++;
         } else {
             for (TuiState.TuiEvent event : state.recentEvents) {
@@ -281,7 +281,7 @@ public class TuiRenderer {
                 }
 
                 String timeStr = "[" + timeAgo + "] ";
-                int remaining = 26 - timeStr.length();
+                int remaining = 50 - timeStr.length();
                 
                 String shortName;
                 switch (event.type()) {
@@ -294,7 +294,7 @@ public class TuiRenderer {
                     case "UserCustomEvent": shortName = "CustomEvent"; break;
                     default: 
                         shortName = event.type();
-                        if (shortName.length() > 12) shortName = shortName.substring(0, 12);
+                        if (shortName.length() > 15) shortName = shortName.substring(0, 15);
                 }
 
                 String eventText = shortName + (event.detail().isEmpty() ? "" : ": " + event.detail());
@@ -315,13 +315,13 @@ public class TuiRenderer {
 
                 String colorized = timeStr + color + eventText + RESET;
                 int printedLen = timeStr.length() + eventText.length();
-                String padding = " ".repeat(Math.max(0, 26 - printedLen));
-                NativeTerminal.printAt(83, eventY, colorized + padding);
+                String padding = " ".repeat(Math.max(0, 50 - printedLen));
+                NativeTerminal.printAt(59, eventY, colorized + padding);
                 eventY++;
             }
         }
         for (int row = eventY; row < 22; row++) {
-            NativeTerminal.printAt(83, row, "                          ");
+            NativeTerminal.printAt(59, row, "                                                  ");
         }
 
         StringBuilder controlsStr = new StringBuilder();
