@@ -58,7 +58,7 @@ public class MinimalApplication {
         // 4. Dispatch a custom event to verify listener registration
         gateway.eventManager().dispatch(new DeveloperCustomEvent("GateBridge Bootstrapped Successfully!"));
 
-        // 5. Run a background monitoring loop to print system stats every 5 seconds
+        // 5. Run a background monitoring loop to print system stats and thread breakdown every 5 seconds
         ThreadManager.startVirtual("SystemMonitor", () -> {
             ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
             Runtime runtime = Runtime.getRuntime();
@@ -66,11 +66,32 @@ public class MinimalApplication {
                 try {
                     Thread.sleep(5000);
                     int threadCount = threadMXBean.getThreadCount();
+                    
+                    int appThreads = 0;
+                    int jvmThreads = 0;
+                    try {
+                        java.util.Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+                        for (Thread t : threadSet) {
+                            String name = t.getName();
+                            if (t.isDaemon() && (name.contains("ForkJoinPool") || name.contains("VirtualThread-unblocker") ||
+                                name.equals("Reference Handler") || name.equals("Finalizer") || 
+                                name.equals("Signal Dispatcher") || name.equals("Notification Thread") || 
+                                name.equals("Common-Cleaner") || name.equals("Attach Listener"))) {
+                                jvmThreads++;
+                            } else {
+                                appThreads++;
+                            }
+                        }
+                    } catch (Throwable t) {
+                        appThreads = 1;
+                        jvmThreads = threadCount - 1;
+                    }
+                    
                     long freeMem = runtime.freeMemory() / (1024 * 1024);
                     long totalMem = runtime.totalMemory() / (1024 * 1024);
                     long usedMem = totalMem - freeMem;
-                    System.out.printf("[MONITOR] OS Threads: %d | RAM Used: %d MB / %d MB\n", 
-                        threadCount, usedMem, totalMem);
+                    System.out.printf("[MONITOR] Total OS Threads: %d (App/Framework: %d, JVM System Services: %d) | RAM Used: %d MB / %d MB\n", 
+                        threadCount, appThreads, jvmThreads, usedMem, totalMem);
                 } catch (InterruptedException e) {
                     break;
                 }

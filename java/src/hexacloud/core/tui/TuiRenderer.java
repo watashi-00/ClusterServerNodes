@@ -238,7 +238,22 @@ public class TuiRenderer {
         sysY++;
 
         int threads = java.lang.management.ManagementFactory.getThreadMXBean().getThreadCount();
-        NativeTerminal.printAt(83, sysY, "OS Threads: " + threads);
+        int appThreads = 0;
+        try {
+            java.util.Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+            for (Thread t : threadSet) {
+                String name = t.getName();
+                if (!(t.isDaemon() && (name.contains("ForkJoinPool") || name.contains("VirtualThread-unblocker") ||
+                    name.equals("Reference Handler") || name.equals("Finalizer") || 
+                    name.equals("Signal Dispatcher") || name.equals("Notification Thread") || 
+                    name.equals("Common-Cleaner") || name.equals("Attach Listener")))) {
+                    appThreads++;
+                }
+            }
+        } catch (Throwable t) {
+            appThreads = 1;
+        }
+        NativeTerminal.printAt(83, sysY, "OS Threads: " + CYAN + threads + RESET + " (App: " + CYAN + appThreads + RESET + ")");
         sysY++;
 
         NativeTerminal.printAt(81, sysY, "├────────────────────────────┤");
