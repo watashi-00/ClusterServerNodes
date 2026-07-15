@@ -60,8 +60,10 @@ This immediately releases all active network listeners (HTTP, Telnet, WebSockets
 ## Push-Based Passive Telemetry
 
 Nodes can push their telemetry metrics actively using the REST API:
-- **HTTP Path:** `/clusters/<clusterName>/telemetry?host=<host>&port=<port>&cpu=<cpu>&ram=<ram>&language=<language>&status=<status>`
-- **Telnet Command:** `TELEMETRY <host> <port> cpu=<cpu> ram=<ram> language=<language> status=<status>`
+- **HTTP Path:** `/clusters/<clusterName>/telemetry?host=<host>&port=<port>&cpu=<cpu>&ram=<ram>&language=<language>&status=<status>&event=<eventName>&protocol=<protocol>&format=<format>`
+- **Telnet Command:** `TELEMETRY <host> <port> cpu=<cpu> ram=<ram> language=<language> status=<status> event=<eventName> protocol=<protocol> format=<format>`
+
+The optional `event` parameter dispatches a `ClusterEvent.NodeEventSubmitted` event. `protocol` and `format` describe how the source service produced the event, for example `protocol=grpc format=json` or `protocol=ws format=cloudevent`. Any extra key/value parameters are forwarded as event attributes, except reserved fields and authentication tokens.
 
 Refer to [Ping Health-Check Contracts](ping-api-contract.md) for full details.
 

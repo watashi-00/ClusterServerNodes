@@ -62,6 +62,25 @@ public void onNodeRegistered(NodeRegistered event) {
 }
 ```
 
+Service nodes can also submit custom named events through the telemetry endpoint by sending the optional `event` parameter:
+
+```text
+/clusters/my-cluster/telemetry?host=localhost&port=3004&event=cache.warmed&protocol=grpc&format=json&detail=products
+```
+
+This dispatches `ClusterEvent.NodeEventSubmitted`, which can be handled like any other framework event:
+
+```java
+@Subscribe
+public void onNodeEvent(ClusterEvent.NodeEventSubmitted event) {
+    DebugUtils.info("Node event: " + event.event() + " from " + event.host());
+    DebugUtils.info("Protocol/format: " + event.protocol() + "/" + event.format());
+    DebugUtils.info("Attributes: " + event.attributes());
+}
+```
+
+The event payload includes the registered node host, port, protocol, format, event name, and non-sensitive attributes submitted by the service. If `protocol` is omitted, GateBridge uses the node's configured ping protocol as the default.
+
 ## Best practices
 
 - register event listeners before performing actions that emit events
