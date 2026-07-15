@@ -7,7 +7,7 @@ import hexacloud.infra.gateway.GatewayFactory;
 import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;
 import hexacloud.core.event.Subscribe;
-import hexacloud.core.cluster.event.NodeRegistered;
+import hexacloud.core.cluster.event.ClusterEvent.NodeRegistered;
 
 public class Main {
     

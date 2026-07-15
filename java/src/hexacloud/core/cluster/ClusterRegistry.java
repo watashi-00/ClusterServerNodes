@@ -28,6 +28,7 @@ public class ClusterRegistry {
     public synchronized void registerCluster(Cluster cluster) {
         if (cluster != null) {
             clusters.put(cluster.getClusterName(), cluster);
+            hexacloud.core.event.EventBusManager.getGlobal().dispatch(new hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered(cluster.getClusterName()));
             ClusterStatePersistence.saveState();
         }
     }

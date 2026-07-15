@@ -5,7 +5,7 @@ import java.util.List;
 import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.cluster.event.ClusterListener;
-import hexacloud.core.cluster.event.NodeStatusChanged;
+import hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged;
 import hexacloud.core.contracts.ClusterOperations;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;

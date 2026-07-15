@@ -10,7 +10,7 @@ import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
 import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
-import hexacloud.core.cluster.event.NodeRegistered;
+import hexacloud.core.cluster.event.ClusterEvent.NodeRegistered;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
 
@@ -190,6 +190,9 @@ public class Cluster {
             .reduce((first, second) -> second)
             .ifPresent(lastKey -> {
                 cluster.remove(lastKey);
+                if(eventManager != null) {
+                    eventManager.dispatch(new hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered(lastKey));
+                }
                 ClusterStatePersistence.saveState();
             });
     }
@@ -197,6 +200,9 @@ public class Cluster {
     private void removeClusterNode(String fullHost) {
         if(cluster.containsKey(fullHost)) {
             cluster.remove(fullHost);
+            if(eventManager != null) {
+                eventManager.dispatch(new hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered(fullHost));
+            }
             ClusterStatePersistence.saveState();
         }
     }
