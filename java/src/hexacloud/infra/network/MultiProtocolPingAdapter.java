@@ -78,7 +78,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                     baseUri.getFragment()
                 );
                 uriStr = finalUri.toString();
-            } catch (Exception e) {
+            } catch (java.net.URISyntaxException | IllegalArgumentException e) {
                 if (!uriStr.endsWith("/") && !path.startsWith("/")) {
                     uriStr = uriStr + "/" + path;
                 } else if (uriStr.endsWith("/") && path.startsWith("/")) {
