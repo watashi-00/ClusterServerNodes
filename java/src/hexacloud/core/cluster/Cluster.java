@@ -58,7 +58,7 @@ public class Cluster {
         lock.lock();
         try {
             if (node == null) return;
-            if (this.tempCluster != null && !this.tempCluster.isEmpty()) {
+            if (!batchMode && this.tempCluster != null && !this.tempCluster.isEmpty()) {
                 DebugUtils.error(this.clusterName, null, "Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
                 return;
             }
@@ -228,7 +228,7 @@ public class Cluster {
     private void centralizedRegister(int port, String host, NodeStatus status, boolean isExternal) {
         lock.lock();
         try {
-            if (this.tempCluster != null && !this.tempCluster.isEmpty()) {
+            if (!batchMode && this.tempCluster != null && !this.tempCluster.isEmpty()) {
                 DebugUtils.error(this.clusterName, null, "Cannot register a new server while there are stopped servers in the cluster. Please register all stopped servers first.");
                 return;
             }
