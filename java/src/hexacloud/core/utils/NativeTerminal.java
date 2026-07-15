@@ -45,6 +45,8 @@ public class NativeTerminal {
     private static native void printAt0(int x, int y, String text);
     private static native int readKey0();
     private static native boolean saveConfig0(String filepath, String content);
+    private static native int getTerminalWidth0();
+    private static native int getTerminalHeight0();
 
     public static void initTerminal() {
         if (loaded) {
@@ -161,15 +163,28 @@ public class NativeTerminal {
             return;
         }
         lastSizeCheck = now;
+        if (loaded) {
+            try {
+                int w = getTerminalWidth0();
+                int h = getTerminalHeight0();
+                if (w > 0 && h > 0) {
+                    cachedWidth = w;
+                    cachedHeight = h;
+                    return;
+                }
+            } catch (UnsatisfiedLinkError e) {
+                // Fallback
+            }
+        }
         try {
-            Process pCol = new ProcessBuilder("sh", "-c", "tput cols").start();
+            Process pCol = new ProcessBuilder("sh", "-c", "tput cols < /dev/tty").start();
             try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pCol.getInputStream()))) {
                 String line = r.readLine();
                 if (line != null) {
                     cachedWidth = Integer.parseInt(line.trim());
                 }
             }
-            Process pLine = new ProcessBuilder("sh", "-c", "tput lines").start();
+            Process pLine = new ProcessBuilder("sh", "-c", "tput lines < /dev/tty").start();
             try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pLine.getInputStream()))) {
                 String line = r.readLine();
                 if (line != null) {
@@ -177,7 +192,24 @@ public class NativeTerminal {
                 }
             }
         } catch (Exception e) {
-            // Use defaults
+            try {
+                Process pCol = new ProcessBuilder("sh", "-c", "tput cols").start();
+                try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pCol.getInputStream()))) {
+                    String line = r.readLine();
+                    if (line != null) {
+                        cachedWidth = Integer.parseInt(line.trim());
+                    }
+                }
+                Process pLine = new ProcessBuilder("sh", "-c", "tput lines").start();
+                try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pLine.getInputStream()))) {
+                    String line = r.readLine();
+                    if (line != null) {
+                        cachedHeight = Integer.parseInt(line.trim());
+                    }
+                }
+            } catch (Exception ex) {
+                // Keep defaults
+            }
         }
     }
 }
