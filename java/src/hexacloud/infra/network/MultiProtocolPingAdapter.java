@@ -23,6 +23,7 @@ import hexacloud.core.config.ClusterConfig;
 public class MultiProtocolPingAdapter implements PingClientPort {
 
     private final HttpClient client;
+    private static final java.util.concurrent.ConcurrentHashMap<String, java.util.regex.Pattern> PATTERN_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
 
     public MultiProtocolPingAdapter() {
         this.client = HttpClient.newBuilder()
@@ -232,11 +233,14 @@ public class MultiProtocolPingAdapter implements PingClientPort {
 
     private String extractJsonField(String json, String field) {
         if (json == null) return null;
-        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\"" + field + "\"\\s*:\\s*(?:\"([^\"]*)\"|([\\d.]+))");
+        java.util.regex.Pattern pattern = PATTERN_CACHE.computeIfAbsent(field, f -> 
+            java.util.regex.Pattern.compile("\"" + f + "\"\\s*:\\s*(?:\"([^\"]*)\"|([\\d.]+)|(true|false|null))", java.util.regex.Pattern.CASE_INSENSITIVE)
+        );
         java.util.regex.Matcher matcher = pattern.matcher(json);
         if (matcher.find()) {
             if (matcher.group(1) != null) return matcher.group(1);
             if (matcher.group(2) != null) return matcher.group(2);
+            if (matcher.group(3) != null) return matcher.group(3);
         }
         return null;
     }

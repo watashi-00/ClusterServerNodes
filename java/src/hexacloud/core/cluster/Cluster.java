@@ -213,15 +213,10 @@ public class Cluster {
             return null;
         }
 
-        if(!host.startsWith("http://") && !host.startsWith("https://") 
-           && !host.startsWith("ws://") && !host.startsWith("wss://") 
-           && !host.startsWith("tcp://")) {
+        if (!host.matches("^[a-zA-Z]+://.*")) {
             host = "http://" + host;
         }
-        if(host.endsWith("/")) {
-            host = host.substring(0, host.length() - 1);
-        }
-        if(host.endsWith(":")) {
+        while (host.endsWith("/") || host.endsWith(":")) {
             host = host.substring(0, host.length() - 1);
         }
         return host;
@@ -236,14 +231,13 @@ public class Cluster {
             DebugUtils.error(this.clusterName, null, "Invalid server node: host is null or empty");
             return false;
         }
-        if(node.port() <= 0 || node.port() > 65535) {
+        if(node.port() < 0 || node.port() > 65535) {
             DebugUtils.error(this.clusterName, null, "Invalid server node: port is out of range");
             return false;
         }
 
-        boolean portInUse = cluster.values().stream().anyMatch(n -> n != null && n.port() == node.port());
-        if(portInUse) {
-            DebugUtils.error(this.clusterName, null, "Invalid server node: port is already in use");
+        if (cluster.containsKey(node.getFullHost())) {
+            DebugUtils.error(this.clusterName, null, "Invalid server node: node '" + node.getFullHost() + "' is already registered");
             return false;
         }
 
