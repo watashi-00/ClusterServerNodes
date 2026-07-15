@@ -27,10 +27,16 @@ class CustomEventListener implements EventController {
 }
 ```
 
-Register the listener with a gateway event manager:
+### 1. Automatic Registration (Recommended)
+
+The framework automatically scans the classpath at startup for any public class implementing `EventController` (that has a default no-argument constructor) and registers it automatically to the event bus. No manual registration is needed!
+
+### 2. Manual Registration (Alternative)
+
+If you prefer to control instantiation, you can register the listener instance manually with a gateway event manager:
 
 ```java
-hexacloud.eventManager().registerListener(new CustomEventListener());
+runningGateway.eventManager().registerListener(new CustomEventListener());
 ```
 
 ## Dispatching events
@@ -38,7 +44,7 @@ hexacloud.eventManager().registerListener(new CustomEventListener());
 Events are dispatched through the same event manager:
 
 ```java
-hexacloud.eventManager().dispatch(new UserCustomEvent("Hello from Hexacloud"));
+runningGateway.eventManager().dispatch(new UserCustomEvent("Hello from Hexacloud"));
 ```
 
 The event bus finds all registered subscribers for the event type and invokes them.

@@ -1,13 +1,13 @@
 # Gateway & Node Configuration
 
-GateBridge gateways are created through `GatewayFactory` and exposed as `GatewayPort` to orchestrate network transports and cluster operations.
+GateBridge gateways are created through `GatewayFactory` and exposed as `GatewayBuilderPort` during configuration and `RunningGatewayPort` at runtime.
 
 ## Create a Gateway
 
 The main entry point is:
 
 ```java
-GatewayPort gateway = GatewayFactory.createGateway("my-cluster")
+GatewayBuilderPort builder = GatewayFactory.createGateway("my-cluster")
     .port(3000)
     .pingInterval(5)
     .enableTelnet(true)
@@ -22,7 +22,7 @@ This creates a local gateway adapter for a named cluster, sets the base transpor
 To support advanced telemetry, authorization, and custom health check paths, GateBridge provides a fluent `NodeBuilder` API:
 
 ```java
-gateway.registerNode("http://localhost", 3005)
+builder.registerNode("http://localhost", 3005)
     .pingProtocol(PingProtocol.HTTP)
     .pingPath("/healthz")
     .pingHeader("Authorization", "Bearer token123")
@@ -37,7 +37,7 @@ gateway.registerNode("http://localhost", 3005)
 For simpler registrations, you can still register a node quickly:
 
 ```java
-gateway.registerServer(3001, NodeStatus.OFFLINE);
+builder.registerServer(3001, NodeStatus.OFFLINE);
 ```
 
 ## State Persistence Layer
@@ -48,10 +48,10 @@ The gateway features automatic state persistence:
 
 ## Lifecycle Management (`stop()`)
 
-Both `GatewayPort` and `ServerManager` support dynamic lifecycle shutdown:
+Both `RunningGatewayPort` and `ServerManager` support dynamic lifecycle shutdown:
 
 ```java
-gateway.stop();
+runningGateway.stop();
 ```
 
 This immediately releases all active network listeners (HTTP, Telnet, WebSockets) and cleanly terminates the background health-check scheduler without interrupting the JVM.
@@ -67,22 +67,22 @@ Refer to [Ping Health-Check Contracts](ping-api-contract.md) for full details.
 ## Complete Bootstrap Example
 
 ```java
-GatewayPort gateway = GatewayFactory.createGateway("my-cluster")
+GatewayBuilderPort builder = GatewayFactory.createGateway("my-cluster")
     .port(3000)
     .pingInterval(5)
     .enableTelnet(true)
     .enableHttp(true)
     .enableWs(true);
 
-gateway.registerNode("http://localhost", 3001)
+builder.registerNode("http://localhost", 3001)
     .pingProtocol(PingProtocol.HTTP)
     .pingPath("/health")
     .pingHeader("X-Token", "secret")
     .register();
 
-gateway.listen()
+RunningGatewayPort runningGateway = builder.listen()
        .startPingScheduler();
 
 // Close down resources when done
-// gateway.stop();
+// runningGateway.stop();
 ```

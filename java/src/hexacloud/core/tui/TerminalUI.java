@@ -9,7 +9,7 @@ import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.RunningGatewayPort;
 
 /**
  * Main coordinator for the DevOps TUI console dashboard.
@@ -32,7 +32,12 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     private boolean nodeConfigurationEnabled = true;
     private boolean tokenManagementEnabled = true;
 
-    private static final Map<String, GatewayPort> activeGateways = new ConcurrentHashMap<>();
+    private static final Map<String, RunningGatewayPort> activeGateways = new ConcurrentHashMap<>();
+    private final java.util.concurrent.Semaphore redrawSemaphore = new java.util.concurrent.Semaphore(0);
+
+    public void triggerRedraw() {
+        redrawSemaphore.release();
+    }
 
     /**
      * Start the Terminal UI client with the default settings.
@@ -42,9 +47,9 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     }
 
     /**
-     * Start the Terminal UI client seeding it with an already started GatewayPort instance.
+     * Start the Terminal UI client seeding it with an already started RunningGatewayPort instance.
      */
-    public static void startTerminal(String displayName, GatewayPort gateway) {
+    public static void startTerminal(String displayName, RunningGatewayPort gateway) {
         if (gateway != null) {
             activeGateways.put(gateway.getClusterName(), gateway);
         }
@@ -77,7 +82,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         return prompts;
     }
 
-    public Map<String, GatewayPort> activeGateways() {
+    public Map<String, RunningGatewayPort> activeGateways() {
         return activeGateways;
     }
 
@@ -153,7 +158,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
     }
 
     @Override
-    public hexacloud.core.ports.TerminalUiPort seedGateway(GatewayPort gateway) {
+    public hexacloud.core.ports.TerminalUiPort seedGateway(RunningGatewayPort gateway) {
         if (gateway != null) {
             activeGateways.put(gateway.getClusterName(), gateway);
         }
@@ -165,6 +170,43 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         this.run();
     }
 
+    @Override
+    public void startToggleMode() {
+        System.out.println("\n>>> GateBridge Gateway is running in background.");
+        System.out.println(">>> Standard logging is active. Press ENTER to open the DevOps TUI Dashboard anytime.");
+
+        hexacloud.core.utils.ThreadManager.startVirtual("TuiToggleListener", () -> {
+            boolean toggleActive = false;
+            while (true) {
+                if (!toggleActive) {
+                    try {
+                        int key = NativeTerminal.readKey();
+                        if (key == 10 || key == 13 || key == 'm' || key == 'M') { // Enter or 'm' key
+                            toggleActive = true;
+                            
+                            // Detachable TUI requires readOnly mode
+                            this.readOnly(true);
+                            
+                            // This blocks until the TUI exits (state.running = false)
+                            this.run();
+                            
+                            toggleActive = false;
+                            System.out.println("\n>>> DevOps TUI detached. Gateway is still running in background.");
+                            System.out.println(">>> Press ENTER to open the DevOps TUI Dashboard again.");
+                        }
+                    } catch (Exception e) {
+                        // Ignore JNI read errors
+                    }
+                }
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+    }
+
     public boolean isGatewayActive(String clusterName) {
         return activeGateways.containsKey(clusterName);
     }
@@ -173,6 +215,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
      * Launch the TUI loop.
      */
     public void run() {
+        state.running = true;
         DebugUtils.setTuiModeActive(true);
 
         NativeTerminal.initTerminal();
@@ -181,9 +224,42 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             NativeTerminal.resetTerminal();
         }));
 
+        hexacloud.core.event.EventListener<hexacloud.core.event.Event> interceptor = null;
         try {
-            long lastFetch = 0;
-            boolean needRedraw = true;
+            // Register global event interceptor to capture all events for the UI
+            interceptor = event -> {
+                String name = event.getClass().getSimpleName();
+                String detail = "";
+                if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged e) {
+                    detail = e.host().replaceAll("^(http|https)://", "") + " -> " + e.status();
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated e) {
+                    detail = e.host().replaceAll("^(http|https)://", "") + " updated";
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeRegistered e) {
+                    detail = e.node().getFullHost().replaceAll("^(http|https)://", "");
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered e) {
+                    detail = e.host().replaceAll("^(http|https)://", "");
+                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered e) {
+                    detail = e.clusterName();
+                } else {
+                    try {
+                        java.lang.reflect.Method m = event.getClass().getMethod("message");
+                        detail = (String) m.invoke(event);
+                    } catch (Exception ex) {
+                        try {
+                            java.lang.reflect.Method m = event.getClass().getMethod("getMessage");
+                            detail = (String) m.invoke(event);
+                        } catch (Exception ex2) {
+                            detail = event.toString();
+                        }
+                    }
+                }
+                state.recentEvents.add(0, new TuiState.TuiEvent(name, detail, System.currentTimeMillis()));
+                while (state.recentEvents.size() > 8) {
+                    state.recentEvents.remove(state.recentEvents.size() - 1);
+                }
+                triggerRedraw();
+            };
+            hexacloud.core.event.EventBusManager.getGlobal().addInterceptor(interceptor);
 
             // Load persisted state configuration files from disk
             hexacloud.core.config.ClusterStatePersistence.loadState();
@@ -197,37 +273,93 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                 fetchClusterConfig(state.selectedClusterName);
             }
 
-            while (state.running) {
-                long now = System.currentTimeMillis();
-                if (now - lastFetch >= 1200) {
-                    fetchClusterNames();
-                    if (!state.selectedClusterName.isEmpty()) {
-                        fetchNodeStatus();
-                        fetchClusterConfig(state.selectedClusterName);
+            // Subscribe to Global Event Bus for event-driven redraw triggers
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeRegistered.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered.class, event -> {
+                triggerRedraw();
+            });
+
+            hexacloud.core.event.EventBusManager.getGlobal().sub(hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered.class, event -> {
+                triggerRedraw();
+            });
+
+            // Start low-latency non-blocking input listener on a lightweight virtual thread
+            hexacloud.core.utils.ThreadManager.startVirtual("TuiInputReader", () -> {
+                while (state.running) {
+                    int key = NativeTerminal.readKey();
+                    if (key != -1) {
+                        synchronized (state) {
+                            keyHandler.handleKeyPress(key);
+                        }
+                        triggerRedraw();
                     }
-                    fetchGlobalConfig();
-                    lastFetch = now;
-                    needRedraw = true;
+                    try {
+                        Thread.sleep(50);
+                    } catch (InterruptedException e) {
+                        break;
+                    }
                 }
+            });
 
-                if (needRedraw) {
-                    renderer.draw();
-                    needRedraw = false;
+            // Initial render
+            renderer.draw();
+
+            // Event-driven loop
+            while (state.running) {
+                try {
+                    // Block until an event releases the semaphore
+                    redrawSemaphore.acquire();
+                    
+                    // Debounce/Coalesce: sleep 15ms to group rapid multiple events
+                    Thread.sleep(15);
+                    redrawSemaphore.drainPermits();
+
+                    if (state.running) {
+                        // Dynamically update state data before drawing
+                        fetchClusterNames();
+                        if (!state.selectedClusterName.isEmpty()) {
+                            fetchNodeStatus();
+                            fetchClusterConfig(state.selectedClusterName);
+                        }
+                        fetchGlobalConfig();
+
+                        renderer.draw();
+                    }
+                } catch (InterruptedException e) {
+                    break;
                 }
-
-                int key = NativeTerminal.readKey();
-                if (key != -1) {
-                    keyHandler.handleKeyPress(key);
-                    needRedraw = true;
-                }
-
-                Thread.sleep(100);
             }
         } catch (Exception e) {
             NativeTerminal.resetTerminal();
             e.printStackTrace();
         } finally {
+            if (interceptor != null) {
+                hexacloud.core.event.EventBusManager.getGlobal().removeInterceptor(interceptor);
+            }
             NativeTerminal.resetTerminal();
+            DebugUtils.setTuiModeActive(false);
+            if (!readOnly) {
+                // Stop all gateways if not read-only
+                for (RunningGatewayPort gw : activeGateways.values()) {
+                    try {
+                        gw.stop();
+                    } catch (Exception ex) {
+                        // Ignore
+                    }
+                }
+                System.exit(0);
+            }
         }
     }
 

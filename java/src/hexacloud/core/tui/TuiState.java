@@ -33,4 +33,7 @@ public class TuiState {
 
     public boolean running = true;
     public List<ServerNode> nodes = new ArrayList<>();
+
+    public static record TuiEvent(String type, String detail, long timestamp) {}
+    public final List<TuiEvent> recentEvents = new java.util.concurrent.CopyOnWriteArrayList<>();
 }

@@ -41,14 +41,19 @@ public interface TerminalUiPort {
     TerminalUiPort tokenManagementEnabled(boolean enabled);
     
     /**
-     * Seed the TUI with an already started GatewayPort instance.
+     * Seed the TUI with an already started RunningGatewayPort instance.
      */
-    TerminalUiPort seedGateway(GatewayPort gateway);
+    TerminalUiPort seedGateway(RunningGatewayPort gateway);
     
     /**
      * Launch the interactive terminal loop.
      */
     void start();
+
+    /**
+     * Start the TUI in non-blocking toggle mode, detaching/re-attaching when pressing Enter.
+     */
+    void startToggleMode();
     
     /**
      * Check if token management is enabled.

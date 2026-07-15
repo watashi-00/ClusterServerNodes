@@ -7,6 +7,7 @@ import hexacloud.core.ports.NodeBuilderPort;
 
 public class NodeBuilder implements NodeBuilderPort {
 
+    private final hexacloud.core.ports.GatewayBuilderPort parent;
     private final Cluster cluster;
     private final String host;
     private final int port;
@@ -16,7 +17,8 @@ public class NodeBuilder implements NodeBuilderPort {
     private String pingHeaderValue = null;
     private boolean isExternal = false;
 
-    public NodeBuilder(Cluster cluster, String host, int port) {
+    public NodeBuilder(hexacloud.core.ports.GatewayBuilderPort parent, Cluster cluster, String host, int port) {
+        this.parent = parent;
         this.cluster = cluster;
         this.host = host;
         this.port = port;
@@ -48,15 +50,15 @@ public class NodeBuilder implements NodeBuilderPort {
     }
 
     @Override
-    public ServerNode register() {
+    public hexacloud.core.ports.GatewayBuilderPort register() {
         ServerNode node = new ServerNode(
             host, port, NodeStatus.OFFLINE, isExternal,
             pingEnabled, pingPath, pingHeaderName, pingHeaderValue
         );
         if (hexacloud.core.config.ClusterStatePersistence.isStateLoaded()) {
-            return node;
+            return parent;
         }
         cluster.registerServer(node);
-        return node;
+        return parent;
     }
 }

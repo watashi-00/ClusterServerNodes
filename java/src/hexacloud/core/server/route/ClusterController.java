@@ -117,17 +117,22 @@ public class ClusterController implements RouteController {
         if (lang != null) targetNode.setRuntime(lang);
         if (latency >= 0) targetNode.setLatencyMs(latency);
 
+        boolean wasOnline = targetNode.status() == hexacloud.core.model.NodeStatus.ONLINE;
+
         if (statusStr != null) {
             try {
                 hexacloud.core.model.NodeStatus newStatus = hexacloud.core.model.NodeStatus.valueOf(statusStr.toUpperCase());
                 if (targetNode.status() != newStatus) {
-                    cluster.dispatchEvent(new hexacloud.core.cluster.event.NodeStatusChanged(targetNode.getFullHost(), newStatus));
+                    cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged(targetNode.getFullHost(), newStatus));
+                    wasOnline = newStatus == hexacloud.core.model.NodeStatus.ONLINE;
                 }
             } catch (Exception e) {}
         }
 
         if (targetNode.status() != hexacloud.core.model.NodeStatus.ONLINE) {
-            cluster.dispatchEvent(new hexacloud.core.cluster.event.NodeStatusChanged(targetNode.getFullHost(), hexacloud.core.model.NodeStatus.ONLINE));
+            cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged(targetNode.getFullHost(), hexacloud.core.model.NodeStatus.ONLINE));
+        } else if (wasOnline) {
+            cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated(targetNode.getFullHost()));
         }
 
         out.println("SUCCESS: Telemetry updated for " + host + ":" + port);

@@ -33,14 +33,31 @@ public class ClusterStatePersistence {
         return stateLoaded;
     }
 
-    private static String resolveStateFilePath(String clusterName) {
-        String filename = clusterName + "-state.properties";
-        if (new File("java/resources").isDirectory()) {
-            return "java/resources/" + filename;
-        } else if (new File("resources").isDirectory()) {
-            return "resources/" + filename;
+    private static String getStateDicrectory() {
+        String dir = System.getProperty("hexacloud.state.dir");
+        if(dir == null) {
+            dir = System.getenv("HEXACLOUD_STATE_DIR");
         }
-        return filename;
+
+        if(dir == null || dir.trim().isEmpty()) {
+            File resourcesDir = hexacloud.core.utils.PathUtils.findResourcesDir();
+            if (resourcesDir != null) {
+                dir = resourcesDir.getPath();
+            } else {
+                dir = "."; // fallback
+            }
+        }
+
+        File dirFile = new File(dir);
+        if (!dirFile.exists() && !dir.equals(".")) {
+            dirFile.mkdirs();
+        }
+
+        return dir;
+    }
+
+    private static String resolveStateFilePath(String clusterName) {
+        return getStateDicrectory()+ File.separator + clusterName + "-state.properties";
     }
 
     /**
@@ -102,13 +119,21 @@ public class ClusterStatePersistence {
         loading = true;
         try {
             List<File> filesToLoad = new ArrayList<>();
-            findStateFiles(new File("java/resources"), filesToLoad);
-            findStateFiles(new File("resources"), filesToLoad);
-            findStateFiles(new File("."), filesToLoad);
+            
+            File stateDir = new File(getStateDicrectory());
+            findStateFiles(stateDir, filesToLoad);
 
             if (filesToLoad.isEmpty()) {
-                DebugUtils.log("DevOps Panel: No *-state.properties configuration files found. Using defaults.");
-                stateLoaded = false;
+                DebugUtils.log("DevOps Panel: No *-state.properties configuration files found in '" + stateDir.getPath() + "'. Checking classpath resources...");
+                
+                // Fallback: try to load default state file "c1" packaged inside the JAR resources
+                boolean loadedFromClasspath = tryLoadFromClasspath("c1");
+                if (!loadedFromClasspath) {
+                    DebugUtils.log("DevOps Panel: No default state files found on classpath. Starting clean.");
+                    stateLoaded = false;
+                    return;
+                }
+                stateLoaded = true;
                 return;
             }
 
@@ -129,6 +154,33 @@ public class ClusterStatePersistence {
         } finally {
             loading = false;
         }
+    }
+
+    private static boolean tryLoadFromClasspath(String name) {
+        String resourceName = name + "-state.properties";
+        Properties props = new Properties();
+        try (java.io.InputStream in = ClusterStatePersistence.class.getClassLoader().getResourceAsStream(resourceName)) {
+            if (in == null) {
+                return false;
+            }
+            props.load(in);
+        } catch (IOException e) {
+            DebugUtils.error("DevOps Panel: Failed to read classpath resource: " + resourceName, e);
+            return false;
+        }
+
+        // Clear default registry
+        ClusterRegistry.getInstance().clear();
+
+        // Load cluster state from classpath resource properties
+        loadClusterStateProperties(props, name);
+        
+        // Materialize properties file to disk state directory so it becomes an editable configuration file
+        Cluster cluster = ClusterRegistry.getInstance().getCluster(name);
+        if (cluster != null) {
+            saveClusterState(cluster);
+        }
+        return true;
     }
 
     private static void findStateFiles(File dir, List<File> files) {
@@ -152,7 +204,11 @@ public class ClusterStatePersistence {
             DebugUtils.error("DevOps Panel: Failed to read configuration state file for " + name, e);
             return;
         }
+        loadClusterStateProperties(props, name);
+        DebugUtils.log("DevOps Panel: Configuration state restored for cluster '" + name + "' from " + file.getPath());
+    }
 
+    private static void loadClusterStateProperties(Properties props, String name) {
         Cluster cluster = ClusterRegistry.getInstance().getCluster(name);
         if (cluster == null) {
             cluster = ClusterRegistry.getInstance().createCluster(name);
@@ -212,6 +268,5 @@ public class ClusterStatePersistence {
                 }
             }
         }
-        DebugUtils.log("DevOps Panel: Configuration state restored for cluster '" + name + "' from " + file.getPath());
     }
 }

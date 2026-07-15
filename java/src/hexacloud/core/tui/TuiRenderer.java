@@ -5,7 +5,7 @@ import java.util.List;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import static hexacloud.core.tui.TuiConstants.*;
@@ -91,8 +91,9 @@ public class TuiRenderer {
 
         drawBox(2, 5, 24, 13, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
         drawBox(26, 5, 79, 13, "CLUSTER CONFIG & SERVICES", state.activePanel == PANEL_SERVICES);
-        drawBox(2, 14, 79, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
-        drawBox(81, 5, 110, 22, "GATEWAYS & SYSTEM", false);
+        drawBox(2, 14, 55, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
+        drawBox(81, 5, 110, 13, "GATEWAYS & SYSTEM", false);
+        drawBox(57, 14, 110, 22, "RECENT EVENTS", false);
 
         int y = 6;
         if (state.clusterNames.isEmpty()) {
@@ -105,7 +106,7 @@ public class TuiRenderer {
                 String displayName = name;
                 String gwIndicator;
                 if (tui.isGatewayActive(name)) {
-                    GatewayPort gw = tui.activeGateways().get(name);
+                    RunningGatewayPort gw = tui.activeGateways().get(name);
                     int port = (gw != null) ? gw.getPort() : 3000;
                     String suffix = " [" + port + "]";
                     int maxLen = 16 - suffix.length();
@@ -196,9 +197,9 @@ public class TuiRenderer {
             for (int i = startIdx; i < dashboardLogs.size(); i++) {
                 DebugUtils.LogEntry entry = dashboardLogs.get(i);
                 String logLine = entry.toString();
-                String clearedLine = logLine + "                                                                                ";
-                if (clearedLine.length() > 72) {
-                    clearedLine = clearedLine.substring(0, 72);
+                String clearedLine = logLine + "                                                    ";
+                if (clearedLine.length() > 50) {
+                    clearedLine = clearedLine.substring(0, 50);
                 }
                 if (entry.getLevel().equals("ERROR")) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
@@ -212,19 +213,14 @@ public class TuiRenderer {
         }
 
         // Render GATEWAYS & SYSTEM Live Metrics
-        int sysY = 6;
-        NativeTerminal.printAt(83, sysY, WHITE_BOLD + "SYSTEM RESOURCES" + RESET);
-        sysY++;
+        NativeTerminal.printAt(83, 6, WHITE_BOLD + "SYSTEM RESOURCES" + RESET);
         long usedMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
         long allocatedMem = Runtime.getRuntime().totalMemory() / (1024 * 1024);
         long maxMem = Runtime.getRuntime().maxMemory() / (1024 * 1024);
         
-        NativeTerminal.printAt(83, sysY, "RAM Used:   " + CYAN + usedMem + " MB" + RESET);
-        sysY++;
-        NativeTerminal.printAt(83, sysY, "RAM Alloc:  " + CYAN + allocatedMem + " MB" + RESET);
-        sysY++;
-        NativeTerminal.printAt(83, sysY, "RAM Max:    " + CYAN + maxMem + " MB" + RESET);
-        sysY++;
+        NativeTerminal.printAt(83, 7, "RAM Used:   " + CYAN + usedMem + " MB" + RESET);
+        NativeTerminal.printAt(83, 8, "RAM Alloc:  " + CYAN + allocatedMem + " MB" + RESET);
+        NativeTerminal.printAt(83, 9, "RAM Max:    " + CYAN + maxMem + " MB" + RESET);
 
         double cpu = -1;
         try {
@@ -234,39 +230,98 @@ public class TuiRenderer {
             }
         } catch (Throwable t) {}
         String cpuStr = cpu >= 0 ? String.format("%.1f %%", cpu) : "N/A";
-        NativeTerminal.printAt(83, sysY, "CPU Load:   " + YELLOW + cpuStr + RESET);
-        sysY++;
+        NativeTerminal.printAt(83, 10, "CPU Load:   " + YELLOW + cpuStr + RESET);
 
         int threads = java.lang.management.ManagementFactory.getThreadMXBean().getThreadCount();
-        NativeTerminal.printAt(83, sysY, "OS Threads: " + threads);
-        sysY++;
-
-        NativeTerminal.printAt(81, sysY, "├────────────────────────────┤");
-        sysY++;
-
-        NativeTerminal.printAt(83, sysY, WHITE_BOLD + "ACTIVE GATEWAYS (" + tui.activeGateways().size() + ")" + RESET);
-        sysY++;
-
-        int gwY = sysY;
-        if (tui.activeGateways().isEmpty()) {
-            NativeTerminal.printAt(83, gwY, RED + "No active gateways." + RESET);
-            gwY++;
-        } else {
-            for (java.util.Map.Entry<String, GatewayPort> entry : tui.activeGateways().entrySet()) {
-                if (gwY >= 22) break;
-                String clName = entry.getKey();
-                int port = entry.getValue().getPort();
-                String line = clName;
-                if (line.length() > 14) {
-                    line = line.substring(0, 11) + "...";
+        int appThreads = 0;
+        try {
+            java.util.Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+            for (Thread t : threadSet) {
+                String name = t.getName();
+                if (!(t.isDaemon() && (name.contains("ForkJoinPool") || name.contains("VirtualThread-unblocker") ||
+                    name.equals("Reference Handler") || name.equals("Finalizer") || 
+                    name.equals("Signal Dispatcher") || name.equals("Notification Thread") || 
+                    name.equals("Common-Cleaner") || name.equals("Attach Listener")))) {
+                    appThreads++;
                 }
-                String content = String.format("%-14s:%-5d %s", line, port, GREEN + "●" + RESET);
-                NativeTerminal.printAt(83, gwY, content);
-                gwY++;
+            }
+        } catch (Throwable t) {
+            appThreads = 1;
+        }
+        NativeTerminal.printAt(83, 11, "OS Threads: " + CYAN + threads + RESET + " (App: " + CYAN + appThreads + RESET + ")");
+
+        int gwCount = tui.activeGateways().size();
+        String gwSummary = "Gateways:   " + (gwCount == 0 ? RED + "None" + RESET : GREEN + String.valueOf(gwCount) + RESET);
+        if (gwCount > 0) {
+            int firstPort = tui.activeGateways().values().iterator().next().getPort();
+            gwSummary += " (:" + firstPort + ")";
+        }
+        String summaryPadding = " ".repeat(Math.max(0, 26 - gwSummary.replaceAll("\u001B\\[[;\\d]*m", "").length()));
+        NativeTerminal.printAt(83, 12, gwSummary + summaryPadding);
+
+        // Render RECENT EVENTS (Expanded to width 53, starting at column 57)
+        int eventY = 15;
+        if (state.recentEvents.isEmpty()) {
+            NativeTerminal.printAt(59, eventY, GRAY + "No recent events." + RESET);
+            eventY++;
+        } else {
+            for (TuiState.TuiEvent event : state.recentEvents) {
+                if (eventY >= 22) break;
+
+                long diffMs = System.currentTimeMillis() - event.timestamp();
+                String timeAgo;
+                if (diffMs < 1000) {
+                    timeAgo = "now";
+                } else if (diffMs < 60000) {
+                    timeAgo = (diffMs / 1000) + "s";
+                } else if (diffMs < 3600000) {
+                    timeAgo = (diffMs / 60000) + "m";
+                } else {
+                    timeAgo = (diffMs / 3600000) + "h";
+                }
+
+                String timeStr = "[" + timeAgo + "] ";
+                int remaining = 50 - timeStr.length();
+                
+                String shortName;
+                switch (event.type()) {
+                    case "NodeStatusChanged": shortName = "Status"; break;
+                    case "NodeTelemetryUpdated": shortName = "Telemetry"; break;
+                    case "NodeRegistered": shortName = "NodeReg"; break;
+                    case "NodeDeregistered": shortName = "NodeDereg"; break;
+                    case "ClusterRegistered": shortName = "ClusterReg"; break;
+                    case "DeveloperCustomEvent":
+                    case "UserCustomEvent": shortName = "CustomEvent"; break;
+                    default: 
+                        shortName = event.type();
+                        if (shortName.length() > 15) shortName = shortName.substring(0, 15);
+                }
+
+                String eventText = shortName + (event.detail().isEmpty() ? "" : ": " + event.detail());
+                if (eventText.length() > remaining) {
+                    eventText = eventText.substring(0, remaining - 3) + "...";
+                }
+
+                String color = YELLOW;
+                if (event.type().contains("Deregistered") || event.type().contains("Dereg")) {
+                    color = RED;
+                } else if (event.type().contains("Registered") || event.type().contains("Reg")) {
+                    color = GREEN;
+                } else if (event.type().contains("Custom")) {
+                    color = MAGENTA;
+                } else if (event.type().contains("Telemetry")) {
+                    color = CYAN;
+                }
+
+                String colorized = timeStr + color + eventText + RESET;
+                int printedLen = timeStr.length() + eventText.length();
+                String padding = " ".repeat(Math.max(0, 50 - printedLen));
+                NativeTerminal.printAt(59, eventY, colorized + padding);
+                eventY++;
             }
         }
-        for (int row = gwY; row < 22; row++) {
-            NativeTerminal.printAt(83, row, "                           ");
+        for (int row = eventY; row < 22; row++) {
+            NativeTerminal.printAt(59, row, "                                                  ");
         }
 
         StringBuilder controlsStr = new StringBuilder();

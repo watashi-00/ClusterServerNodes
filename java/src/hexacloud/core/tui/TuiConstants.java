@@ -12,6 +12,8 @@ public final class TuiConstants {
     public static final String RED = "\033[31m";
     public static final String YELLOW = "\033[33m";
     public static final String CYAN = "\033[36m";
+    public static final String MAGENTA = "\033[35m";
+    public static final String GRAY = "\033[90m";
     public static final String WHITE_BOLD = "\033[1;37m";
 
     // View Navigation Modes

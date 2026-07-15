@@ -1,6 +1,6 @@
 package hexacloud.infra.gateway;
 
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.GatewayBuilderPort;
 
 /**
  * Factory class for bootstrapping GateBridge gateways.
@@ -12,9 +12,9 @@ public class GatewayFactory {
      * Create a GateBridge Gateway instance for the specified cluster.
      *
      * @param clusterName the unique name of the cluster.
-     * @return the GatewayPort implementation instance.
+     * @return the GatewayBuilderPort implementation instance.
      */
-    public static GatewayPort createGateway(String clusterName) {
+    public static GatewayBuilderPort createGateway(String clusterName) {
         return new LocalGatewayAdapter(clusterName);
     }
 
@@ -23,9 +23,9 @@ public class GatewayFactory {
      *
      * @param clusterName the unique name of the cluster.
      * @param port the Telnet server listening port.
-     * @return the GatewayPort implementation instance.
+     * @return the GatewayBuilderPort implementation instance.
      */
-    public static GatewayPort createGateway(String clusterName, int port) {
+    public static GatewayBuilderPort createGateway(String clusterName, int port) {
         return new LocalGatewayAdapter(clusterName, port);
     }    
 }
