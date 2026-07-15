@@ -8,8 +8,26 @@ public class NativeTerminal {
     private static boolean sttyRawModeActive = false;
 
     static {
-        // Try loading from packaged JAR resource first
-        try {
+        // Try custom path from System Property or Env Var first
+        String customPath = System.getProperty("gatebridge.jni.path");
+        if (customPath == null) {
+            customPath = System.getenv("GATEBRIDGE_JNI_PATH");
+        }
+        if (customPath != null && !customPath.trim().isEmpty()) {
+            try {
+                File file = new File(customPath.trim());
+                if (file.exists()) {
+                    System.load(file.getAbsolutePath());
+                    loaded = true;
+                }
+            } catch (Throwable t) {
+                System.err.println("Warning: Failed to load JNI library from custom path: " + customPath + ". Error: " + t.getMessage());
+            }
+        }
+
+        // Try loading from packaged JAR resource next if not loaded
+        if (!loaded) {
+            try {
             String osName = System.getProperty("os.name").toLowerCase();
             String libName;
             if (osName.contains("win")) {
@@ -38,8 +56,9 @@ public class NativeTerminal {
         } catch (Throwable t) {
             // Ignore and fallback
         }
+    }
 
-        if (!loaded) {
+    if (!loaded) {
             String[] possiblePaths = {
                 "libhexaterminal.so",
                 "java/libhexaterminal.so",
@@ -82,6 +101,21 @@ public class NativeTerminal {
     private static native boolean saveConfig0(String filepath, String content);
     private static native int getTerminalWidth0();
     private static native int getTerminalHeight0();
+
+    public static boolean loadJni(String path) {
+        if (loaded) return true;
+        try {
+            File file = new File(path);
+            if (file.exists()) {
+                System.load(file.getAbsolutePath());
+                loaded = true;
+                return true;
+            }
+        } catch (Throwable t) {
+            System.err.println("Warning: Failed to load JNI library from: " + path + ". Error: " + t.getMessage());
+        }
+        return false;
+    }
 
     public static void initTerminal() {
         if (loaded) {

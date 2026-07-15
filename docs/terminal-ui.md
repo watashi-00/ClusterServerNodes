@@ -79,3 +79,46 @@ The Terminal UI relies on:
 - `NativeTerminal` for native screen manipulation and JNI-level keyboard polling.
 - `TerminalScanner` for clean console line reads without interrupting native settings.
 - `DebugUtils` for dispatching logging statements displayed on the dashboard.
+
+## JNI Native Terminal & Platform Portability
+
+The GateBridge TUI raw key interception and screen rendering runs on three compatibility levels to maximize hardware and OS support:
+
+1.  **Level 1: Native JNI Mode (Best Performance)**: Uses a compiled C library (`libhexaterminal`) calling native OS API hooks (`ioctl` on Linux/macOS, `GetConsoleScreenBufferInfo` on Windows).
+2.  **Level 2: Pure Java `stty` Fallback (Unix)**: If JNI is not loaded on a Linux or macOS machine, the system falls back to spawning raw mode process controllers (`stty raw -echo < /dev/tty`). Arrow keys and single keystrokes work 100% natively without compilation.
+3.  **Level 3: ANSI Emulation Fallback (Windows/CI)**: If JNI is not loaded on Windows, it defaults to basic ANSI emulation controls.
+
+### Specifying Custom JNI Paths
+
+If you are not on Linux (e.g., macOS or Windows) and want to use Native JNI Mode, you will need to compile the native library from GitHub sources (`c/hexaterminal.c`) and direct the framework to load it using one of three options:
+
+*   **JVM Argument**: Launch your application with the `-Dgatebridge.jni.path` system property:
+    ```bash
+    java -Dgatebridge.jni.path=/path/to/libhexaterminal.dylib -jar app.jar
+    ```
+*   **Environment Variable**: Configure the `GATEBRIDGE_JNI_PATH` variable:
+    ```bash
+    export GATEBRIDGE_JNI_PATH=/path/to/libhexaterminal.dylib
+    ```
+*   **Programmatic API**: Call the JNI loader hook before initializing the `TerminalUI`:
+    ```java
+    NativeTerminal.loadJni("/path/to/libhexaterminal.dylib");
+    ```
+
+### Compilation Guide
+
+To compile the C source file (`hexaterminal.c`) for your specific OS and hardware architecture:
+
+*   **macOS (Apple Silicon or Intel)**:
+    ```bash
+    gcc -shared -fPIC -o libhexaterminal.dylib c/hexaterminal.c -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/darwin"
+    ```
+*   **Linux (ARM64/Raspberry Pi or x86)**:
+    ```bash
+    gcc -shared -fPIC -o libhexaterminal.so c/hexaterminal.c -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux"
+    ```
+*   **Windows (MSVC or Mingw)**:
+    ```bash
+    gcc -shared -o hexaterminal.dll c/hexaterminal.c -I"%JAVA_HOME%\include" -I"%JAVA_HOME%\include\win32"
+    ```
+
