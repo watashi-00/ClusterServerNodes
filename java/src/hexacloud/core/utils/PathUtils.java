@@ -57,4 +57,76 @@ public class PathUtils {
         }
         return resourcesDir;
     }
+
+    /**
+     * Scans the classpath for classes that implement the specified interface and are not abstract/interface.
+     */
+    public static java.util.List<Class<?>> scanClasspathForImplementations(Class<?> interfaceClass) {
+        java.util.List<Class<?>> implementations = new java.util.ArrayList<>();
+        String classpath = System.getProperty("java.class.path");
+        String pathSeparator = System.getProperty("path.separator");
+        String[] entries = classpath.split(pathSeparator);
+
+        for (String entry : entries) {
+            File file = new File(entry);
+            if (!file.exists()) continue;
+
+            if (file.isDirectory()) {
+                scanDirectoryForClasses(file, "", interfaceClass, implementations);
+            } else if (file.isFile() && file.getName().endsWith(".jar")) {
+                scanJarForClasses(file, interfaceClass, implementations);
+            }
+        }
+        return implementations;
+    }
+
+    private static void scanDirectoryForClasses(File directory, String packageName, Class<?> interfaceClass, java.util.List<Class<?>> implementations) {
+        File[] files = directory.listFiles();
+        if (files == null) return;
+
+        for (File file : files) {
+            String name = file.getName();
+            if (file.isDirectory()) {
+                if (name.equals(".git") || name.equals("target") || name.equals("build") || 
+                    name.equals("bin") || name.equals(".idea") || name.equals(".gradle") || 
+                    name.equals(".gemini")) {
+                    continue;
+                }
+                String subPackage = packageName.isEmpty() ? name : packageName + "." + name;
+                scanDirectoryForClasses(file, subPackage, interfaceClass, implementations);
+            } else if (name.endsWith(".class")) {
+                String className = packageName.isEmpty() ? 
+                    name.substring(0, name.length() - 6) : 
+                    packageName + "." + name.substring(0, name.length() - 6);
+                tryLoadClass(className, interfaceClass, implementations);
+            }
+        }
+    }
+
+    private static void scanJarForClasses(File jarFile, Class<?> interfaceClass, java.util.List<Class<?>> implementations) {
+        try (java.util.jar.JarFile jar = new java.util.jar.JarFile(jarFile)) {
+            java.util.Enumeration<java.util.jar.JarEntry> entries = jar.entries();
+            while (entries.hasMoreElements()) {
+                java.util.jar.JarEntry entry = entries.nextElement();
+                String name = entry.getName();
+                if (name.endsWith(".class")) {
+                    String className = name.replace("/", ".").substring(0, name.length() - 6);
+                    tryLoadClass(className, interfaceClass, implementations);
+                }
+            }
+        } catch (Exception e) {
+            // Ignore jar reading errors
+        }
+    }
+
+    private static void tryLoadClass(String className, Class<?> interfaceClass, java.util.List<Class<?>> implementations) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            if (interfaceClass.isAssignableFrom(clazz) && !clazz.isInterface() && !java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
+                implementations.add(clazz);
+            }
+        } catch (Throwable t) {
+            // Ignore classes that cannot be loaded
+        }
+    }
 }
