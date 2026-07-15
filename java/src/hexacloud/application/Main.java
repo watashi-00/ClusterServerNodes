@@ -8,6 +8,9 @@ import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;
 import hexacloud.core.event.Subscribe;
 import hexacloud.core.cluster.event.ClusterEvent.NodeRegistered;
+import hexacloud.core.server.route.RouteController;
+import hexacloud.core.server.route.RouteMapping;
+import java.io.PrintWriter;
 
 public class Main {
     
@@ -23,7 +26,11 @@ public class Main {
             .pingInterval(5)
             .enableTelnet(true)
             .enableHttp(true)
-            .enableWs(true);
+            .enableWs(true)
+            .requireToken(true, "developer-secret-token")
+            .rateLimit(200, 60)
+            .allowedIps("127.0.0.1")
+            .timeout(4500);
 
         // Custom event verification
         record UserCustomEvent(String message) implements Event {}
@@ -43,6 +50,15 @@ public class Main {
 
         // Register the event listener controller before registering nodes
         hexacloud.eventManager().registerListener(new CustomEventListener());
+
+        // Define a custom developer endpoint controller
+        class CustomAppController implements RouteController {
+            @RouteMapping("HELLO")
+            public void sayHello(String args, PrintWriter out) {
+                out.println("HELLO FROM DEVELOPER ROUTE! Args: " + args);
+            }
+        }
+        hexacloud.registerController(new CustomAppController());
 
         // Register servers (will trigger NodeRegistered event for each node!)
         hexacloud.registerServer(3001, NodeStatus.OFFLINE)
