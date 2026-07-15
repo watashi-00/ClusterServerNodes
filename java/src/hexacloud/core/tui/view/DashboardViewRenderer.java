@@ -344,10 +344,20 @@ public class DashboardViewRenderer {
 
         // 8. Render bottom controls
         StringBuilder controlsStr = new StringBuilder();
-        controlsStr.append(" [Tab] Focus  [Enter] Console");
-        if (tui.gatewayManagementEnabled() && !tui.readOnly()) controlsStr.append("  [G] Gateway");
-        if (tui.clusterManagementEnabled() && !tui.readOnly()) controlsStr.append("  [C] New Cluster");
+        controlsStr.append(" [Tab] Focus");
+        if (state.activePanel == PANEL_GATEWAYS) {
+            if (!tui.readOnly()) {
+                controlsStr.append("  [G] Toggle GW  [A] Route Cluster  [T] Telnet  [H] HTTP  [W] WS");
+            }
+        } else {
+            controlsStr.append("  [Enter] Console");
+            if (tui.gatewayManagementEnabled() && !tui.readOnly()) controlsStr.append("  [G] Gateway");
+            if (tui.clusterManagementEnabled() && !tui.readOnly()) controlsStr.append("  [C] New Cluster");
+        }
         controlsStr.append("  [L] Logs  [Q] Exit");
+        
+        // Clear row 23 first to prevent visual residue
+        NativeTerminal.printAt(2, 23, "                                                                                                              ");
         NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
     }
 }
