@@ -178,6 +178,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
      * Launch the TUI loop.
      */
     public void run() {
+        state.running = true;
         DebugUtils.setTuiModeActive(true);
 
         NativeTerminal.initTerminal();
@@ -271,6 +272,18 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             e.printStackTrace();
         } finally {
             NativeTerminal.resetTerminal();
+            DebugUtils.setTuiModeActive(false);
+            if (!readOnly) {
+                // Stop all gateways if not read-only
+                for (RunningGatewayPort gw : activeGateways.values()) {
+                    try {
+                        gw.stop();
+                    } catch (Exception ex) {
+                        // Ignore
+                    }
+                }
+                System.exit(0);
+            }
         }
     }
 
