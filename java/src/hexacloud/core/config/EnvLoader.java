@@ -29,21 +29,25 @@ public class EnvLoader {
         if(!loaded)
             loaded = loadEnvPath(propFileName, true);
 
-        // 3. Try loading from resources/ folder, java/resources/ or CWD
+        // 3. Try loading from dynamically resolved resources/ directory
         if(!loaded) {
-            String[] possiblePaths = {
-                "resources/" + propFileName,
-                "java/resources/" + propFileName,
-                propFileName
-            };
-
-            for(String path : possiblePaths) {
-                if(loadEnvPath(path)) {
-                    loaded = true;
-                    break;
+            java.io.File resourcesDir = hexacloud.core.utils.PathUtils.findResourcesDir();
+            if (resourcesDir != null) {
+                java.io.File propFile = new java.io.File(resourcesDir, propFileName);
+                if (propFile.exists()) {
+                    loaded = loadEnvPath(propFile.getPath());
                 }
             }
         }
+
+        // 4. Try loading from CWD
+        if(!loaded) {
+            java.io.File propFile = new java.io.File(propFileName);
+            if (propFile.exists()) {
+                loaded = loadEnvPath(propFile.getPath());
+            }
+        }
+
         if (!loaded) {
             DebugUtils.error("EnvLoader: No '"+propFileName+"' found. Using system environment variables and defaults.");
         }
