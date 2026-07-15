@@ -170,6 +170,43 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         this.run();
     }
 
+    @Override
+    public void startToggleMode() {
+        System.out.println("\n>>> GateBridge Gateway is running in background.");
+        System.out.println(">>> Standard logging is active. Press ENTER to open the DevOps TUI Dashboard anytime.");
+
+        hexacloud.core.utils.ThreadManager.startVirtual("TuiToggleListener", () -> {
+            boolean toggleActive = false;
+            while (true) {
+                if (!toggleActive) {
+                    try {
+                        int key = NativeTerminal.readKey();
+                        if (key == 10 || key == 13 || key == 'm' || key == 'M') { // Enter or 'm' key
+                            toggleActive = true;
+                            
+                            // Detachable TUI requires readOnly mode
+                            this.readOnly(true);
+                            
+                            // This blocks until the TUI exits (state.running = false)
+                            this.run();
+                            
+                            toggleActive = false;
+                            System.out.println("\n>>> DevOps TUI detached. Gateway is still running in background.");
+                            System.out.println(">>> Press ENTER to open the DevOps TUI Dashboard again.");
+                        }
+                    } catch (Exception e) {
+                        // Ignore JNI read errors
+                    }
+                }
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        });
+    }
+
     public boolean isGatewayActive(String clusterName) {
         return activeGateways.containsKey(clusterName);
     }

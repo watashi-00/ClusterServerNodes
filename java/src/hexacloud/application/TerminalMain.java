@@ -33,9 +33,9 @@ public class TerminalMain {
         RunningGatewayPort runningGateway = builder.listen()
             .startPingScheduler();
 
-        // Launch the pure Terminal UI client passing the configured running gateway
+        // Launch the DevOps Panel in non-blocking toggle mode (detach/reattach with ENTER)
         TerminalUiFactory.createTui("MyCompany - GateBridge DevOps Panel")
             .seedGateway(runningGateway)
-            .start();
+            .startToggleMode();
     }
 }

@@ -25,8 +25,14 @@ TerminalUiFactory.createTui("DevOps Control Plane")
     .nodeManagementEnabled(true)        // Enable [A]/[D] to register/deregister nodes
     .nodeConfigurationEnabled(true)     // Enable [Enter] config of ping routes & headers
     .seedGateway(hexacloud)             // Inject already started gateway instance
-    .start();                           // Start TUI loop
+    .startToggleMode();                 // Start in non-blocking toggle/detachable mode
 ```
+
+## Non-Blocking Detachable Mode (`startToggleMode`)
+
+When calling `startToggleMode()`, the application runs the gateways in the background and prints standard framework logs to standard output. 
+*   **Attach:** Pressing `ENTER` (or key `M`) at any time clears the screen and opens the interactive TUI.
+*   **Detach:** Pressing `Q` or `ESC` inside the TUI detaches the panel, resets the terminal to canonical mode, and safely resumes printing background logs to standard output without stopping the active gateways or killing the JVM process.
 
 ## UI Interaction & Shortcuts
 
