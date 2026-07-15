@@ -28,9 +28,13 @@ public class NodeConfigViewRenderer {
         }
 
         ServerNode node = state.nodes.get(state.selectedNodeIndex);
+        int W = NativeTerminal.getTerminalWidth();
+        int H = NativeTerminal.getTerminalHeight();
+        if (W < 110) W = 110;
+        if (H < 24) H = 24;
 
         // Top half: configuration parameters
-        mainRenderer.drawBox(2, 5, 110, 13, "NODE CONFIGURATION PANEL - " + node.getFullHost(), true);
+        mainRenderer.drawBox(2, 5, W, 13, "NODE CONFIGURATION PANEL - " + node.getFullHost(), true);
 
         NativeTerminal.printAt(4, 6, WHITE_BOLD + "Host:   " + RESET + node.host());
         NativeTerminal.printAt(4, 7, WHITE_BOLD + "Port:   " + RESET + node.port());
@@ -66,47 +70,57 @@ public class NodeConfigViewRenderer {
         NativeTerminal.printAt(4, 12, (canEdit ? WHITE_BOLD + "[V] " : "") + "Token:  " + RESET + CYAN + headerVal + RESET);
 
         // Sep & Right half: Live Telemetry
+        int xSep = W / 2;
+        int xTele = xSep + 2;
         for (int row = 6; row <= 12; row++) {
-            NativeTerminal.printAt(55, row, "│");
+            NativeTerminal.printAt(xSep, row, "│");
         }
-        NativeTerminal.printAt(57, 6, WHITE_BOLD + "Live Telemetry Metrics:" + RESET);
+        NativeTerminal.printAt(xTele, 6, WHITE_BOLD + "Live Telemetry Metrics:" + RESET);
         String runtimeDisplay = node.runtime().isEmpty() ? node.pingProtocol().getFriendlyName() : node.runtime();
-        NativeTerminal.printAt(57, 7, "Runtime/Lang: " + CYAN + runtimeDisplay + RESET);
+        NativeTerminal.printAt(xTele, 7, "Runtime/Lang: " + CYAN + runtimeDisplay + RESET);
         
         String latencyStr = node.status().name().equals("ONLINE") ? node.latencyMs() + " ms" : "-";
-        NativeTerminal.printAt(57, 8, "Latency(RTT): " + GREEN + latencyStr + RESET);
+        NativeTerminal.printAt(xTele, 8, "Latency(RTT): " + GREEN + latencyStr + RESET);
         
         String cpuStr = node.status().name().equals("ONLINE") ? String.format("%.1f %%", node.cpuUsage()) : "-";
-        NativeTerminal.printAt(57, 9, "CPU Load:     " + YELLOW + cpuStr + RESET);
+        NativeTerminal.printAt(xTele, 9, "CPU Load:     " + YELLOW + cpuStr + RESET);
         
         String ramStr = node.status().name().equals("ONLINE") ? String.format("%.1f MB", node.ramUsage()) : "-";
-        NativeTerminal.printAt(57, 10, "RAM Memory:   " + CYAN + ramStr + RESET);
+        NativeTerminal.printAt(xTele, 10, "RAM Memory:   " + CYAN + ramStr + RESET);
 
         // Bottom half: console logs for this node/service
-        mainRenderer.drawBox(2, 14, 110, 22, "CONSOLE LOGS FOR SERVICE " + node.getFullHost(), false);
+        mainRenderer.drawBox(2, 14, W, H - 2, "CONSOLE LOGS FOR SERVICE " + node.getFullHost(), false);
 
-        int y = 15;
+        int logsStartY = 15;
+        int logsEndY = H - 3;
+        int logsLinesCount = logsEndY - logsStartY + 1;
+        int y = logsStartY;
         List<DebugUtils.LogEntry> serviceLogs = DebugUtils.getServiceLogs(state.selectedClusterName, node.getFullHost());
         if (serviceLogs.isEmpty()) {
             NativeTerminal.printAt(4, y, "No logs recorded for this service.");
+            y++;
         } else {
-            int startIdx = Math.max(0, serviceLogs.size() - 7);
+            int startIdx = Math.max(0, serviceLogs.size() - logsLinesCount);
+            int maxLineWidth = W - 7;
             for (int i = startIdx; i < serviceLogs.size(); i++) {
                 DebugUtils.LogEntry entry = serviceLogs.get(i);
                 String logLine = entry.toString();
-                String clearedLine = logLine + "                                                                                                    ";
-                if (clearedLine.length() > 103) {
-                    clearedLine = clearedLine.substring(0, 103);
-                }
+                StringBuilder clearedLine = new StringBuilder(logLine);
+                while (clearedLine.length() < maxLineWidth) clearedLine.append(" ");
+                String outputLine = clearedLine.substring(0, maxLineWidth);
+
                 if (entry.getLevel() == DebugUtils.LogLevel.ERROR) {
-                    NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
+                    NativeTerminal.printAt(4, y, RED + outputLine + RESET);
                 } else if (entry.getLevel() == DebugUtils.LogLevel.INFO) {
-                    NativeTerminal.printAt(4, y, CYAN + clearedLine + RESET);
+                    NativeTerminal.printAt(4, y, CYAN + outputLine + RESET);
                 } else {
-                    NativeTerminal.printAt(4, y, clearedLine);
+                    NativeTerminal.printAt(4, y, outputLine);
                 }
                 y++;
             }
+        }
+        for (int r = y; r <= logsEndY; r++) {
+            NativeTerminal.printAt(4, r, " ".repeat(W - 7));
         }
 
         StringBuilder controlsStr = new StringBuilder();
@@ -114,6 +128,7 @@ public class NodeConfigViewRenderer {
         if (canEdit) {
             controlsStr.append("  [P] Toggle Ping  [E] Change Path  [H] Header Name  [V] Value");
         }
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
+        NativeTerminal.printAt(2, H - 1, " ".repeat(W - 4));
+        NativeTerminal.printAt(2, H - 1, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
     }
 }

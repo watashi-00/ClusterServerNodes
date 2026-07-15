@@ -140,4 +140,44 @@ public class NativeTerminal {
             return false;
         }
     }
+
+    private static int cachedWidth = 110;
+    private static int cachedHeight = 24;
+    private static long lastSizeCheck = 0;
+
+    public static int getTerminalWidth() {
+        updateTerminalSize();
+        return cachedWidth;
+    }
+
+    public static int getTerminalHeight() {
+        updateTerminalSize();
+        return cachedHeight;
+    }
+
+    private static synchronized void updateTerminalSize() {
+        long now = System.currentTimeMillis();
+        if (now - lastSizeCheck < 200) {
+            return;
+        }
+        lastSizeCheck = now;
+        try {
+            Process pCol = new ProcessBuilder("sh", "-c", "tput cols").start();
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pCol.getInputStream()))) {
+                String line = r.readLine();
+                if (line != null) {
+                    cachedWidth = Integer.parseInt(line.trim());
+                }
+            }
+            Process pLine = new ProcessBuilder("sh", "-c", "tput lines").start();
+            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pLine.getInputStream()))) {
+                String line = r.readLine();
+                if (line != null) {
+                    cachedHeight = Integer.parseInt(line.trim());
+                }
+            }
+        } catch (Exception e) {
+            // Use defaults
+        }
+    }
 }

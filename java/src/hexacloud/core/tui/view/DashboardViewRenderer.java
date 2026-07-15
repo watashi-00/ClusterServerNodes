@@ -26,6 +26,10 @@ public class DashboardViewRenderer {
 
     public void draw() {
         TuiState state = tui.state();
+        int W = NativeTerminal.getTerminalWidth();
+        int H = NativeTerminal.getTerminalHeight();
+        if (W < 110) W = 110; // Hard minimum
+        if (H < 24) H = 24;   // Hard minimum
 
         // 1. Draw all panels/boxes
         mainRenderer.drawBox(2, 5, 24, 9, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
@@ -33,11 +37,11 @@ public class DashboardViewRenderer {
         
         boolean isGatewayFocused = state.activePanel == PANEL_GATEWAYS;
         String middleTitle = isGatewayFocused ? "GATEWAY CONFIG & TRANSPORTS" : "CLUSTER CONFIG & SERVICES";
-        mainRenderer.drawBox(26, 5, 79, 13, middleTitle, state.activePanel == PANEL_SERVICES || state.activePanel == PANEL_GATEWAYS);
+        mainRenderer.drawBox(26, 5, W - 31, 13, middleTitle, state.activePanel == PANEL_SERVICES || state.activePanel == PANEL_GATEWAYS);
         
-        mainRenderer.drawBox(2, 14, 55, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
-        mainRenderer.drawBox(81, 5, 110, 13, "GATEWAYS & SYSTEM", false);
-        mainRenderer.drawBox(57, 14, 110, 22, "RECENT EVENTS", false);
+        mainRenderer.drawBox(2, 14, W / 2, H - 2, "RECENT SYSTEM LOGS [L: Full Logs]", false);
+        mainRenderer.drawBox(W - 29, 5, W, 13, "GATEWAYS & SYSTEM", false);
+        mainRenderer.drawBox(W / 2 + 2, 14, W, H - 2, "RECENT EVENTS", false);
 
         // 2. Render CLUSTERS list
         int yCluster = 6;
@@ -100,6 +104,10 @@ public class DashboardViewRenderer {
             NativeTerminal.printAt(4, r, "                     ");
         }
 
+        // Calculate middle column dynamic host space
+        int hostColWidth = (W - 31) - 28 - 8 - 14;
+        if (hostColWidth < 26) hostColWidth = 26;
+
         // 4. Render Middle Config & Services/Transports Table
         if (isGatewayFocused) {
             TuiState.GatewayConfig gw = !state.gateways.isEmpty() && state.selectedGatewayIndex < state.gateways.size()
@@ -114,10 +122,11 @@ public class DashboardViewRenderer {
             NativeTerminal.printAt(28, 7, "Status:   " + gwStatusStr + " | Ping Interval: " + YELLOW + pingInt + "s" + RESET);
             
             StringBuilder sep = new StringBuilder();
-            for (int i = 27; i < 79; i++) sep.append("─");
+            for (int i = 27; i < W - 31; i++) sep.append("─");
             NativeTerminal.printAt(26, 8, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
 
-            NativeTerminal.printAt(28, 9, WHITE_BOLD + String.format("%-26s %-8s %-14s", "PROTOCOL / TRANSPORT", "PORT", "STATUS") + RESET);
+            String headerLine = String.format("%-" + hostColWidth + "s %-8s %-14s", "PROTOCOL / TRANSPORT", "PORT", "STATUS");
+            NativeTerminal.printAt(28, 9, WHITE_BOLD + headerLine + RESET);
 
             int yGw = 10;
             if (gw != null) {
@@ -125,14 +134,14 @@ public class DashboardViewRenderer {
                 String httpStatus = (gw.running && gw.httpEnabled) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
                 String wsStatus = (gw.running && gw.wsEnabled) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
 
-                NativeTerminal.printAt(28, yGw++, String.format("  %-26s %-8d %-14s", "Telnet Console (CLI)", port, telnetStatus));
-                NativeTerminal.printAt(28, yGw++, String.format("  %-26s %-8d %-14s", "HTTP REST API (JSON)", port + 1, httpStatus));
-                NativeTerminal.printAt(28, yGw++, String.format("  %-26s %-8d %-14s", "WebSocket Stream (JSON)", port + 2, wsStatus));
+                NativeTerminal.printAt(28, yGw++, String.format("  %-" + hostColWidth + "s %-8d %-14s", "Telnet Console (CLI)", port, telnetStatus));
+                NativeTerminal.printAt(28, yGw++, String.format("  %-" + hostColWidth + "s %-8d %-14s", "HTTP REST API (JSON)", port + 1, httpStatus));
+                NativeTerminal.printAt(28, yGw++, String.format("  %-" + hostColWidth + "s %-8d %-14s", "WebSocket Stream (JSON)", port + 2, wsStatus));
             } else {
                 NativeTerminal.printAt(28, yGw++, RED + "No gateway selected." + RESET);
             }
             for (int r = yGw; r <= 12; r++) {
-                NativeTerminal.printAt(28, r, "                                                    ");
+                NativeTerminal.printAt(28, r, " ".repeat(hostColWidth + 24));
             }
         } else {
             String ips = state.targetAllowedIps.isEmpty() ? "Any Client" : state.targetAllowedIps;
@@ -146,10 +155,11 @@ public class DashboardViewRenderer {
             NativeTerminal.printAt(28, 7, "Security: " + (state.targetRequireToken ? GREEN + "Token Required" + RESET : YELLOW + "Optional" + RESET) + " | Allowed: " + CYAN + ips + RESET);
             
             StringBuilder sep = new StringBuilder();
-            for (int i = 27; i < 79; i++) sep.append("─");
+            for (int i = 27; i < W - 31; i++) sep.append("─");
             NativeTerminal.printAt(26, 8, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
 
-            NativeTerminal.printAt(28, 9, WHITE_BOLD + String.format("%-26s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS") + RESET);
+            String headerLine = String.format("%-" + hostColWidth + "s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS");
+            NativeTerminal.printAt(28, 9, WHITE_BOLD + headerLine + RESET);
 
             tui.adjustServicesViewport(3);
 
@@ -180,56 +190,63 @@ public class DashboardViewRenderer {
                     String hostStr = node.host() + (node.runtime().isEmpty() ? "" : " [" + node.runtime() + "]");
                     String statusLabel = coloredStatus + (node.status().name().equals("ONLINE") ? " (" + node.latencyMs() + "ms)" : "");
 
-                    String line = String.format("%s%-26s %-8s %-14s", prefix, hostStr, portStr, statusLabel);
+                    String line = String.format("%s%-" + hostColWidth + "s %-8s %-14s", prefix, hostStr, portStr, statusLabel);
                     NativeTerminal.printAt(28, yNode, line);
                     yNode++;
                 }
                 if (state.servicesViewportStart > 0) {
-                    NativeTerminal.printAt(77, 9, WHITE_BOLD + "▲" + RESET);
+                    NativeTerminal.printAt(W - 33, 9, WHITE_BOLD + "▲" + RESET);
                 }
                 if (state.servicesViewportStart + 3 < state.nodes.size()) {
-                    NativeTerminal.printAt(77, 12, WHITE_BOLD + "▼" + RESET);
+                    NativeTerminal.printAt(W - 33, 12, WHITE_BOLD + "▼" + RESET);
                 }
             }
             for (int r = yNode; r <= 12; r++) {
-                NativeTerminal.printAt(28, r, "                                                    ");
+                NativeTerminal.printAt(28, r, " ".repeat(hostColWidth + 24));
             }
         }
 
         // 5. Render RECENT SYSTEM LOGS
         int yLog = 15;
+        int maxLogWidth = (W / 2) - 4;
+        int logsLimit = (H - 2) - 14 - 1;
         List<DebugUtils.LogEntry> dashboardLogs = DebugUtils.getDashboardLogs();
         if (dashboardLogs.isEmpty()) {
             NativeTerminal.printAt(4, yLog, "No logs recorded yet.");
+            yLog++;
         } else {
-            int startIdx = Math.max(0, dashboardLogs.size() - 7);
+            int startIdx = Math.max(0, dashboardLogs.size() - logsLimit);
             for (int i = startIdx; i < dashboardLogs.size(); i++) {
                 DebugUtils.LogEntry entry = dashboardLogs.get(i);
                 String logLine = entry.toString();
-                String clearedLine = logLine + "                                                    ";
-                if (clearedLine.length() > 50) {
-                    clearedLine = clearedLine.substring(0, 50);
-                }
+                StringBuilder clearedLine = new StringBuilder(logLine);
+                while (clearedLine.length() < maxLogWidth) clearedLine.append(" ");
+                String outputLine = clearedLine.substring(0, maxLogWidth);
+
                 if (entry.getLevel() == DebugUtils.LogLevel.ERROR) {
-                    NativeTerminal.printAt(4, yLog, RED + clearedLine + RESET);
+                    NativeTerminal.printAt(4, yLog, RED + outputLine + RESET);
                 } else if (entry.getLevel() == DebugUtils.LogLevel.INFO) {
-                    NativeTerminal.printAt(4, yLog, CYAN + clearedLine + RESET);
+                    NativeTerminal.printAt(4, yLog, CYAN + outputLine + RESET);
                 } else {
-                    NativeTerminal.printAt(4, yLog, clearedLine);
+                    NativeTerminal.printAt(4, yLog, outputLine);
                 }
                 yLog++;
             }
         }
+        for (int r = yLog; r < H - 2; r++) {
+            NativeTerminal.printAt(4, r, " ".repeat(maxLogWidth));
+        }
 
         // 6. Render GATEWAYS & SYSTEM Live Metrics
-        NativeTerminal.printAt(83, 6, WHITE_BOLD + "SYSTEM RESOURCES" + RESET);
+        int xMetrics = W - 27;
+        NativeTerminal.printAt(xMetrics, 6, WHITE_BOLD + "SYSTEM RESOURCES" + RESET);
         long usedMem = (Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / (1024 * 1024);
         long allocatedMem = Runtime.getRuntime().totalMemory() / (1024 * 1024);
         long maxMem = Runtime.getRuntime().maxMemory() / (1024 * 1024);
         
-        NativeTerminal.printAt(83, 7, "RAM Used:   " + CYAN + usedMem + " MB" + RESET);
-        NativeTerminal.printAt(83, 8, "RAM Alloc:  " + CYAN + allocatedMem + " MB" + RESET);
-        NativeTerminal.printAt(83, 9, "RAM Max:    " + CYAN + maxMem + " MB" + RESET);
+        NativeTerminal.printAt(xMetrics, 7, "RAM Used:   " + CYAN + usedMem + " MB" + RESET);
+        NativeTerminal.printAt(xMetrics, 8, "RAM Alloc:  " + CYAN + allocatedMem + " MB" + RESET);
+        NativeTerminal.printAt(xMetrics, 9, "RAM Max:    " + CYAN + maxMem + " MB" + RESET);
 
         double cpu = -1;
         try {
@@ -244,15 +261,15 @@ public class DashboardViewRenderer {
             }
         }
         String cpuStr = cpu >= 0 ? String.format("%.1f %%", cpu) : "N/A";
-        NativeTerminal.printAt(83, 10, "CPU Load:   " + YELLOW + cpuStr + RESET);
+        NativeTerminal.printAt(xMetrics, 10, "CPU Load:   " + YELLOW + cpuStr + RESET);
 
         int threads = java.lang.management.ManagementFactory.getThreadMXBean().getThreadCount();
         int appThreads = 0;
         try {
             java.util.Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
-            for (Thread t : threadSet) {
-                String name = t.getName();
-                if (!(t.isDaemon() && (name.contains("ForkJoinPool") || name.contains("VirtualThread-unblocker") ||
+            for (Thread thread : threadSet) {
+                String name = thread.getName();
+                if (!(thread.isDaemon() && (name.contains("ForkJoinPool") || name.contains("VirtualThread-unblocker") ||
                     name.equals("Reference Handler") || name.equals("Finalizer") || 
                     name.equals("Signal Dispatcher") || name.equals("Notification Thread") || 
                     name.equals("Common-Cleaner") || name.equals("Attach Listener")))) {
@@ -266,7 +283,7 @@ public class DashboardViewRenderer {
             }
             appThreads = 1;
         }
-        NativeTerminal.printAt(83, 11, "OS Threads: " + CYAN + threads + RESET + " (App: " + CYAN + appThreads + RESET + ")");
+        NativeTerminal.printAt(xMetrics, 11, "OS Threads: " + CYAN + threads + RESET + " (App: " + CYAN + appThreads + RESET + ")");
 
         int gwCount = tui.activeGateways().size();
         String gwSummary = "Gateways:   " + (gwCount == 0 ? RED + "None" + RESET : GREEN + String.valueOf(gwCount) + RESET);
@@ -275,16 +292,18 @@ public class DashboardViewRenderer {
             gwSummary += " (:" + firstPort + ")";
         }
         String summaryPadding = " ".repeat(Math.max(0, 26 - gwSummary.replaceAll("\u001B\\[[;\\d]*m", "").length()));
-        NativeTerminal.printAt(83, 12, gwSummary + summaryPadding);
+        NativeTerminal.printAt(xMetrics, 12, gwSummary + summaryPadding);
 
         // 7. Render RECENT EVENTS
         int eventY = 15;
+        int xEvents = W / 2 + 4;
+        int maxEventWidth = W - xEvents - 2;
         if (state.recentEvents.isEmpty()) {
-            NativeTerminal.printAt(59, eventY, GRAY + "No recent events." + RESET);
+            NativeTerminal.printAt(xEvents, eventY, GRAY + "No recent events." + RESET);
             eventY++;
         } else {
             for (TuiState.TuiEvent event : state.recentEvents) {
-                if (eventY >= 22) break;
+                if (eventY >= H - 2) break;
 
                 long diffMs = System.currentTimeMillis() - event.timestamp();
                 String timeAgo;
@@ -299,7 +318,7 @@ public class DashboardViewRenderer {
                 }
 
                 String timeStr = "[" + timeAgo + "] ";
-                int remaining = 50 - timeStr.length();
+                int remaining = maxEventWidth - timeStr.length();
                 
                 String shortName;
                 switch (event.type()) {
@@ -336,13 +355,13 @@ public class DashboardViewRenderer {
 
                 String colorized = timeStr + color + eventText + RESET;
                 int printedLen = timeStr.length() + eventText.length();
-                String padding = " ".repeat(Math.max(0, 50 - printedLen));
-                NativeTerminal.printAt(59, eventY, colorized + padding);
+                String padding = " ".repeat(Math.max(0, maxEventWidth - printedLen));
+                NativeTerminal.printAt(xEvents, eventY, colorized + padding);
                 eventY++;
             }
         }
-        for (int row = eventY; row < 22; row++) {
-            NativeTerminal.printAt(59, row, "                                                  ");
+        for (int row = eventY; row < H - 2; row++) {
+            NativeTerminal.printAt(xEvents, row, " ".repeat(maxEventWidth));
         }
 
         // 8. Render bottom controls
@@ -359,8 +378,8 @@ public class DashboardViewRenderer {
         }
         controlsStr.append("  [L] Logs  [Q] Exit");
         
-        // Clear row 23 first to prevent visual residue
-        NativeTerminal.printAt(2, 23, "                                                                                                              ");
-        NativeTerminal.printAt(2, 23, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
+        // Clear control row first to prevent visual residue
+        NativeTerminal.printAt(2, H - 1, " ".repeat(W - 4));
+        NativeTerminal.printAt(2, H - 1, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
     }
 }
