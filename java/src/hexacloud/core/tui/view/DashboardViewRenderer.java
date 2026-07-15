@@ -79,7 +79,7 @@ public class DashboardViewRenderer {
                 if (yGateway >= 13) break;
                 TuiState.GatewayConfig gw = state.gateways.get(i);
                 String statusIndicator = gw.running ? GREEN + "●" + RESET : RED + "○" + RESET;
-                String displayName = "[" + gw.port + "] " + (gw.clusterName.isEmpty() ? "None" : gw.clusterName);
+                String displayName = gw.gatewayName + " (:" + gw.port + ")";
                 if (displayName.length() > 14) {
                     displayName = displayName.substring(0, 11) + "...";
                 }
@@ -108,8 +108,9 @@ public class DashboardViewRenderer {
             String gwStatusStr = (gw != null && gw.running) ? GREEN + "ONLINE" + RESET : RED + "OFFLINE" + RESET;
             int port = (gw != null) ? gw.port : 3000;
             int pingInt = (gw != null) ? gw.pingInterval : 5;
+            String gwName = (gw != null) ? gw.gatewayName : "None";
 
-            NativeTerminal.printAt(28, 6, WHITE_BOLD + "Gateway:  " + RESET + "Port " + port + " | Target Cluster: " + targetCluster + RESET);
+            NativeTerminal.printAt(28, 6, WHITE_BOLD + "Gateway:  " + RESET + gwName + " (:" + port + ") | Target: " + targetCluster + RESET);
             NativeTerminal.printAt(28, 7, "Status:   " + gwStatusStr + " | Ping Interval: " + YELLOW + pingInt + "s" + RESET);
             
             StringBuilder sep = new StringBuilder();

@@ -407,6 +407,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             
             RunningGatewayPort activeGw = activeGateways.get(clusterName);
             if (activeGw != null) {
+                cfg.gatewayName = activeGw.getGatewayName();
                 cfg.port = activeGw.getPort();
                 cfg.telnetEnabled = activeGw.isTelnetEnabled();
                 cfg.httpEnabled = activeGw.isHttpEnabled();
@@ -416,6 +417,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             } else {
                 Integer configuredPort = gatewayPorts.get(clusterName);
                 cfg.port = (configuredPort != null) ? configuredPort : 3000;
+                cfg.gatewayName = "gw-" + cfg.port;
                 cfg.running = false;
             }
             state.gateways.add(cfg);

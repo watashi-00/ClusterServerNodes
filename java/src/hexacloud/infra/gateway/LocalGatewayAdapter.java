@@ -22,6 +22,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     private ServerManager serverManager;
     private int port = 3000;
     private boolean running = false;
+    private String gatewayName;
 
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
@@ -293,5 +294,16 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     @Override
     public boolean isRunning() {
         return running;
+    }
+
+    @Override
+    public LocalGatewayAdapter gatewayName(String name) {
+        this.gatewayName = name;
+        return this;
+    }
+
+    @Override
+    public String getGatewayName() {
+        return this.gatewayName != null ? this.gatewayName : "gw-" + port;
     }
 }

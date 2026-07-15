@@ -37,6 +37,7 @@ public class TuiState {
     public int selectedGatewayIndex = 0;
     
     public static class GatewayConfig {
+        public String gatewayName = "";
         public String clusterName = "";
         public int port = 3000;
         public int pingInterval = 5;

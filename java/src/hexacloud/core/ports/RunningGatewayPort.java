@@ -70,6 +70,11 @@ public interface RunningGatewayPort {
     int getPort();
 
     /**
+     * Get the custom name of this gateway.
+     */
+    String getGatewayName();
+
+    /**
      * Access the event manager to subscribe to cluster node changes or connection pings.
      */
     ClusterEventBusManager eventManager();

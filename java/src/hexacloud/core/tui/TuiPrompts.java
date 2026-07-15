@@ -105,6 +105,9 @@ public class TuiPrompts {
                     String portStr = readInput("Enter base port (default 3000) [/cancel]: ");
                     int port = portStr.isEmpty() ? 3000 : java.lang.Integer.parseInt(portStr);
 
+                    String gwNameInput = readInput("Enter gateway name (default gw-" + port + ") [/cancel]: ");
+                    String gwName = gwNameInput.isEmpty() ? "gw-" + port : gwNameInput;
+
                     String intStr = readInput("Enter ping check interval in seconds (default 5) [/cancel]: ");
                     int pingInt = intStr.isEmpty() ? 5 : java.lang.Integer.parseInt(intStr);
 
@@ -118,6 +121,7 @@ public class TuiPrompts {
                     boolean ws = !wsStr.equalsIgnoreCase("n");
 
                     RunningGatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(state.selectedClusterName)
+                        .gatewayName(gwName)
                         .port(port)
                         .pingInterval(pingInt)
                         .enableTelnet(telnet)

@@ -85,6 +85,11 @@ public interface GatewayBuilderPort {
     GatewayBuilderPort timeout(int timeoutMs);
 
     /**
+     * Set the custom name of this gateway.
+     */
+    GatewayBuilderPort gatewayName(String name);
+
+    /**
      * Start all configured protocol listeners on the default port.
      * Transitions the gateway from the configuration builder phase to the running phase.
      */

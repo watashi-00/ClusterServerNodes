@@ -36,6 +36,7 @@ public class MinimalApplication {
 
         // 1. Programmatic Bootstrapping with Fluent Config API
         GatewayBuilderPort builder = GatewayFactory.createGateway("demo-cluster")
+            .gatewayName("minimal-gw")
             .port(4000)                   // Base Telnet port (HTTP runs on 4001, Websocket on 4002)
             .pingInterval(3)              // Ping checks scheduled every 3 seconds
             .enableHttp(true)             // Enable HTTP API mapping
