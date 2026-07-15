@@ -1,5 +1,6 @@
 package hexacloud.core.tui;
 
+import hexacloud.core.tui.view.*;
 import hexacloud.core.utils.NativeTerminal;
 import static hexacloud.core.tui.TuiConstants.*;
 
@@ -66,7 +67,7 @@ public class TuiRenderer {
         }
     }
 
-    void drawHeader(String viewTitle) {
+    public void drawHeader(String viewTitle) {
         String boxColor = CYAN;
         StringBuilder borderTop = new StringBuilder("╔");
         StringBuilder borderBottom = new StringBuilder("╚");

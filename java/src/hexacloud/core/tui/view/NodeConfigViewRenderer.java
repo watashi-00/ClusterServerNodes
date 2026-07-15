@@ -1,7 +1,10 @@
-package hexacloud.core.tui;
+package hexacloud.core.tui.view;
 
 import java.util.List;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.tui.TerminalUI;
+import hexacloud.core.tui.TuiRenderer;
+import hexacloud.core.tui.TuiState;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import static hexacloud.core.tui.TuiConstants.*;
@@ -9,7 +12,7 @@ import static hexacloud.core.tui.TuiConstants.*;
 /**
  * Handles visual rendering for the Node Configuration View.
  */
-class NodeConfigViewRenderer {
+public class NodeConfigViewRenderer {
     private final TerminalUI tui;
     private final TuiRenderer mainRenderer;
 
