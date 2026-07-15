@@ -14,3 +14,4 @@ It is designed to let users compose cluster gateways and monitor node state with
 - [Framework Extensibility](framework-extensibility.md) — how to programmatically configure security, rates, and register route controllers.
 - [Custom Events](events.md) — how to define and dispatch custom events, how to register event listener controllers, and built-in event behavior.
 - [Examples](examples.md) — practical bootstrap and event wiring patterns for GateBridge.
+- [Logging System](logging.md) — how to integrate logging adapters (like Log4j2), log levels, and TUI redirection.
