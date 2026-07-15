@@ -7,28 +7,62 @@ public class NativeTerminal {
     private static boolean loaded = false;
 
     static {
-        String[] possiblePaths = {
-            "libhexaterminal.so",
-            "java/libhexaterminal.so",
-            "/tmp/libhexaterminal.so",
-            "libhexaterminal.dylib",
-            "java/libhexaterminal.dylib",
-            "/tmp/libhexaterminal.dylib",
-            "hexaterminal.dll",
-            "java/hexaterminal.dll"
-        };
-        for (String path : possiblePaths) {
-            try {
-                File file = new File(path);
-                if (file.exists()) {
-                    System.load(file.getAbsolutePath());
+        // Try loading from packaged JAR resource first
+        try {
+            String osName = System.getProperty("os.name").toLowerCase();
+            String libName;
+            if (osName.contains("win")) {
+                libName = "hexaterminal.dll";
+            } else if (osName.contains("mac")) {
+                libName = "libhexaterminal.dylib";
+            } else {
+                libName = "libhexaterminal.so";
+            }
+            
+            try (java.io.InputStream in = NativeTerminal.class.getResourceAsStream("/native/" + libName)) {
+                if (in != null) {
+                    File tempFile = File.createTempFile("libhexaterminal", libName.substring(libName.lastIndexOf('.')));
+                    tempFile.deleteOnExit();
+                    try (java.io.FileOutputStream out = new java.io.FileOutputStream(tempFile)) {
+                        byte[] buffer = new byte[8192];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                    }
+                    System.load(tempFile.getAbsolutePath());
                     loaded = true;
-                    break;
                 }
-            } catch (Throwable t) {
-                // Try next path
+            }
+        } catch (Throwable t) {
+            // Ignore and fallback
+        }
+
+        if (!loaded) {
+            String[] possiblePaths = {
+                "libhexaterminal.so",
+                "java/libhexaterminal.so",
+                "/tmp/libhexaterminal.so",
+                "libhexaterminal.dylib",
+                "java/libhexaterminal.dylib",
+                "/tmp/libhexaterminal.dylib",
+                "hexaterminal.dll",
+                "java/hexaterminal.dll"
+            };
+            for (String path : possiblePaths) {
+                try {
+                    File file = new File(path);
+                    if (file.exists()) {
+                        System.load(file.getAbsolutePath());
+                        loaded = true;
+                        break;
+                    }
+                } catch (Throwable t) {
+                    // Try next path
+                }
             }
         }
+
         if (!loaded) {
             try {
                 System.loadLibrary("hexaterminal");

@@ -5,6 +5,9 @@
 *.class
 /tmp/
 
+# Whitelist native libraries packed in resources
+!**/resources/native/**
+
 # Ignore Maven build output directories
 target/
 **/target/
