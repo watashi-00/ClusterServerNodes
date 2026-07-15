@@ -90,12 +90,20 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                     
                     String cpuStr = extractJsonField(body, "cpu");
                     if (cpuStr != null) {
-                        try { node.setCpuUsage(Double.parseDouble(cpuStr)); } catch (Exception e) {}
+                        try {
+                            node.setCpuUsage(Double.parseDouble(cpuStr));
+                        } catch (Exception e) {
+                            DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse CPU usage value from HTTP ping: " + cpuStr, e);
+                        }
                     }
                     
                     String ramStr = extractJsonField(body, "ram");
                     if (ramStr != null) {
-                        try { node.setRamUsage(Double.parseDouble(ramStr)); } catch (Exception e) {}
+                        try {
+                            node.setRamUsage(Double.parseDouble(ramStr));
+                        } catch (Exception e) {
+                            DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse RAM usage value from HTTP ping: " + ramStr, e);
+                        }
                     }
                     return NodeStatus.ONLINE;
                 } else {
@@ -137,12 +145,20 @@ public class MultiProtocolPingAdapter implements PingClientPort {
 
                         String cpuStr = extractJsonField(body, "cpu");
                         if (cpuStr != null) {
-                            try { node.setCpuUsage(Double.parseDouble(cpuStr)); } catch (Exception e) {}
+                            try {
+                                node.setCpuUsage(Double.parseDouble(cpuStr));
+                            } catch (Exception e) {
+                                DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse CPU usage value from WS ping: " + cpuStr, e);
+                            }
                         }
 
                         String ramStr = extractJsonField(body, "ram");
                         if (ramStr != null) {
-                            try { node.setRamUsage(Double.parseDouble(ramStr)); } catch (Exception e) {}
+                            try {
+                                node.setRamUsage(Double.parseDouble(ramStr));
+                            } catch (Exception e) {
+                                DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse RAM usage value from WS ping: " + ramStr, e);
+                            }
                         }
                         future.complete(NodeStatus.ONLINE);
                         webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Goodbye");

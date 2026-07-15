@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.utils.DebugUtils;
 
 public class ClusterController implements RouteController {
 
@@ -63,7 +64,9 @@ public class ClusterController implements RouteController {
                     else if (key.equals("language") || key.equals("lang")) lang = val;
                     else if (key.equals("latency")) latency = Integer.parseInt(val);
                     else if (key.equals("status")) statusStr = val;
-                } catch (Exception e) {}
+                } catch (Exception e) {
+                    DebugUtils.error(cluster.getClusterName(), null, "Failed to parse query parameter: key=" + key + ", value=" + val, e);
+                }
             }
         } else {
             String decodedArgs = args.replace("+", " ").replace("%20", " ");
@@ -72,7 +75,9 @@ public class ClusterController implements RouteController {
                 host = parts[0];
                 try {
                     port = Integer.parseInt(parts[1]);
-                } catch (NumberFormatException e) {}
+                } catch (NumberFormatException e) {
+                    DebugUtils.error(cluster.getClusterName(), null, "Failed to parse port parameter: " + parts[1], e);
+                }
 
                 for (int i = 2; i < parts.length; i++) {
                     String kv = parts[i];
@@ -86,7 +91,9 @@ public class ClusterController implements RouteController {
                         else if (key.equals("language") || key.equals("lang")) lang = val;
                         else if (key.equals("latency")) latency = Integer.parseInt(val);
                         else if (key.equals("status")) statusStr = val;
-                    } catch (Exception e) {}
+                    } catch (Exception e) {
+                        DebugUtils.error(cluster.getClusterName(), null, "Failed to parse telemetry parameter: key=" + key + ", value=" + val, e);
+                    }
                 }
             }
         }
@@ -126,7 +133,9 @@ public class ClusterController implements RouteController {
                     cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged(targetNode.getFullHost(), newStatus));
                     wasOnline = newStatus == hexacloud.core.model.NodeStatus.ONLINE;
                 }
-            } catch (Exception e) {}
+            } catch (Exception e) {
+                DebugUtils.error(cluster.getClusterName(), null, "Failed to parse status value: " + statusStr, e);
+            }
         }
 
         if (targetNode.status() != hexacloud.core.model.NodeStatus.ONLINE) {

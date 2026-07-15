@@ -16,6 +16,8 @@ import static hexacloud.core.tui.TuiConstants.*;
 public class DashboardViewRenderer {
     private final TerminalUI tui;
     private final TuiRenderer mainRenderer;
+    private static boolean cpuErrorLogged = false;
+    private static boolean threadErrorLogged = false;
 
     public DashboardViewRenderer(TerminalUI tui, TuiRenderer mainRenderer) {
         this.tui = tui;
@@ -164,7 +166,12 @@ public class DashboardViewRenderer {
             if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
                 cpu = sunBean.getProcessCpuLoad() * 100;
             }
-        } catch (Throwable t) {}
+        } catch (Throwable t) {
+            if (!cpuErrorLogged) {
+                DebugUtils.error("TUI", null, "Failed to retrieve CPU load metrics", t);
+                cpuErrorLogged = true;
+            }
+        }
         String cpuStr = cpu >= 0 ? String.format("%.1f %%", cpu) : "N/A";
         NativeTerminal.printAt(83, 10, "CPU Load:   " + YELLOW + cpuStr + RESET);
 
@@ -182,6 +189,10 @@ public class DashboardViewRenderer {
                 }
             }
         } catch (Throwable t) {
+            if (!threadErrorLogged) {
+                DebugUtils.error("TUI", null, "Failed to retrieve OS threads metrics", t);
+                threadErrorLogged = true;
+            }
             appThreads = 1;
         }
         NativeTerminal.printAt(83, 11, "OS Threads: " + CYAN + threads + RESET + " (App: " + CYAN + appThreads + RESET + ")");
