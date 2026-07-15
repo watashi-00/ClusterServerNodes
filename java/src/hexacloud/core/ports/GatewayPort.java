@@ -79,4 +79,29 @@ public interface GatewayPort extends SchedulerOperations, ClusterOperations, Ser
      * Access the event manager to subscribe to cluster node changes or connection pings.
      */
     ClusterEventBusManager eventManager();
+
+    /**
+     * Register a custom route controller to expose additional business command endpoints.
+     */
+    GatewayPort registerController(hexacloud.core.server.route.RouteController controller);
+
+    /**
+     * Set rate limit rules for the cluster gateway.
+     */
+    GatewayPort rateLimit(int requests, int durationSeconds);
+
+    /**
+     * Set security token validation settings.
+     */
+    GatewayPort requireToken(boolean requireToken, String secret);
+
+    /**
+     * Set allowed client IP whitelist (comma-separated).
+     */
+    GatewayPort allowedIps(String allowedIps);
+
+    /**
+     * Set connection/request timeout in milliseconds.
+     */
+    GatewayPort timeout(int timeoutMs);
 }

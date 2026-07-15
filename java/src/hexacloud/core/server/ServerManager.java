@@ -108,4 +108,12 @@ public class ServerManager implements ServerOperations {
         }
         activeTransports.clear();
     }
+
+    /**
+     * Register a custom route controller to expose additional business command endpoints.
+     */
+    public ServerManager registerRouteController(hexacloud.core.server.route.RouteController controller) {
+        this.routeRegistry.registerController(controller);
+        return this;
+    }
 }

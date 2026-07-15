@@ -219,4 +219,36 @@ class LocalGatewayAdapter implements GatewayPort {
     public ClusterEventBusManager eventManager() {
         return this.clusterEventManager;
     }
+
+    @Override
+    public GatewayPort registerController(hexacloud.core.server.route.RouteController controller) {
+        ensureServerManagerInitialized();
+        this.serverManager.registerRouteController(controller);
+        return this;
+    }
+
+    @Override
+    public GatewayPort rateLimit(int requests, int durationSeconds) {
+        this.clusterManager.getCluster().setRateLimit(requests, durationSeconds);
+        return this;
+    }
+
+    @Override
+    public GatewayPort requireToken(boolean requireToken, String secret) {
+        this.clusterManager.getCluster().setRequireToken(requireToken);
+        this.clusterManager.getCluster().setSecret(secret);
+        return this;
+    }
+
+    @Override
+    public GatewayPort allowedIps(String allowedIps) {
+        this.clusterManager.getCluster().setAllowedIps(allowedIps);
+        return this;
+    }
+
+    @Override
+    public GatewayPort timeout(int timeoutMs) {
+        this.clusterManager.getCluster().setTimeoutMs(timeoutMs);
+        return this;
+    }
 }
