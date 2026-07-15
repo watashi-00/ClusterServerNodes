@@ -6,7 +6,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 
 import hexacloud.core.cluster.event.ClusterEventBusManager;
-import hexacloud.core.cluster.event.NodeStatusChanged;
+import hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.PingClientPort;
@@ -76,8 +76,11 @@ public class ThreadPingScheduler {
         CompletableFuture<NodeStatus> response = pingClient.fetchPingAsync(clusterName, node);
 
         response.thenAccept(status -> {
-            if(node.status() != status) {
+            boolean statusChanged = node.status() != status;
+            if (statusChanged) {
                 eventManager.dispatch(new NodeStatusChanged(node.getFullHost(), status));
+            } else {
+                eventManager.dispatch(new hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated(node.getFullHost()));
             }
         });
     }
