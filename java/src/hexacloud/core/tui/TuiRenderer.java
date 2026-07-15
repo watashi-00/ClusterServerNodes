@@ -91,9 +91,9 @@ public class TuiRenderer {
 
         drawBox(2, 5, 24, 13, "CLUSTERS (" + state.clusterNames.size() + ")", state.activePanel == PANEL_CLUSTERS);
         drawBox(26, 5, 79, 13, "CLUSTER CONFIG & SERVICES", state.activePanel == PANEL_SERVICES);
-        drawBox(2, 14, 79, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
+        drawBox(2, 14, 55, 22, "RECENT SYSTEM LOGS [L: Full Logs]", false);
         drawBox(81, 5, 110, 13, "GATEWAYS & SYSTEM", false);
-        drawBox(81, 14, 110, 22, "RECENT EVENTS", false);
+        drawBox(57, 14, 110, 22, "RECENT EVENTS", false);
 
         int y = 6;
         if (state.clusterNames.isEmpty()) {
