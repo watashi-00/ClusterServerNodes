@@ -11,6 +11,7 @@ import java.util.concurrent.CompletionStage;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.model.PingProtocol;
+import hexacloud.core.model.PingResult;
 import hexacloud.core.ports.PingClientPort;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.ThreadManager;
@@ -34,25 +35,20 @@ public class MultiProtocolPingAdapter implements PingClientPort {
     }
 
     @Override
-    public CompletableFuture<NodeStatus> fetchPingAsync(String clusterName, ServerNode node) {
+    public CompletableFuture<PingResult> fetchPingAsync(String clusterName, ServerNode node) {
         String uriStr = node.getFullHost();
 
-        if (node.pingProtocol() == PingProtocol.NONE) {
-            setNode(node);
-            return CompletableFuture.completedFuture(node.status());
-        }
-        if (node.pingProtocol() == PingProtocol.WEBSOCKET) {
-            return fetchWsPingAsync(clusterName, node, uriStr);
-        }
-        if (node.pingProtocol() == PingProtocol.TCP) {
-            return fetchTcpPingAsync(clusterName, node, uriStr);
-        }
-        if (node.pingProtocol() == PingProtocol.UDP) {
-            return fetchUdpPingAsync(clusterName, node, uriStr);
-        }
-        if (node.pingProtocol() == PingProtocol.GRPC) {
-            return fetchGrpcPingAsync(clusterName, node, uriStr);
-        }
+        switch (node.pingProtocol()) {
+            case NONE -> {
+                setNode(node);
+                return CompletableFuture.completedFuture(new PingResult(node.status(), false));
+            }
+            case WEBSOCKET -> {return fetchWsPingAsync(clusterName, node, uriStr);}
+            case TCP -> {return fetchTcpPingAsync(clusterName, node, uriStr);}
+            case UDP -> {return fetchUdpPingAsync(clusterName, node, uriStr);}
+            case GRPC -> {return fetchGrpcPingAsync(clusterName, node, uriStr);}
+            default -> {}
+        };
 
         // Standard HTTP fallback
         String path = node.pingPath();
@@ -127,22 +123,22 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                             DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse RAM usage value from HTTP ping: " + ramStr, e);
                         }
                     }
-                    return NodeStatus.ONLINE;
+                    return new PingResult(NodeStatus.ONLINE, true);
                 } else {
                     setNode(node);
-                    return NodeStatus.UNSTABLE;
+                    return new PingResult(NodeStatus.UNSTABLE, false);
                 }
             })
             .exceptionally(ex -> {
                 setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "Ping connection failed for host: " + node.getFullHost(), ex);
-                return NodeStatus.OFFLINE;
+                return new PingResult(NodeStatus.OFFLINE, false);
             });
     }
 
-    private CompletableFuture<NodeStatus> fetchWsPingAsync(String clusterName, ServerNode node, String uriStr) {
+    private CompletableFuture<PingResult> fetchWsPingAsync(String clusterName, ServerNode node, String uriStr) {
         long startTime = System.currentTimeMillis();
-        CompletableFuture<NodeStatus> future = new CompletableFuture<>();
+        CompletableFuture<PingResult> future = new CompletableFuture<>();
 
         client.newWebSocketBuilder()
             .connectTimeout(ClusterConfig.HTTP_CONNECT_TIMEOUT)
@@ -182,7 +178,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                                 DebugUtils.error(clusterName, node.getFullHost(), "Failed to parse RAM usage value from WS ping: " + ramStr, e);
                             }
                         }
-                        future.complete(NodeStatus.ONLINE);
+                        future.complete(new PingResult(NodeStatus.ONLINE, true));
                         webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Goodbye");
                     } else {
                         webSocket.request(1);
@@ -194,18 +190,18 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 public void onError(WebSocket webSocket, Throwable error) {
                     setNode(node);
                     DebugUtils.error(clusterName, node.getFullHost(), "WS connection failed for host: " + node.getFullHost(), error);
-                    future.complete(NodeStatus.OFFLINE);
+                    future.complete(new PingResult(NodeStatus.OFFLINE, false));
                 }
             });
 
         return future.orTimeout(ClusterConfig.HTTP_REQUEST_TIMEOUT.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS)
             .exceptionally(ex -> {
                 setNode(node);
-                return NodeStatus.OFFLINE;
+                return new PingResult(NodeStatus.OFFLINE, false);
             });
     }
 
-    private CompletableFuture<NodeStatus> fetchTcpPingAsync(String clusterName, ServerNode node, String uriStr) {
+    private CompletableFuture<PingResult> fetchTcpPingAsync(String clusterName, ServerNode node, String uriStr) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
             String hostPart = node.getHostWithoutProtocol();
@@ -216,16 +212,16 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 socket.connect(new java.net.InetSocketAddress(hostPart, node.port()), (int) ClusterConfig.HTTP_CONNECT_TIMEOUT.toMillis());
                 long latency = System.currentTimeMillis() - startTime;
                 setNode(node, (int) latency, "TCP");
-                return NodeStatus.ONLINE;
+                return new PingResult(NodeStatus.ONLINE, true);
             } catch (Exception e) {
                 setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "TCP connection failed for host: " + node.getFullHost(), e);
-                return NodeStatus.OFFLINE;
+                return new PingResult(NodeStatus.OFFLINE, false);
             }
         }, ThreadManager.newVirtualThreadPool());
     }
 
-    private CompletableFuture<NodeStatus> fetchUdpPingAsync(String clusterName, ServerNode node, String uriStr) {
+    private CompletableFuture<PingResult> fetchUdpPingAsync(String clusterName, ServerNode node, String uriStr) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
             String hostPart = node.getHostWithoutProtocol();
@@ -240,16 +236,16 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 socket.send(packet);
                 long latency = System.currentTimeMillis() - startTime;
                 setNode(node, (int) latency, "UDP");
-                return NodeStatus.ONLINE;
+                return new PingResult(NodeStatus.ONLINE, true);
             } catch (Exception e) {
                 setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "UDP connection failed for host: " + node.getFullHost(), e);
-                return NodeStatus.OFFLINE;
+                return new PingResult(NodeStatus.OFFLINE, false);
             }
         }, ThreadManager.newVirtualThreadPool());
     }
 
-    private CompletableFuture<NodeStatus> fetchGrpcPingAsync(String clusterName, ServerNode node, String uriStr) {
+    private CompletableFuture<PingResult> fetchGrpcPingAsync(String clusterName, ServerNode node, String uriStr) {
         return CompletableFuture.supplyAsync(() -> {
             long startTime = System.currentTimeMillis();
             String hostPart = node.getHostWithoutProtocol();
@@ -260,11 +256,11 @@ public class MultiProtocolPingAdapter implements PingClientPort {
                 socket.connect(new java.net.InetSocketAddress(hostPart, node.port()), (int) ClusterConfig.HTTP_CONNECT_TIMEOUT.toMillis());
                 long latency = System.currentTimeMillis() - startTime;
                 setNode(node, (int) latency,"gRPC");
-                return NodeStatus.ONLINE;
+                return new PingResult(NodeStatus.ONLINE, true);
             } catch (Exception e) {
                 setNode(node);
                 DebugUtils.error(clusterName, node.getFullHost(), "gRPC connection failed for host: " + node.getFullHost(), e);
-                return NodeStatus.OFFLINE;
+                return new PingResult(NodeStatus.OFFLINE, false);
             }
         }, ThreadManager.newVirtualThreadPool());
     }
