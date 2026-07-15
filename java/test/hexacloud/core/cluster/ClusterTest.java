@@ -1,6 +1,9 @@
 package hexacloud.core.cluster;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.verify;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,9 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.model.NodeStatus;
+import hexacloud.core.model.PingProtocol;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.ClusterController;
 
@@ -135,6 +140,34 @@ public class ClusterTest {
         assertEquals(77.2, updated.ramUsage());
         assertEquals("Java", updated.runtime());
         assertEquals(42, updated.latencyMs());
+        assertTrue(response.toString().contains("SUCCESS"));
+    }
+
+    @Test
+    public void testTelemetryPushCanSubmitNodeEvent() {
+        ServerNode node = new ServerNode("127.0.0.1", 7002, NodeStatus.OFFLINE, false,
+            PingProtocol.GRPC, "/", null, null);
+        cluster.registerServer(node);
+        clearInvocations(eventManager);
+
+        ClusterController controller = new ClusterController(cluster);
+        StringWriter response = new StringWriter();
+        controller.telemetry(
+            "host=127.0.0.1&port=7002&event=cache.warmed&format=json&detail=products&token=secret-token",
+            new PrintWriter(response, true)
+        );
+
+        verify(eventManager).dispatch(argThat(event ->
+            event instanceof ClusterEvent.NodeEventSubmitted submitted
+                && submitted.host().equals("http://127.0.0.1:7002")
+                && submitted.port() == 7002
+                && submitted.protocol().equals("gRPC")
+                && submitted.format().equals("json")
+                && submitted.event().equals("cache.warmed")
+                && submitted.attributes().get("detail").equals("products")
+                && !submitted.attributes().containsKey("token")
+                && !submitted.attributes().containsKey("format")
+        ));
         assertTrue(response.toString().contains("SUCCESS"));
     }
 

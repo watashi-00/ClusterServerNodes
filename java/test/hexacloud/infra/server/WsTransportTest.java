@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -50,6 +51,21 @@ public class WsTransportTest {
             String eventFrame = readTextFrame(in);
             assertTrue(eventFrame.contains("\"type\":\"NodeTelemetryUpdated\""));
             assertTrue(eventFrame.contains("http://127.0.0.1:7001"));
+
+            EventBusManager.getGlobal().dispatch(new ClusterEvent.NodeEventSubmitted(
+                "http://127.0.0.1:7001",
+                7001,
+                "HTTP",
+                "json",
+                "cache.warmed",
+                Map.of("detail", "products")
+            ));
+            String submittedFrame = readTextFrame(in);
+            assertTrue(submittedFrame.contains("\"type\":\"NodeEventSubmitted\""));
+            assertTrue(submittedFrame.contains("\"protocol\":\"HTTP\""));
+            assertTrue(submittedFrame.contains("\"format\":\"json\""));
+            assertTrue(submittedFrame.contains("\"event\":\"cache.warmed\""));
+            assertTrue(submittedFrame.contains("\"detail\":\"products\""));
         } finally {
             transport.stop();
         }
