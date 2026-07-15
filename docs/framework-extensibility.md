@@ -6,10 +6,10 @@ This document details how developers using the GateBridge framework can programm
 
 ## 🔐 Programmatic Gateway Configuration
 
-The `GatewayPort` interface provides fluent builder APIs to configure the gateway node directly inside your application bootstrap code, avoiding forced reliance on external properties files:
+The `GatewayBuilderPort` interface provides fluent builder APIs to configure the gateway node directly inside your application bootstrap code, avoiding forced reliance on external properties files:
 
 ```java
-GatewayPort gateway = GatewayFactory.createGateway("my-cluster")
+GatewayBuilderPort builder = GatewayFactory.createGateway("my-cluster")
     .port(3000)
     .pingInterval(5)
     .enableHttp(true)
@@ -21,8 +21,10 @@ GatewayPort gateway = GatewayFactory.createGateway("my-cluster")
     // White-list IP patterns
     .allowedIps("127.0.0.1, 192.168.1.*")
     // Set request/ping connection timeout
-    .timeout(4500)
-    .listen();
+    .timeout(4500);
+
+// Transition to execution runtime
+RunningGatewayPort runningGateway = builder.listen();
 ```
 
 ---
@@ -65,7 +67,7 @@ No registration code is needed! Simply define the class, compile it, and the fra
 If you prefer to register controller instances manually (for example, to inject custom dependencies or manage instantiation manually), you can use the `.registerController()` method on your gateway builder:
 
 ```java
-gateway.registerController(new CustomApiController());
+builder.registerController(new CustomApiController());
 ```
 
 Once registered (either automatically or manually), commands matching the `@RouteMapping` value (e.g. `HELLO <arguments>`) will automatically be routed to your handler when received via HTTP, Telnet, or WebSocket connection listeners!

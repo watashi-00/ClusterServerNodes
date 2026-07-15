@@ -24,13 +24,15 @@ All domain events from the local gateway adapters propagate up to a central even
 ### 2.1. Central Event Bus
 Inside `EventBusManager`, a static `GLOBAL` event bus is defined. All individual cluster event managers automatically bubble up their dispatched events to the global event bus.
 
-### 2.2. Supported Events
+### 2.2. Supported Events & Recents Feed
 The `TerminalUI` subscribes to the following events on the global event bus:
 - **`NodeStatusChanged`** — Fired when a node changes its connectivity status.
 - **`NodeTelemetryUpdated`** — Fired when a node's CPU, RAM, or latency metrics are updated.
 - **`NodeRegistered`** — Fired when a new node is registered.
 - **`NodeDeregistered`** — Fired when an existing node is removed.
 - **`ClusterRegistered`** — Fired when a new cluster is created or registered.
+
+In addition to these structural redraw triggers, a **Global Event Interceptor** is registered inside the TUI loop to intercept all custom and system events. Intercepted events are displayed in the **RECENT EVENTS** panel of the Dashboard with dynamic relative time tracking (e.g. `[15s] CustomEvent: myMessage`).
 
 ---
 

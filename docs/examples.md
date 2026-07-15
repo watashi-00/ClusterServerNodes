@@ -7,7 +7,8 @@ This page collects common GateBridge bootstrapping examples and highlights the p
 Using `TerminalUiFactory` and `TerminalUiPort` makes launching the console dashboard fluent:
 
 ```java
-import hexacloud.core.ports.GatewayPort;
+import hexacloud.core.ports.GatewayBuilderPort;
+import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.ports.TerminalUiPort;
 import hexacloud.core.tui.TerminalUiFactory;
 import hexacloud.infra.gateway.GatewayFactory;
@@ -15,14 +16,14 @@ import hexacloud.infra.gateway.GatewayFactory;
 public class AppBootstrap {
     public static void main(String[] args) {
         // 1. Build and configure the gateway listener ports
-        GatewayPort gateway = GatewayFactory.createGateway("production-cluster")
+        GatewayBuilderPort builder = GatewayFactory.createGateway("production-cluster")
             .port(8080)
             .pingInterval(10)
             .enableHttp(true)
             .enableTelnet(true);
 
         // 2. Launch listeners and checks
-        gateway.listen().startPingScheduler();
+        RunningGatewayPort gateway = builder.listen().startPingScheduler();
 
         // 3. Obtain the TUI control panel and lock permissions
         TerminalUiPort controlPanel = TerminalUiFactory.createTui("Hexacloud Admin Desk")
