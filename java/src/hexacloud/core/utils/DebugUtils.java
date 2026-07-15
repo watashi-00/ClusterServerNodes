@@ -14,6 +14,14 @@ public class DebugUtils {
     private static boolean tuiModeActive = false;
     private static final Queue<LogEntry> recentLogs = new ConcurrentLinkedQueue<>();
 
+    public interface LogListener {
+        void onLogAdded();
+    }
+    private static LogListener logListener;
+    public static void setLogListener(LogListener listener) {
+        logListener = listener;
+    }
+
     public static class LogEntry {
         private final long timestamp;
         private final String level;
@@ -127,10 +135,10 @@ public class DebugUtils {
     public static List<LogEntry> getServiceLogs(String clusterName, String serviceHost) {
         List<LogEntry> result = new ArrayList<>();
         if (clusterName == null || clusterName.isEmpty() || serviceHost == null || serviceHost.isEmpty()) return result;
-        String cleanHost = serviceHost.replaceAll("^(http|https)://", "");
+        String cleanHost = serviceHost.replaceAll("^[a-zA-Z]+://", "");
         for (LogEntry entry : recentLogs) {
             if (clusterName.equalsIgnoreCase(entry.getClusterName())) {
-                String entryHost = entry.getServiceHost() != null ? entry.getServiceHost().replaceAll("^(http|https)://", "") : "";
+                String entryHost = entry.getServiceHost() != null ? entry.getServiceHost().replaceAll("^[a-zA-Z]+://", "") : "";
                 if (cleanHost.equalsIgnoreCase(entryHost)) {
                     result.add(entry);
                 }
@@ -152,6 +160,9 @@ public class DebugUtils {
             } else {
                 System.out.println(formatted);
             }
+        }
+        if (logListener != null) {
+            logListener.onLogAdded();
         }
     }
 

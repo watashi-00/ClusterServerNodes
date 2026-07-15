@@ -21,6 +21,8 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     private final ThreadPingScheduler schedulerPing;
     private ServerManager serverManager;
     private int port = 3000;
+    private boolean running = false;
+    private String gatewayName;
 
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
@@ -207,6 +209,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
         ensureServerManagerInitialized();
         DebugUtils.log("LocalGatewayAdapter: Starting server listeners on port " + port);
         this.serverManager.listen(port);
+        this.running = true;
         return this;
     }
 
@@ -222,6 +225,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
             serverManager.stop();
         }
         schedulerPing.stopPingScheduler();
+        this.running = false;
         return this;
     }
 
@@ -270,5 +274,36 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     public LocalGatewayAdapter timeout(int timeoutMs) {
         this.clusterManager.getCluster().setTimeoutMs(timeoutMs);
         return this;
+    }
+
+    @Override
+    public boolean isTelnetEnabled() {
+        return serverManager != null && serverManager.isTelnetEnabled();
+    }
+
+    @Override
+    public boolean isHttpEnabled() {
+        return serverManager != null && serverManager.isHttpEnabled();
+    }
+
+    @Override
+    public boolean isWsEnabled() {
+        return serverManager != null && serverManager.isWsEnabled();
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
+    }
+
+    @Override
+    public LocalGatewayAdapter gatewayName(String name) {
+        this.gatewayName = name;
+        return this;
+    }
+
+    @Override
+    public String getGatewayName() {
+        return this.gatewayName != null ? this.gatewayName : "gw-" + port;
     }
 }

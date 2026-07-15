@@ -102,10 +102,18 @@ Instead of the Gateway actively pinging the service node (Pull-based), a service
   - `language` or `lang` (String, Optional): Node runtime environment (e.g. `Go`, `NodeJS`).
   - `latency` (Number, Optional): Custom-measured response latency in ms.
   - `status` (String, Optional): `ONLINE`, `UNSTABLE`, or `OFFLINE`.
+  - `event` (String, Optional): Custom microservice event name to dispatch through the GateBridge event bus.
+  - `protocol` (String, Optional): Source/application protocol for the submitted event, such as `http`, `ws`, `grpc`, `tcp`, or `udp`. Defaults to the node's configured ping protocol.
+  - `format` (String, Optional): Payload format for event consumers, such as `json`, `text`, `protobuf`, or `cloudevent`. Defaults to `text`.
+  - Any additional `key=value` pairs are included as event attributes when `event` is present. Reserved fields (`host`, `port`, `event`, `protocol`, `format`, `token`) are not forwarded as event attributes.
   
 - **Example Request URL:**
   ```
   http://localhost:3001/clusters/watashi-00/telemetry?host=localhost&port=3004&cpu=2.5&ram=45.3&language=NodeJS&status=ONLINE
+  ```
+- **Example Request URL With Custom Event:**
+  ```
+  http://localhost:3001/clusters/watashi-00/telemetry?host=localhost&port=3004&event=cache.warmed&protocol=grpc&format=json&detail=products
   ```
 - **Example Response:**
   ```
@@ -122,4 +130,8 @@ Instead of the Gateway actively pinging the service node (Pull-based), a service
 - **Example Command:**
   ```
   TELEMETRY localhost 3004 cpu=2.5 ram=45.3 language=NodeJS status=ONLINE
+  ```
+- **Example Command With Custom Event:**
+  ```
+  TELEMETRY localhost 3004 event=cache.warmed protocol=grpc format=json detail=products
   ```

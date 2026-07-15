@@ -5,6 +5,7 @@ import java.util.List;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.utils.DebugUtils;
 import static hexacloud.core.tui.TuiConstants.*;
 
@@ -35,7 +36,13 @@ public class TuiKeyHandler {
     private void handleKeyPressDashboard(int key) {
         TuiState state = tui.state();
         if (key == 9) { // Tab: Switch Focus
-            state.activePanel = (state.activePanel == PANEL_CLUSTERS) ? PANEL_SERVICES : PANEL_CLUSTERS;
+            if (state.activePanel == PANEL_CLUSTERS) {
+                state.activePanel = PANEL_GATEWAYS;
+            } else if (state.activePanel == PANEL_GATEWAYS) {
+                state.activePanel = PANEL_SERVICES;
+            } else {
+                state.activePanel = PANEL_CLUSTERS;
+            }
         } else if (key == 1000) { // UP Arrow
             if (state.activePanel == PANEL_CLUSTERS) {
                 state.selectedClusterIndex--;
@@ -47,6 +54,11 @@ public class TuiKeyHandler {
                     state.selectedNodeIndex = 0;
                     tui.fetchNodeStatus();
                     tui.fetchClusterConfig(state.selectedClusterName);
+                }
+            } else if (state.activePanel == PANEL_GATEWAYS) {
+                state.selectedGatewayIndex--;
+                if (state.selectedGatewayIndex < 0) {
+                    state.selectedGatewayIndex = Math.max(0, state.gateways.size() - 1);
                 }
             } else {
                 state.selectedNodeIndex--;
@@ -66,6 +78,11 @@ public class TuiKeyHandler {
                     tui.fetchNodeStatus();
                     tui.fetchClusterConfig(state.selectedClusterName);
                 }
+            } else if (state.activePanel == PANEL_GATEWAYS) {
+                state.selectedGatewayIndex++;
+                if (state.selectedGatewayIndex >= state.gateways.size()) {
+                    state.selectedGatewayIndex = 0;
+                }
             } else {
                 state.selectedNodeIndex++;
                 if (state.selectedNodeIndex >= state.nodes.size()) {
@@ -82,6 +99,14 @@ public class TuiKeyHandler {
             tui.prompts().manageGatewayPrompt();
         } else if ((key == 'c' || key == 'C') && tui.clusterManagementEnabled() && !tui.readOnly()) {
             tui.prompts().createNewClusterPrompt();
+        } else if ((key == 'a' || key == 'A') && !tui.readOnly()) {
+            tui.prompts().allocateClusterToGatewayPrompt();
+        } else if ((key == 't' || key == 'T') && state.activePanel == PANEL_GATEWAYS && !tui.readOnly()) {
+            toggleGatewayTransport("Telnet");
+        } else if ((key == 'h' || key == 'H') && state.activePanel == PANEL_GATEWAYS && !tui.readOnly()) {
+            toggleGatewayTransport("HTTP");
+        } else if ((key == 'w' || key == 'W') && state.activePanel == PANEL_GATEWAYS && !tui.readOnly()) {
+            toggleGatewayTransport("WS");
         } else if (key == 'l' || key == 'L') {
             state.currentView = VIEW_FULL_LOGS;
             state.selectedLogIndex = DebugUtils.getAllLogs().size() - 1;
@@ -202,5 +227,35 @@ public class TuiKeyHandler {
             tui.fetchNodeStatus();
             state.selectedNodeIndex = 0;
         }
+    }
+
+    private void toggleGatewayTransport(String type) {
+        TuiState state = tui.state();
+        if (state.gateways.isEmpty() || state.selectedGatewayIndex >= state.gateways.size()) {
+            return;
+        }
+        TuiState.GatewayConfig gw = state.gateways.get(state.selectedGatewayIndex);
+        if (type.equals("Telnet")) gw.telnetEnabled = !gw.telnetEnabled;
+        else if (type.equals("HTTP")) gw.httpEnabled = !gw.httpEnabled;
+        else if (type.equals("WS")) gw.wsEnabled = !gw.wsEnabled;
+
+        if (gw.running && !gw.clusterName.isEmpty()) {
+            RunningGatewayPort activeGw = tui.activeGateways().get(gw.clusterName);
+            if (activeGw != null) {
+                activeGw.stop();
+                
+                RunningGatewayPort newGw = hexacloud.infra.gateway.GatewayFactory.createGateway(gw.clusterName)
+                    .gatewayName(gw.gatewayName)
+                    .port(gw.port)
+                    .pingInterval(gw.pingInterval)
+                    .enableTelnet(gw.telnetEnabled)
+                    .enableHttp(gw.httpEnabled)
+                    .enableWs(gw.wsEnabled)
+                    .listen()
+                    .startPingScheduler();
+                tui.activeGateways().put(gw.clusterName, newGw);
+            }
+        }
+        tui.fetchClusterNames();
     }
 }

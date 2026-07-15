@@ -25,6 +25,7 @@ public final class TuiConstants {
     // Active Panel Focus
     public static final int PANEL_CLUSTERS = 0;
     public static final int PANEL_SERVICES = 1;
+    public static final int PANEL_GATEWAYS = 2;
 
     private TuiConstants() {}
 }

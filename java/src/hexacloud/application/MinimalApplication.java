@@ -4,6 +4,8 @@ import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;
 import hexacloud.core.event.Subscribe;
 import hexacloud.core.cluster.event.ClusterEvent;
+import hexacloud.core.model.PingProtocol;
+import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.RouteController;
 import hexacloud.core.server.route.RouteMapping;
 import hexacloud.core.model.NodeStatus;
@@ -16,6 +18,7 @@ import hexacloud.infra.gateway.GatewayFactory;
 import java.io.PrintWriter;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
+import java.util.Map;
 
 /**
  * Standalone minimal example application demonstrating the full set of framework features
@@ -35,20 +38,34 @@ public class MinimalApplication {
         System.out.println("=== Starting GateBridge Minimal Demo Application (No TUI) ===");
 
         // 1. Programmatic Bootstrapping with Fluent Config API
+        // Style A: With custom gatewayName (e.g. "minimal-gw")
+        // Style B: Without .gatewayName(), falls back to default "gw-" + port (e.g. "gw-4000")
         GatewayBuilderPort builder = GatewayFactory.createGateway("demo-cluster")
+            .gatewayName("minimal-gw")     // Custom gateway name
             .port(4000)                   // Base Telnet port (HTTP runs on 4001, Websocket on 4002)
             .pingInterval(3)              // Ping checks scheduled every 3 seconds
             .enableHttp(true)             // Enable HTTP API mapping
             .enableTelnet(true)           // Enable Telnet socket server
             .enableWs(true)               // Enable WebSocket events stream
+            .registerController(new DemoRouteController())
             .requireToken(true, "demo-secret-key-999")
             .rateLimit(150, 60)           // Limit: 150 requests per 60 seconds
             .allowedIps("127.0.0.1, localhost")
             .timeout(3000);               // Connection timeout threshold of 3 seconds
 
-        // 2. Register Server Nodes
-        builder.registerServer(3001, NodeStatus.OFFLINE)
-            .registerServer(3002, NodeStatus.OFFLINE);
+        // 2. Register Server Nodes with explicit protocol/health-check settings
+        builder.registerServer(new ServerNode(
+                "http://localhost", 3001, NodeStatus.OFFLINE, false,
+                PingProtocol.HTTP, "/health", "Authorization", "Bearer demo-secret-key-999"
+            ))
+            .registerServer(new ServerNode(
+                "http://localhost", 3002, NodeStatus.OFFLINE, false,
+                PingProtocol.GRPC, "/grpc-health", null, null
+            ))
+            .registerServer(new ServerNode(
+                "http://localhost", 3003, NodeStatus.OFFLINE, true,
+                PingProtocol.WEBSOCKET, "/ws", null, null
+            ));
 
         // 3. Start listeners and schedule pings
         RunningGatewayPort runningGateway = builder.listen()
@@ -58,6 +75,17 @@ public class MinimalApplication {
 
         // 4. Dispatch a custom event to verify listener registration
         runningGateway.eventManager().dispatch(new DeveloperCustomEvent("GateBridge Bootstrapped Successfully!"));
+        runningGateway.eventManager().dispatch(new ClusterEvent.NodeEventSubmitted(
+            "http://localhost:3001",
+            3001,
+            "HTTP",
+            "json",
+            "bootstrap.ready",
+            Map.of(
+                "source", "MinimalApplication",
+                "cluster", runningGateway.getClusterName()
+            )
+        ));
 
         // 5. Run a background monitoring loop to print system stats and thread breakdown every 5 seconds
         ThreadManager.startVirtual("SystemMonitor", () -> {
@@ -127,6 +155,14 @@ public class MinimalApplication {
         @Subscribe
         public void onNodeTelemetryUpdated(ClusterEvent.NodeTelemetryUpdated event) {
             System.out.printf("[EVENT] Telemetry Updated for Node: %s\n", event.host());
+        }
+
+        @Subscribe
+        public void onNodeEventSubmitted(ClusterEvent.NodeEventSubmitted event) {
+            System.out.printf(
+                "[EVENT] Custom Node Event -> Host: %s | Port: %d | Protocol: %s | Format: %s | Event: %s | Attributes: %s\n",
+                event.host(), event.port(), event.protocol(), event.format(), event.event(), event.attributes()
+            );
         }
     }
 

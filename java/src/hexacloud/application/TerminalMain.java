@@ -12,6 +12,7 @@ public class TerminalMain {
         DebugUtils.setDebugEnabled(false);
         
         GatewayBuilderPort builder = GatewayFactory.createGateway("watashi-00")
+            .gatewayName("main-gw")
             .port(3000)
             .pingInterval(5)
             .enableTelnet(true)

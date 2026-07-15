@@ -66,7 +66,7 @@ public class EnvLoader {
             DebugUtils.info("EnvLoader: Loaded configurations from file '" + path + "'");
             return true;
         } catch( IOException ex ) {
-            DebugUtils.error("Envloader: No " + path + "found.", ex);
+            DebugUtils.log("Envloader: Config file not found at path: " + path);
             return false;
         }
     }

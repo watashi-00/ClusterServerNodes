@@ -89,6 +89,18 @@ public class ServerManager implements ServerOperations {
         return this;
     }
 
+    public boolean isTelnetEnabled() {
+        return telnetEnabled;
+    }
+
+    public boolean isHttpEnabled() {
+        return httpEnabled;
+    }
+
+    public boolean isWsEnabled() {
+        return wsEnabled;
+    }
+
     @Override
     public ServerManager listen(int port) {
         DebugUtils.log("ServerManager: Starting authorized protocol listeners on base port " + port + "...");

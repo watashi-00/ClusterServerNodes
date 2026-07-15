@@ -28,6 +28,7 @@ Inside `EventBusManager`, a static `GLOBAL` event bus is defined. All individual
 The `TerminalUI` subscribes to the following events on the global event bus:
 - **`NodeStatusChanged`** — Fired when a node changes its connectivity status.
 - **`NodeTelemetryUpdated`** — Fired when a node's CPU, RAM, or latency metrics are updated.
+- **`NodeEventSubmitted`** — Fired when a service node submits a custom named event through the telemetry API.
 - **`NodeRegistered`** — Fired when a new node is registered.
 - **`NodeDeregistered`** — Fired when an existing node is removed.
 - **`ClusterRegistered`** — Fired when a new cluster is created or registered.
