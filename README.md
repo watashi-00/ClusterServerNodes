@@ -1,6 +1,6 @@
 # GateBridge
 
-GateBridge is an ultra-lightweight, zero-dependency, Java-based cluster gateway framework by Hexacloud. It features a non-blocking virtual threading runtime (Java 21), reflection-based autodiscovery, fluent security configuration, and an interactive DevOps Terminal Dashboard (TUI) with on-demand detach/reattach capabilities.
+GateBridge is an ultra-lightweight, zero-dependency, Java-based cluster gateway framework by Hexacloud. It features a non-blocking virtual threading runtime (Java 21), reflection-based autodiscovery, customizable routing controllers, pub/sub custom event subscription, and an interactive DevOps Terminal Dashboard (TUI) with on-demand detach/reattach capabilities.
 
 ---
 
@@ -20,23 +20,67 @@ GateBridge leverages **Java 21 Virtual Threads (Loom)** for lightweight asynchro
 *   **Fixed Thread Footprint:** The entire JVM stays constrained to exactly **9 platform OS threads** (6 base JVM threads + 3 carrier threads), regardless of how many concurrent WebSocket clients connect or pings are scheduled.
 *   **Virtual Schedulers:** Scheduled tasks (like health pings) run on virtual thread executors, yielding the physical CPU core when sleeping (`0% CPU idle footprint`).
 
-### 3. Dynamic Autodiscovery Engine
-Speeds up development by eliminating boilerplate registration code:
-*   **Route Auto-Discovery:** Automatically scans the classpath at boot for classes implementing `RouteController` and registers their `@RouteMapping` endpoints.
-*   **Event Auto-Discovery:** Automatically scans the classpath at boot for classes implementing `EventController` and registers their `@Subscribe` methods to the event bus.
-*   **Package-Scoped Scanning:** Automatically bounds classpath scanning to the developer's main application package, maintaining sub-millisecond startup times even with large classpaths.
+### 3. Customizable Route Controllers
+Expose new cluster commands and REST/Telnet APIs dynamically. Developers create classes implementing `RouteController` and annotate target handler methods with `@RouteMapping`:
+```java
+public class MyCustomController implements RouteController {
+    @RouteMapping("HELLO")
+    public void sayHello(String args, PrintWriter out) {
+        out.println("Hello, " + (args.isEmpty() ? "World" : args));
+    }
+}
+```
+At startup, GateBridge scans the classpath and registers these mapped commands automatically.
 
-### 4. Asynchronous Health Ping Scheduler
+### 4. Custom Events Subsystem
+GateBridge supports typed custom events using simple Java `record` declarations:
+```java
+// Define a custom event payload
+public record OrderProcessedEvent(String orderId, double amount) implements Event {}
+
+// Create a listener controller
+public class OrderListener implements EventController {
+    @Subscribe
+    public void onOrderProcessed(OrderProcessedEvent event) {
+        System.out.println("Processing order: " + event.orderId());
+    }
+}
+```
+Listeners are autodiscovered on startup and bound to the global Event Bus.
+
+### 5. Dynamic Autodiscovery Engine (Zero Configuration)
+Eliminates manual bootstrapping:
+*   **Route Auto-Discovery:** Automatically scans the classpath for classes implementing `RouteController` and registers their mappings.
+*   **Event Auto-Discovery:** Automatically scans the classpath for classes implementing `EventController` and binds `@Subscribe` handlers.
+*   **Package-Scoped Scanning:** Restricts classpath scanning to the main application package to maintain sub-millisecond startup times.
+
+### 6. Programmatic Fluent API & Nested Node Builders
+Configure gateways and nodes programmatically without properties files:
+```java
+GatewayBuilderPort builder = GatewayFactory.createGateway("my-cluster")
+    .port(3000)
+    .requireToken(true, "secret-token")
+    .rateLimit(100, 60)
+    .allowedIps("127.0.0.1");
+
+// Register a node using the fluent builder
+builder.registerNode("http://node-a", 8080)
+    .pingEnabled(true)
+    .pingPath("/healthz")
+    .pingHeader("Authorization", "Bearer token-abc")
+    .register();
+```
+
+### 7. Asynchronous Health Ping Scheduler
 *   Decoupled, multi-threaded node monitoring via customizable HTTP/TCP health checks.
-*   Supports custom ping paths (e.g. `/healthz`), custom headers (e.g. `Authorization: Bearer <token>`), and external/internal node flags.
+*   Supports custom ping paths, custom headers, and external/internal node flags.
 *   Dispatches lifecycle event bus triggers immediately on node status transitions.
 
-### 5. Global Event Bus & Interceptor Subsystem
+### 8. Global Event Bus & Interceptor Subsystem
 *   Lightweight, high-performance publish-subscribe event system.
-*   Supports custom event records.
 *   Exposes **Global Event Interceptors** to capture, audit, or log all dispatched events globally, providing real-time hooks for logging and metrics.
 
-### 6. DevOps Terminal UI Dashboard (TUI)
+### 9. DevOps Terminal UI Dashboard (TUI)
 An interactive command center for cluster operations:
 *   **Live Metrics:** Real-time system resources monitor (RAM Allocation/Usage, CPU, and Thread breakdown).
 *   **Explicit Thread Classification:** Displays exactly how many OS threads belong to the application logic versus internal JVM daemon services (e.g. `OS Threads: 9 (App: 1)`).
