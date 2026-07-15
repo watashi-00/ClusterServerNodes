@@ -5,10 +5,15 @@ import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Structured logging utility. Supports filtering by cluster and service host.
  */
 public class DebugUtils {
+
+    private static final Logger logger = LoggerFactory.getLogger(DebugUtils.class);
 
     private static boolean debugEnabled = false;
     private static boolean tuiModeActive = false;
@@ -148,17 +153,40 @@ public class DebugUtils {
     }
 
     private static void captureLog(String level, String clusterName, String serviceHost, String message) {
+        captureLog(level, clusterName, serviceHost, message, null);
+    }
+
+    private static void captureLog(String level, String clusterName, String serviceHost, String message, Throwable t) {
         LogEntry entry = new LogEntry(level, clusterName, serviceHost, message);
         recentLogs.offer(entry);
         while (recentLogs.size() > 1000) {
             recentLogs.poll();
         }
         if (!tuiModeActive) {
-            String formatted = entry.toString();
-            if (level.equals("ERROR")) {
-                System.err.println(formatted);
+            if ("ERROR".equalsIgnoreCase(level)) {
+                if (t != null) {
+                    logger.error(message, t);
+                } else {
+                    logger.error(message);
+                }
+            } else if ("WARN".equalsIgnoreCase(level)) {
+                if (t != null) {
+                    logger.warn(message, t);
+                } else {
+                    logger.warn(message);
+                }
+            } else if ("DEBUG".equalsIgnoreCase(level)) {
+                if (t != null) {
+                    logger.debug(message, t);
+                } else {
+                    logger.debug(message);
+                }
             } else {
-                System.out.println(formatted);
+                if (t != null) {
+                    logger.info(message, t);
+                } else {
+                    logger.info(message);
+                }
             }
         }
         if (logListener != null) {
@@ -203,9 +231,9 @@ public class DebugUtils {
             } else {
                 details = " -> " + cause.toString();
             }
-            captureLog("ERROR", clusterName, serviceHost, message + details);
+            captureLog("ERROR", clusterName, serviceHost, message + details, t);
         } else {
-            captureLog("ERROR", clusterName, serviceHost, message);
+            captureLog("ERROR", clusterName, serviceHost, message, null);
         }
     }
 }
