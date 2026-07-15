@@ -70,13 +70,7 @@ public class NodeConfigViewRenderer {
             NativeTerminal.printAt(55, row, "│");
         }
         NativeTerminal.printAt(57, 6, WHITE_BOLD + "Live Telemetry Metrics:" + RESET);
-        String defaultLang = "HTTP";
-        if (node.host().startsWith("ws://") || node.host().startsWith("wss://")) {
-            defaultLang = "WebSocket";
-        } else if (node.host().startsWith("tcp://")) {
-            defaultLang = "TCP";
-        }
-        String runtimeDisplay = node.runtime().isEmpty() ? defaultLang : node.runtime();
+        String runtimeDisplay = node.runtime().isEmpty() ? node.pingProtocol().getFriendlyName() : node.runtime();
         NativeTerminal.printAt(57, 7, "Runtime/Lang: " + CYAN + runtimeDisplay + RESET);
         
         String latencyStr = node.status().name().equals("ONLINE") ? node.latencyMs() + " ms" : "-";

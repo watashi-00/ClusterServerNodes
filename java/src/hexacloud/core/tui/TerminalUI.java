@@ -231,13 +231,13 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                 String name = event.getClass().getSimpleName();
                 String detail = "";
                 if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged e) {
-                    detail = e.host().replaceAll("^(http|https)://", "") + " -> " + e.status();
+                    detail = e.host().replaceAll("^[a-zA-Z]+://", "") + " -> " + e.status();
                 } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated e) {
-                    detail = e.host().replaceAll("^(http|https)://", "") + " updated";
+                    detail = e.host().replaceAll("^[a-zA-Z]+://", "") + " updated";
                 } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeRegistered e) {
-                    detail = e.node().getFullHost().replaceAll("^(http|https)://", "");
+                    detail = e.node().getFullHost().replaceAll("^[a-zA-Z]+://", "");
                 } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered e) {
-                    detail = e.host().replaceAll("^(http|https)://", "");
+                    detail = e.host().replaceAll("^[a-zA-Z]+://", "");
                 } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered e) {
                     detail = e.clusterName();
                 } else {
