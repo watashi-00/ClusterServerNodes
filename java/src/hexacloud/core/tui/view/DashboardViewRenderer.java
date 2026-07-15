@@ -210,9 +210,9 @@ public class DashboardViewRenderer {
                 if (clearedLine.length() > 50) {
                     clearedLine = clearedLine.substring(0, 50);
                 }
-                if (entry.getLevel().equals("ERROR")) {
+                if (entry.getLevel() == DebugUtils.LogLevel.ERROR) {
                     NativeTerminal.printAt(4, yLog, RED + clearedLine + RESET);
-                } else if (entry.getLevel().equals("INFO")) {
+                } else if (entry.getLevel() == DebugUtils.LogLevel.INFO) {
                     NativeTerminal.printAt(4, yLog, CYAN + clearedLine + RESET);
                 } else {
                     NativeTerminal.printAt(4, yLog, clearedLine);

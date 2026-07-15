@@ -44,9 +44,9 @@ public class FullLogsViewRenderer {
                     clearedLine = clearedLine.substring(0, 103);
                 }
 
-                if (entry.getLevel().equals("ERROR")) {
+                if (entry.getLevel() == DebugUtils.LogLevel.ERROR) {
                     NativeTerminal.printAt(4, y, RED + clearedLine + RESET);
-                } else if (entry.getLevel().equals("INFO")) {
+                } else if (entry.getLevel() == DebugUtils.LogLevel.INFO) {
                     NativeTerminal.printAt(4, y, CYAN + clearedLine + RESET);
                 } else {
                     NativeTerminal.printAt(4, y, clearedLine);
