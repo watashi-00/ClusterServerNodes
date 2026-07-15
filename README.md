@@ -1,6 +1,11 @@
 # GateBridge
 
-GateBridge is an ultra-lightweight, zero-dependency, Java-based cluster gateway framework by Hexacloud. It features a non-blocking virtual threading runtime (Java 21), reflection-based autodiscovery, customizable routing controllers, pub/sub custom event subscription, and an interactive DevOps Terminal Dashboard (TUI) with on-demand detach/reattach capabilities.
+[![Java Version](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
+[![Build Status](https://img.shields.io/badge/Build-Maven-blue.svg)](https://maven.apache.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Release Version](https://img.shields.io/badge/Release-1.0.0.2--beta-brightgreen.svg)](https://github.com/watashi-00/GateBridge/releases)
+
+GateBridge is an ultra-lightweight, zero-dependency, Java-based cluster gateway framework designed for microservices and cloud infrastructure. Built on a non-blocking virtual threading runtime (Java 21/Loom), it provides dynamic route and event autodiscovery, customizable route controllers, a pub/sub custom event bus, and an interactive DevOps Terminal Console (TUI) with real-time hardware telemetry and on-demand detach/reattach capabilities.
 
 ---
 
@@ -127,3 +132,7 @@ Review the detailed module guides:
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE).
+
+---
+
+Created and maintained by watashi-00 (watashi00 | Rodrigo).
