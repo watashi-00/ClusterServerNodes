@@ -187,9 +187,6 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                         if (key == 10 || key == 13 || key == 'm' || key == 'M') { // Enter or 'm' key
                             toggleActive = true;
                             
-                            // Detachable TUI requires readOnly mode
-                            this.readOnly(true);
-                            
                             // This blocks until the TUI exits (state.running = false)
                             this.run();
                             
