@@ -172,7 +172,21 @@ public class WsTransport implements ServerTransport {
         if (event instanceof ClusterEvent.NodeTelemetryUpdated e) {
             return "{\"type\":\"NodeTelemetryUpdated\",\"host\":\"" + json(e.host()) + "\"}";
         }
+        if (event instanceof ClusterEvent.NodeEventSubmitted e) {
+            return "{\"type\":\"NodeEventSubmitted\",\"host\":\"" + json(e.host()) + "\",\"port\":" + e.port()
+                + ",\"protocol\":\"" + json(e.protocol()) + "\",\"format\":\"" + json(e.format())
+                + "\",\"event\":\"" + json(e.event()) + "\",\"attributes\":" + attributesJson(e.attributes()) + "}";
+        }
         return "{\"type\":\"" + json(event.getClass().getSimpleName()) + "\"}";
+    }
+
+    private String attributesJson(Map<String, String> attributes) {
+        if (attributes == null || attributes.isEmpty()) {
+            return "{}";
+        }
+        return attributes.entrySet().stream()
+            .map(entry -> "\"" + json(entry.getKey()) + "\":\"" + json(entry.getValue()) + "\"")
+            .collect(Collectors.joining(",", "{", "}"));
     }
 
     private String json(String value) {
