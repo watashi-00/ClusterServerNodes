@@ -15,6 +15,15 @@ public class EventBusManager {
     }
 
     private final Map<Class<? extends Event>, List<EventListener<?>>> channels = new HashMap<>();
+    private final List<EventListener<Event>> interceptors = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addInterceptor(EventListener<Event> interceptor) {
+        interceptors.add(interceptor);
+    }
+
+    public void removeInterceptor(EventListener<Event> interceptor) {
+        interceptors.remove(interceptor);
+    }
 
     public <T extends Event> void sub(Class<T> eventType, EventListener<T> listener) {
         channels.computeIfAbsent(eventType, k -> new ArrayList<>()).add(listener);
@@ -26,6 +35,15 @@ public class EventBusManager {
         List<EventListener<?>> listeners = channels.get(eventType);
 
         DebugUtils.log("Dispatching event: " + event);
+
+        // Run interceptors
+        for (EventListener<Event> interceptor : interceptors) {
+            try {
+                interceptor.onEvent(event);
+            } catch (Exception e) {
+                // Ignore interceptor errors
+            }
+        }
 
         if(listeners != null) {
             for(var listener : listeners) {
