@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
+import java.util.function.BiConsumer;
 
 import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
@@ -104,7 +105,7 @@ public class HttpTransport implements ServerTransport {
                         return;
                     }
 
-                    var handler = targetRegistry.getRoutes().get(routeName);
+                    BiConsumer<String, PrintWriter> handler = targetRegistry.getRoutes().get(routeName);
                     if(handler != null) {
                         exchange.getResponseHeaders().set("Content-Type", "text/plain");
                         exchange.sendResponseHeaders(200, 0); // chunked transfer

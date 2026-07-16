@@ -48,6 +48,7 @@ public class TuiState {
     }
     public final List<GatewayConfig> gateways = new ArrayList<>();
 
+    // TODO: refactor to compatibillity with java 8
     public static record TuiEvent(String type, String detail, long timestamp) {}
     public final List<TuiEvent> recentEvents = new java.util.concurrent.CopyOnWriteArrayList<>();
 }

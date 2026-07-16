@@ -38,15 +38,15 @@ public class MultiProtocolPingAdapter implements PingClientPort {
         String uriStr = node.getFullHost();
 
         switch (node.pingProtocol()) {
-            case NONE -> {
+            case NONE: {
                 setNode(node);
                 return CompletableFuture.completedFuture(new PingResult(node.status(), false));
             }
-            case WEBSOCKET -> {return fetchWsPingAsync(clusterName, node, uriStr);}
-            case TCP -> {return fetchTcpPingAsync(clusterName, node, uriStr);}
-            case UDP -> {return fetchUdpPingAsync(clusterName, node, uriStr);}
-            case GRPC -> {return fetchGrpcPingAsync(clusterName, node, uriStr);}
-            default -> {}
+            case WEBSOCKET: {return fetchWsPingAsync(clusterName, node, uriStr);}
+            case TCP: {return fetchTcpPingAsync(clusterName, node, uriStr);}
+            case UDP: {return fetchUdpPingAsync(clusterName, node, uriStr);}
+            case GRPC: {return fetchGrpcPingAsync(clusterName, node, uriStr);}
+            default: {}
         };
 
         // Standard HTTP fallback

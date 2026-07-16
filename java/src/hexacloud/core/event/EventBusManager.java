@@ -46,7 +46,7 @@ public class EventBusManager {
         }
 
         if(listeners != null) {
-            for(var listener : listeners) {
+            for(EventListener<?> listener : listeners) {
                 ((EventListener<T>) listener).onEvent(event);
             }
         }

@@ -65,7 +65,7 @@ public class Main {
             .listClusterNodes()
             .startPingScheduler();
 
-        runningGateway.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
+        // runningGateway.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
         runningGateway.eventManager().dispatch(new NodeEventSubmitted(
             "http://localhost:3001",
             3001,
@@ -81,28 +81,28 @@ public class Main {
     }
 
     // Custom event verification
-    public static record UserCustomEvent(String message) implements Event {}
+    // public static record UserCustomEvent(String message) implements Event {}
 
     // Custom controller listener - automatically discovered by PathUtils scanner
-    public static class CustomEventListener implements EventController {
-        @Subscribe
-        public void onCustomEvent(UserCustomEvent event) {
-            DebugUtils.info("UserCustomEvent handler method invoked: " + event.message());
-        }
+    // public static class CustomEventListener implements EventController {
+    //     @Subscribe
+    //     public void onCustomEvent(UserCustomEvent event) {
+    //         DebugUtils.info("UserCustomEvent handler method invoked: " + event.message());
+    //     }
 
-        @Subscribe
-        public void onNodeRegistered(NodeRegistered event) {
-            DebugUtils.info("Event received: Node successfully registered at " + event.node().getFullHost());
-        }
+    //     @Subscribe
+    //     public void onNodeRegistered(NodeRegistered event) {
+    //         DebugUtils.info("Event received: Node successfully registered at " + event.node().getFullHost());
+    //     }
 
-        @Subscribe
-        public void onNodeEventSubmitted(NodeEventSubmitted event) {
-            DebugUtils.info(
-                "Event received: " + event.event() + " from " + event.host() +
-                " [" + event.protocol() + "/" + event.format() + "] " + event.attributes()
-            );
-        }
-    }
+    //     @Subscribe
+    //     public void onNodeEventSubmitted(NodeEventSubmitted event) {
+    //         DebugUtils.info(
+    //             "Event received: " + event.event() + " from " + event.host() +
+    //             " [" + event.protocol() + "/" + event.format() + "] " + event.attributes()
+    //         );
+    //     }
+    // }
 
     // Custom developer endpoint controller - automatically discovered by PathUtils scanner
     public static class CustomAppController implements RouteController {

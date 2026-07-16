@@ -8,7 +8,7 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
+import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +58,7 @@ public class WsTransportTest {
                 "HTTP",
                 "json",
                 "cache.warmed",
-                Map.of("detail", "products")
+                Collections.singletonMap("detail", "products")
             ));
             String submittedFrame = readTextFrame(in);
             assertTrue(submittedFrame.contains("\"type\":\"NodeEventSubmitted\""));

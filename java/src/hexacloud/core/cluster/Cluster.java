@@ -28,6 +28,7 @@ public class Cluster {
     private List<ServerNode> tempCluster;
     private boolean batchMode = false;
 
+    // TODO: refactor to java 8 compatibility
     public static record NodeUpdateResult(String host, String protocol, boolean statusChanged, boolean telemetryUpdated) {}
 
     public Cluster() {

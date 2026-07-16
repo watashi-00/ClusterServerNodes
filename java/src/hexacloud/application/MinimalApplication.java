@@ -34,7 +34,7 @@ public class MinimalApplication {
 
     public void run() {
         // Enable log prints for maximum visibility in the console output
-        DebugUtils.setDebugEnabled(true);
+        DebugUtils.setDebugEnabled(false);
         System.out.println("=== Starting GateBridge Minimal Demo Application (No TUI) ===");
 
         // 1. Programmatic Bootstrapping with Fluent Config API

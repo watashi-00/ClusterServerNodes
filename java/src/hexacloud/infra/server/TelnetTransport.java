@@ -7,6 +7,7 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
+import java.util.function.BiConsumer;
 
 import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
@@ -109,7 +110,7 @@ public class TelnetTransport implements ServerTransport {
                 args = tokens.length > 2 ? (firstTokenArgs + " " + tokens[2].trim()).trim() : firstTokenArgs;
             }
 
-            var handler = targetRegistry.getRoutes().get(command);
+            BiConsumer<String, PrintWriter> handler = targetRegistry.getRoutes().get(command);
 
             if(handler == null) {
                 DebugUtils.error("Telnet: Unknown command '" + command + "' received from client.");
