@@ -66,6 +66,22 @@ jobs:
           git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION" || true
           git push origin "$NEW_VERSION"
 
-      - name: (Optional) Trigger JitPack build
-        # If you want to force JitPack to build immediately, you can call the JitPack API here.
-        run: echo "JitPack build can be triggered here via API if desired"
+      - name: Trigger JitPack build
+        env:
+          NEW_VERSION: ${{ steps.ver.outputs.new }}
+        run: |
+          REPO=${GITHUB_REPOSITORY}
+          URL="https://jitpack.io/com/github/${REPO}/${NEW_VERSION}/build.log"
+          echo "Triggering JitPack build for ${REPO} tag ${NEW_VERSION}"
+          # Try a few times as JitPack may take a moment to register the new tag
+          for i in 1 2 3 4 5; do
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" -L "$URL") || HTTP=000
+            echo "Attempt $i: HTTP $HTTP"
+            if [ "$HTTP" = "200" ]; then
+              echo "JitPack build started/available for $NEW_VERSION"
+              exit 0
+            fi
+            sleep $((i * 2))
+          done
+          echo "Failed to trigger JitPack build for $NEW_VERSION (last HTTP=$HTTP)"
+          exit 1
