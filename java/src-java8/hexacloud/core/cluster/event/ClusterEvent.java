@@ -14,7 +14,7 @@ public interface ClusterEvent extends Event{
     class NodeRegistered implements ClusterEvent {
         ServerNode node;
     }
-
+    
     @Value
     class NodeDeregistered implements ClusterEvent {
         String host;
