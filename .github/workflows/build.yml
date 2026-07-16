@@ -7,6 +7,8 @@ on:
         description: 'Comma-separated list of JDKs to run (overrides matrix)'
         required: false
         default: '8,21'
+  push:
+    branches: [ build ]
 
 permissions:
   contents: write
