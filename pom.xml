@@ -63,6 +63,7 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Lombok for simplified code -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -121,7 +122,7 @@
             <plugin>
             <groupId>com.github.watashi-00</groupId>
             <artifactId>source-overlay-plugin</artifactId>
-            <version>1.0.3</version>
+            <version>1.0.4</version>
 
                 <executions>
                     <execution>
@@ -144,6 +145,12 @@
             </properties>
         </profile>
 
+        <profile>
+            <id>java17</id>
+            <properties>
+                <maven.compiler.release>17</maven.compiler.release>
+            </properties>
+        </profile>
 
         <profile>
             <id>java21</id>
