@@ -1,2 +1,11 @@
+install:
+  - |
+    if [[ $RELEASE_TAG == *"jdk8" ]]; then
+      mvn install -Pjava8 -DskipTests
+    elif [[ $RELEASE_TAG == *"jdk21" ]]; then
+      mvn install -Pjava21 -DskipTests
+    fi
+
 jdk:
   - openjdk21
+  - openjdk8
