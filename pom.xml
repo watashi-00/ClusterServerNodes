@@ -121,7 +121,7 @@
             <plugin>
             <groupId>com.github.watashi-00</groupId>
             <artifactId>source-overlay-plugin</artifactId>
-            <version>1.0.2</version>
+            <version>source-overlay-plugin-1.0.2</version>
 
                 <executions>
                     <execution>
