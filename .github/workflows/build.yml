@@ -18,6 +18,7 @@ jobs:
     name: Create per-JDK tags
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         jdk: [8, 21]
     steps:
@@ -75,15 +76,18 @@ jobs:
           REPO=${GITHUB_REPOSITORY}
           URL="https://jitpack.io/com/github/${REPO}/${NEW_VERSION}/build.log"
           echo "Triggering JitPack build for ${REPO} tag ${NEW_VERSION}"
-          # Try a few times as JitPack may take a moment to register the new tag
-          for i in 1 2 3 4 5; do
+          # Try multiple times as JitPack may take a moment to register the new tag
+          HTTP=000
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
             HTTP=$(curl -s -o /dev/null -w "%{http_code}" -L "$URL") || HTTP=000
             echo "Attempt $i: HTTP $HTTP"
             if [ "$HTTP" = "200" ]; then
               echo "JitPack build started/available for $NEW_VERSION"
-              exit 0
+              break
             fi
-            sleep $((i * 2))
+            sleep 10
           done
-          echo "Failed to trigger JitPack build for $NEW_VERSION (last HTTP=$HTTP)"
-          exit 1
+          if [ "$HTTP" != "200" ]; then
+            echo "Warning: JitPack build not available for $NEW_VERSION after retries (last HTTP=$HTTP). It will be built on-demand when requested." 
+          fi
+        continue-on-error: true
