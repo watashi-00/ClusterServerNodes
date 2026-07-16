@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        jdk: [8, 21]
+        jdk: [8, 17, 21]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -41,6 +41,8 @@ jobs:
         run: |
           if [ "${{ matrix.jdk }}" = "8" ]; then
             mvn -B clean package -DskipTests -Dskip.docker -Pjava8
+          elif [ "${{ matrix.jdk }}" = "17" ]; then
+            mvn -B clean package -DskipTests -Dskip.docker -Pjava17
           else
             mvn -B clean package -DskipTests -Dskip.docker -Pjava21
           fi

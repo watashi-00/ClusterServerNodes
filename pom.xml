@@ -29,6 +29,7 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.sources.dir>java/src</project.sources.dir>
         <slf4j.version>2.0.12</slf4j.version>
         <junit.version>5.10.2</junit.version>
         <mockito.version>5.14.2</mockito.version>
@@ -63,6 +64,7 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Lombok for simplified code -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -72,7 +74,7 @@
     </dependencies>
 
     <build>
-        <sourceDirectory>target/generated-sources/overlay</sourceDirectory>
+        <sourceDirectory>${project.sources.dir}</sourceDirectory>
         <testSourceDirectory>java/test</testSourceDirectory>
         <resources>
             <resource>
@@ -98,6 +100,26 @@
             </plugin>
 
             <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.4.0</version>
+                <executions>
+                    <execution>
+                        <id>add-generated-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>target/generated-sources/overlay</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.3.0</version>
@@ -119,10 +141,9 @@
                 </configuration>
             </plugin>
             <plugin>
-            <groupId>com.github.watashi-00</groupId>
-            <artifactId>source-overlay-plugin</artifactId>
-            <version>1.0.3</version>
-
+                <groupId>com.github.watashi-00</groupId>
+                <artifactId>source-overlay-plugin</artifactId>
+                <version>1.0.4</version>
                 <executions>
                     <execution>
                         <phase>generate-sources</phase>
@@ -144,6 +165,16 @@
             </properties>
         </profile>
 
+        <profile>
+            <id>java17</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <maven.compiler.release>17</maven.compiler.release>
+                <project.sources.dir>target/generated-sources/overlay</project.sources.dir>
+            </properties>
+        </profile>
 
         <profile>
             <id>java21</id>
