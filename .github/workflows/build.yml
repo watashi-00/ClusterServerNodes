@@ -37,6 +37,14 @@ jobs:
       - name: Show Java
         run: java -version
 
+      - name: Compile for Java ${{ matrix.jdk }}
+        run: |
+          if [ "${{ matrix.jdk }}" = "8" ]; then
+            mvn -B clean package -DskipTests -Dskip.docker -Pjava8
+          else
+            mvn -B clean package -DskipTests -Dskip.docker -Pjava21
+          fi
+
       - name: Compute base version and new version
         id: ver
         run: |
