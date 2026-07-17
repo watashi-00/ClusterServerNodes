@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
+import hexacloud.core.model.TuiEvent;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import hexacloud.core.ports.RunningGatewayPort;
@@ -265,7 +266,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
                         }
                     }
                 }
-                state.recentEvents.add(0, new TuiState.TuiEvent(name, detail, System.currentTimeMillis()));
+                state.recentEvents.add(0, new TuiEvent(name, detail, System.currentTimeMillis()));
                 while (state.recentEvents.size() > 8) {
                     state.recentEvents.remove(state.recentEvents.size() - 1);
                 }

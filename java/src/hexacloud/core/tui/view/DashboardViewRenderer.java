@@ -2,6 +2,7 @@ package hexacloud.core.tui.view;
 
 import java.util.List;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.model.TuiEvent;
 import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.tui.TerminalUI;
 import hexacloud.core.tui.TuiRenderer;
@@ -302,7 +303,7 @@ public class DashboardViewRenderer {
             NativeTerminal.printAt(xEvents, eventY, GRAY + "No recent events." + RESET);
             eventY++;
         } else {
-            for (TuiState.TuiEvent event : state.recentEvents) {
+            for (TuiEvent event : state.recentEvents) {
                 if (eventY >= H - 2) break;
 
                 long diffMs = System.currentTimeMillis() - event.timestamp();

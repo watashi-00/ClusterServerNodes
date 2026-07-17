@@ -7,6 +7,7 @@ import java.util.Map;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.NodeStatus;
+import hexacloud.core.model.NodeUpdateResult;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
 
@@ -128,7 +129,7 @@ public class ClusterController implements RouteController {
             }
         }
 
-        Cluster.NodeUpdateResult result = cluster.updateTelemetryServer(host, port, cpu, ram, lang, latency, requestedStatus);
+        NodeUpdateResult result = cluster.updateTelemetryServer(host, port, cpu, ram, lang, latency, requestedStatus);
         if (result == null) {
             out.println("ERROR: Node not registered: " + host + ":" + port);
             return;
