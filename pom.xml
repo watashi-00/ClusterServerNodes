@@ -6,7 +6,7 @@
 
     <groupId>io.hexacloud</groupId>
     <artifactId>gatebridge-core</artifactId>
-    <version>1.0.1.0-beta</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>GateBridge Core Framework</name>
@@ -154,6 +154,7 @@
         <profile>
             <id>java8</id>
             <properties>
+                <maven.compiler.release>8</maven.compiler.release>
                 <maven.compiler.source>1.8</maven.compiler.source>
                 <maven.compiler.target>1.8</maven.compiler.target>
                 <project.sources.dir>target/generated-sources/overlay</project.sources.dir>
