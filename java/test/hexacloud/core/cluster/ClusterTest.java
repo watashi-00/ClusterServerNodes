@@ -18,6 +18,7 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.PingProtocol;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.ClusterController;
+import hexacloud.core.utils.Casts;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -158,8 +159,8 @@ public class ClusterTest {
         );
 
         verify(eventManager).dispatch(argThat(event ->
-            event instanceof ClusterEvent.NodeEventSubmitted submitted
-                && submitted.host().equals("http://127.0.0.1:7002")
+            Casts.test(event, ClusterEvent.NodeEventSubmitted.class, submitted ->
+                submitted.host().equals("http://127.0.0.1:7002")
                 && submitted.port() == 7002
                 && submitted.protocol().equals("gRPC")
                 && submitted.format().equals("json")
@@ -167,6 +168,7 @@ public class ClusterTest {
                 && submitted.attributes().get("detail").equals("products")
                 && !submitted.attributes().containsKey("token")
                 && !submitted.attributes().containsKey("format")
+            )
         ));
         assertTrue(response.toString().contains("SUCCESS"));
     }

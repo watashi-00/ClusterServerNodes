@@ -1,6 +1,7 @@
 package hexacloud.core.server.route;
 
 import java.io.PrintWriter;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -10,6 +11,7 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.NodeUpdateResult;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.StrUtils;
 
 public class ClusterController implements RouteController {
 
@@ -142,14 +144,14 @@ public class ClusterController implements RouteController {
         if (result.telemetryUpdated()) {
             cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated(result.host()));
         }
-        if (eventName != null && !eventName.isBlank()) {
+        if (eventName != null && !StrUtils.isBlank(eventName)) {
             cluster.dispatchEvent(new hexacloud.core.cluster.event.ClusterEvent.NodeEventSubmitted(
                 result.host(),
                 port,
                 normalizeEventProtocol(eventProtocol, result.protocol()),
                 normalizeEventFormat(eventFormat),
                 eventName,
-                Map.copyOf(eventAttributes)
+                new HashMap<>(eventAttributes)
             ));
         }
 
@@ -157,7 +159,7 @@ public class ClusterController implements RouteController {
     }
 
     private void collectEventAttribute(Map<String, String> attributes, String key, String value) {
-        if (key == null || key.isBlank()
+        if (StrUtils.isBlank(key)
             || key.equals("host")
             || key.equals("port")
             || key.equals("event")
@@ -170,14 +172,17 @@ public class ClusterController implements RouteController {
     }
 
     private String normalizeEventProtocol(String requestedProtocol, String fallbackProtocol) {
-        if (requestedProtocol == null || requestedProtocol.isBlank()) {
-            return fallbackProtocol != null && !fallbackProtocol.isBlank() ? fallbackProtocol : "Unknown";
-        }
-        return requestedProtocol.trim().toUpperCase();
+        String protocol = !StrUtils.isBlank(requestedProtocol)
+                ? requestedProtocol
+                : fallbackProtocol;
+
+        return StrUtils.isBlank(protocol)
+                ? "Unknown"
+                : protocol.trim().toUpperCase();
     }
 
     private String normalizeEventFormat(String requestedFormat) {
-        if (requestedFormat == null || requestedFormat.isBlank()) {
+        if (StrUtils.isBlank(requestedFormat)) {
             return "text";
         }
         return requestedFormat.trim().toLowerCase();
