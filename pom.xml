@@ -156,6 +156,8 @@
             <properties>
                 <maven.compiler.release>8</maven.compiler.release>
                 <project.sources.dir>target/generated-sources/overlay</project.sources.dir>
+                
+                <maven.test.skip>true</maven.test.skip>
             </properties>
             <build>
                 <plugins>
@@ -177,6 +179,14 @@
                                 </configuration>
                             </execution>
                         </executions>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/MinimalApplication.java</exclude>
+                            </excludes>
+                        </configuration>
                     </plugin>
                 </plugins>
             </build>

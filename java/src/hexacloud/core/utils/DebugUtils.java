@@ -1,5 +1,6 @@
 package hexacloud.core.utils;
 
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,18 +70,19 @@ public class DebugUtils {
         debugEnabled = enabled;
     }
 
-    public static void setTuiModeActive(boolean active) {
-        tuiModeActive = active;
-        if (active) {
-            System.setOut(new java.io.PrintStream(new RedirectorOutputStream(false), true, CharsetUtils.resolve(CharsetUtils.UTF_8)));
-            System.setErr(new java.io.PrintStream(new RedirectorOutputStream(true), true, CharsetUtils.resolve(CharsetUtils.UTF_8)));
-        } else {
-            System.setOut(originalOut);
-            System.setErr(originalErr);
-        }
-    }
 
-    private static class RedirectorOutputStream extends java.io.OutputStream {
+    
+    public static void setTuiModeActive(boolean active) {
+            if (active) {
+                System.setOut(PrintStreamFactory.create(false));
+                System.setErr(PrintStreamFactory.create(true));
+            } else {
+                System.setOut(originalOut);
+                System.setErr(originalErr);
+            }
+        }
+
+    static class RedirectorOutputStream extends java.io.OutputStream {
         private final boolean isError;
         private final java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
 
