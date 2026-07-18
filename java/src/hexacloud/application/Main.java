@@ -15,7 +15,7 @@ import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.RouteController;
 import hexacloud.core.server.route.RouteMapping;
 import java.io.PrintWriter;
-import java.util.Map;
+import java.util.Collections;
 
 public class Main {
     
@@ -72,16 +72,22 @@ public class Main {
             "HTTP",
             "json",
             "demo.boot",
-            Map.of(
-                "source", "Main",
-                "cluster", runningGateway.getClusterName(),
-                "status", "active"
-            )
+            Collections.singletonMap("source", "Main")
         ));
     }
 
     // Custom event verification
-    public static record UserCustomEvent(String message) implements Event {}
+    public static class UserCustomEvent implements Event {
+        String message;
+
+        public UserCustomEvent(String message) {
+            this.message = message;
+        }
+
+        public String message() {
+            return message;
+        }
+    }
 
     //Custom controller listener - automatically discovered by PathUtils scanner
     public static class CustomEventListener implements EventController {
