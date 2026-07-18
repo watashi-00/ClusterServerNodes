@@ -6,7 +6,7 @@ on:
       run-for:
         description: 'Comma-separated list of JDKs to run (overrides matrix)'
         required: false
-        default: '17,21'
+        default: '8, 17,21'
   push:
     branches: [ build ]
 
@@ -20,7 +20,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        jdk: [17, 21]
+        jdk: [8, 17, 21]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
