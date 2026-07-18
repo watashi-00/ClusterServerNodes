@@ -24,7 +24,9 @@ import hexacloud.core.event.EventBusManager;
 import hexacloud.core.event.EventListener;
 import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
+import hexacloud.core.utils.Casts;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.StrUtils;
 import hexacloud.core.utils.ThreadManager;
 
 /**
@@ -71,7 +73,7 @@ public class WsTransport implements ServerTransport {
         try {
             Map<String, String> headers = readHandshakeHeaders(socket.getInputStream());
             String key = headers.get("sec-websocket-key");
-            if (key == null || key.isBlank()) {
+            if (StrUtils.isBlank(key)) {
                 socket.close();
                 return;
             }
@@ -141,7 +143,7 @@ public class WsTransport implements ServerTransport {
     }
 
     private void broadcastEvent(Event event) {
-        if (!(event instanceof ClusterEvent)) {
+        if (!(Casts.is(event, ClusterEvent.class))) {
             return;
         }
 
@@ -157,27 +159,28 @@ public class WsTransport implements ServerTransport {
     }
 
     private String toJson(Event event) {
-        if (event instanceof ClusterEvent.ClusterRegistered e) {
-            return "{\"type\":\"ClusterRegistered\",\"clusterName\":\"" + json(e.clusterName()) + "\"}";
-        }
-        if (event instanceof ClusterEvent.NodeRegistered e) {
-            return "{\"type\":\"NodeRegistered\",\"host\":\"" + json(e.node().getFullHost()) + "\",\"status\":\"" + e.node().status() + "\"}";
-        }
-        if (event instanceof ClusterEvent.NodeDeregistered e) {
-            return "{\"type\":\"NodeDeregistered\",\"host\":\"" + json(e.host()) + "\"}";
-        }
-        if (event instanceof ClusterEvent.NodeStatusChanged e) {
-            return "{\"type\":\"NodeStatusChanged\",\"host\":\"" + json(e.host()) + "\",\"status\":\"" + e.status() + "\"}";
-        }
-        if (event instanceof ClusterEvent.NodeTelemetryUpdated e) {
-            return "{\"type\":\"NodeTelemetryUpdated\",\"host\":\"" + json(e.host()) + "\"}";
-        }
-        if (event instanceof ClusterEvent.NodeEventSubmitted e) {
-            return "{\"type\":\"NodeEventSubmitted\",\"host\":\"" + json(e.host()) + "\",\"port\":" + e.port()
-                + ",\"protocol\":\"" + json(e.protocol()) + "\",\"format\":\"" + json(e.format())
-                + "\",\"event\":\"" + json(e.event()) + "\",\"attributes\":" + attributesJson(e.attributes()) + "}";
-        }
-        return "{\"type\":\"" + json(event.getClass().getSimpleName()) + "\"}";
+        return Casts.<String>matchValue(event)
+            .when(ClusterEvent.ClusterRegistered.class,
+                e -> "{\"type\":\"ClusterRegistered\",\"clusterName\":\"" + json(e.clusterName()) + "\"}")
+            .when(ClusterEvent.NodeRegistered.class,
+                e -> "{\"type\":\"NodeRegistered\",\"host\":\"" + json(e.node().getFullHost())
+                    + "\",\"status\":\"" + e.node().status() + "\"}")
+            .when(ClusterEvent.NodeDeregistered.class,
+                e -> "{\"type\":\"NodeDeregistered\",\"host\":\"" + json(e.host()) + "\"}")
+            .when(ClusterEvent.NodeStatusChanged.class,
+                e -> "{\"type\":\"NodeStatusChanged\",\"host\":\"" + json(e.host())
+                    + "\",\"status\":\"" + e.status() + "\"}")
+            .when(ClusterEvent.NodeTelemetryUpdated.class,
+                e -> "{\"type\":\"NodeTelemetryUpdated\",\"host\":\"" + json(e.host()) + "\"}")
+            .when(ClusterEvent.NodeEventSubmitted.class,
+                e -> "{\"type\":\"NodeEventSubmitted\",\"host\":\"" + json(e.host())
+                    + "\",\"port\":" + e.port()
+                    + ",\"protocol\":\"" + json(e.protocol())
+                    + "\",\"format\":\"" + json(e.format())
+                    + "\",\"event\":\"" + json(e.event())
+                    + "\",\"attributes\":" + attributesJson(e.attributes()) + "}")
+            .otherwise(e ->
+                "{\"type\":\"" + json(e.getClass().getSimpleName()) + "\"}");
     }
 
     private String attributesJson(Map<String, String> attributes) {
