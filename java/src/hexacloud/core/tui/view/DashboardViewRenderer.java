@@ -1,14 +1,18 @@
 package hexacloud.core.tui.view;
 
 import java.util.List;
+
+import hexacloud.core.event.TuiEvent;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.model.TuiEvent;
 import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.tui.TerminalUI;
 import hexacloud.core.tui.TuiRenderer;
 import hexacloud.core.tui.TuiState;
+import hexacloud.core.utils.Casts;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
+import hexacloud.core.utils.StrUtils;
+
 import static hexacloud.core.tui.TuiConstants.*;
 
 /**
@@ -142,7 +146,7 @@ public class DashboardViewRenderer {
                 NativeTerminal.printAt(28, yGw++, RED + "No gateway selected." + RESET);
             }
             for (int r = yGw; r <= 12; r++) {
-                NativeTerminal.printAt(28, r, " ".repeat(hostColWidth + 24));
+                NativeTerminal.printAt(28, r, StrUtils.repeat(" ", hostColWidth + 24));
             }
         } else {
             String ips = state.targetAllowedIps.isEmpty() ? "Any Client" : state.targetAllowedIps;
@@ -203,7 +207,7 @@ public class DashboardViewRenderer {
                 }
             }
             for (int r = yNode; r <= 12; r++) {
-                NativeTerminal.printAt(28, r, " ".repeat(hostColWidth + 24));
+                NativeTerminal.printAt(28, r, StrUtils.repeat(" ", hostColWidth + 24));
             }
         }
 
@@ -235,7 +239,7 @@ public class DashboardViewRenderer {
             }
         }
         for (int r = yLog; r < H - 2; r++) {
-            NativeTerminal.printAt(4, r, " ".repeat(maxLogWidth));
+            NativeTerminal.printAt(4, r, StrUtils.repeat(" ", maxLogWidth));
         }
 
         // 6. Render GATEWAYS & SYSTEM Live Metrics
@@ -252,9 +256,11 @@ public class DashboardViewRenderer {
         double cpu = -1;
         try {
             java.lang.management.OperatingSystemMXBean osBean = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
-            if (osBean instanceof com.sun.management.OperatingSystemMXBean sunBean) {
-                cpu = sunBean.getProcessCpuLoad() * 100;
-            }
+
+            cpu = Casts.<Double>matchValue(osBean)
+                .when(com.sun.management.OperatingSystemMXBean.class, sunBean -> sunBean.getProcessCpuLoad() * 100)
+                .orElse(cpu);
+
         } catch (Throwable t) {
             if (!cpuErrorLogged) {
                 DebugUtils.error("TUI", null, "Failed to retrieve CPU load metrics", t);
@@ -292,7 +298,7 @@ public class DashboardViewRenderer {
             int firstPort = tui.activeGateways().values().iterator().next().getPort();
             gwSummary += " (:" + firstPort + ")";
         }
-        String summaryPadding = " ".repeat(Math.max(0, 26 - gwSummary.replaceAll("\u001B\\[[;\\d]*m", "").length()));
+        String summaryPadding = StrUtils.repeat(" ", Math.max(0, 26 - gwSummary.replaceAll("\u001B\\[[;\\d]*m", "").length()));
         NativeTerminal.printAt(xMetrics, 12, gwSummary + summaryPadding);
 
         // 7. Render RECENT EVENTS
@@ -356,13 +362,13 @@ public class DashboardViewRenderer {
 
                 String colorized = timeStr + color + eventText + RESET;
                 int printedLen = timeStr.length() + eventText.length();
-                String padding = " ".repeat(Math.max(0, maxEventWidth - printedLen));
+                String padding = StrUtils.repeat(" ", Math.max(0, maxEventWidth - printedLen));
                 NativeTerminal.printAt(xEvents, eventY, colorized + padding);
                 eventY++;
             }
         }
         for (int row = eventY; row < H - 2; row++) {
-            NativeTerminal.printAt(xEvents, row, " ".repeat(maxEventWidth));
+            NativeTerminal.printAt(xEvents, row, StrUtils.repeat(" ", maxEventWidth));
         }
 
         // 8. Render bottom controls
@@ -380,7 +386,7 @@ public class DashboardViewRenderer {
         controlsStr.append("  [L] Logs  [Q] Exit");
         
         // Clear control row first to prevent visual residue
-        NativeTerminal.printAt(2, H - 1, " ".repeat(W - 4));
+        NativeTerminal.printAt(2, H - 1, StrUtils.repeat(" ", W - 4));
         NativeTerminal.printAt(2, H - 1, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
     }
 }

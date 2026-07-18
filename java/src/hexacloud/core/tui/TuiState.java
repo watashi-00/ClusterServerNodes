@@ -3,7 +3,7 @@ package hexacloud.core.tui;
 import java.util.ArrayList;
 import java.util.List;
 
-import hexacloud.core.model.TuiEvent;
+import hexacloud.core.event.TuiEvent;
 import hexacloud.core.model.ServerNode;
 
 /**
