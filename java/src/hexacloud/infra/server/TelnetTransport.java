@@ -49,11 +49,9 @@ public class TelnetTransport implements ServerTransport {
     }
 
     private void conn(Socket socket, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
-        try(
-            socket;
+        try{
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-        ) {
             String clientIp = socket.getInetAddress().getHostAddress();
 
             String line = in.readLine();
@@ -124,6 +122,12 @@ public class TelnetTransport implements ServerTransport {
             
         } catch(IOException ex) {
             DebugUtils.error("Failed to process request from client", ex);
+        } finally {
+            try {
+                socket.close();
+            } catch(IOException ex) {
+                DebugUtils.error("Failed to close client socket", ex);
+            }
         }
     }
 

@@ -2,6 +2,8 @@ package hexacloud.core.tui;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import hexacloud.core.event.TuiEvent;
 import hexacloud.core.model.ServerNode;
 
 /**
@@ -48,7 +50,5 @@ public class TuiState {
     }
     public final List<GatewayConfig> gateways = new ArrayList<>();
 
-    // TODO: refactor to compatibillity with java 8
-    public static record TuiEvent(String type, String detail, long timestamp) {}
     public final List<TuiEvent> recentEvents = new java.util.concurrent.CopyOnWriteArrayList<>();
 }

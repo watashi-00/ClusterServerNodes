@@ -9,6 +9,7 @@ import hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged;
 import hexacloud.core.contracts.ClusterOperations;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.utils.Casts;
 import hexacloud.core.utils.DebugUtils;
 
 public class ClusterManager implements ClusterListener, ClusterOperations {
@@ -81,10 +82,15 @@ public class ClusterManager implements ClusterListener, ClusterOperations {
 
     @Override
     public void onClusterEvent(ClusterEvent event) {
-        if(event instanceof NodeStatusChanged statusEvent) {
-            DebugUtils.info(this.cluster.getClusterName(), statusEvent.host(), "Node status changed: " + statusEvent.host() + " -> " + statusEvent.status());
-            this.cluster.updateStatusServer(statusEvent.host(), statusEvent.status());
-        }
+        Casts.as(event, NodeStatusChanged.class).ifPresent(statusEvent -> {
+            if (statusEvent != null) {
+                DebugUtils.info(
+                    this.cluster.getClusterName(),
+                    statusEvent.host(),
+                    "Node status changed: " + statusEvent.host() + " -> " + statusEvent.status()
+                );
+                this.cluster.updateStatusServer(statusEvent.host(), statusEvent.status());
+            }
+        });
     }
-
 }

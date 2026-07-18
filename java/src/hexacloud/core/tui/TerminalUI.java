@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
+import hexacloud.core.event.TuiEvent;
+import hexacloud.core.utils.Casts;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
 import hexacloud.core.ports.RunningGatewayPort;
@@ -235,37 +237,40 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         }));
 
         hexacloud.core.event.EventListener<hexacloud.core.event.Event> interceptor = null;
+        // TODO: refactor this try-catch-finally block into a separate method to reduce complexity and improve readability
         try {
-            // Register global event interceptor to capture all events for the UI
-            interceptor = event -> {
-                String name = event.getClass().getSimpleName();
-                String detail = "";
-                if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged e) {
-                    detail = e.host().replaceAll("^[a-zA-Z]+://", "") + " -> " + e.status();
-                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated e) {
-                    detail = e.host().replaceAll("^[a-zA-Z]+://", "") + " updated";
-                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeEventSubmitted e) {
-                    detail = e.event() + " [" + e.protocol() + "/" + e.format() + "] from " + e.host().replaceAll("^[a-zA-Z]+://", "");
-                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeRegistered e) {
-                    detail = e.node().getFullHost().replaceAll("^[a-zA-Z]+://", "");
-                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered e) {
-                    detail = e.host().replaceAll("^[a-zA-Z]+://", "");
-                } else if (event instanceof hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered e) {
-                    detail = e.clusterName();
-                } else {
+        interceptor = event -> {
+            String name = event.getClass().getSimpleName();
+
+            String detail = Casts.<String>matchValue(event)
+                .when(hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged.class,
+                    e -> e.host().replaceAll("^[a-zA-Z]+://", "") + " -> " + e.status())
+                .when(hexacloud.core.cluster.event.ClusterEvent.NodeTelemetryUpdated.class,
+                    e -> e.host().replaceAll("^[a-zA-Z]+://", "") + " updated")
+                .when(hexacloud.core.cluster.event.ClusterEvent.NodeEventSubmitted.class,
+                    e -> e.event() + " [" + e.protocol() + "/" + e.format() + "] from "
+                        + e.host().replaceAll("^[a-zA-Z]+://", ""))
+                .when(hexacloud.core.cluster.event.ClusterEvent.NodeRegistered.class,
+                    e -> e.node().getFullHost().replaceAll("^[a-zA-Z]+://", ""))
+                .when(hexacloud.core.cluster.event.ClusterEvent.NodeDeregistered.class,
+                    e -> e.host().replaceAll("^[a-zA-Z]+://", ""))
+                .when(hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered.class,
+                    hexacloud.core.cluster.event.ClusterEvent.ClusterRegistered::clusterName)
+                .otherwise(e -> {
                     try {
-                        java.lang.reflect.Method m = event.getClass().getMethod("message");
-                        detail = (String) m.invoke(event);
+                        java.lang.reflect.Method m = e.getClass().getMethod("message");
+                        return (String) m.invoke(e);
                     } catch (Exception ex) {
                         try {
-                            java.lang.reflect.Method m = event.getClass().getMethod("getMessage");
-                            detail = (String) m.invoke(event);
+                            java.lang.reflect.Method m = e.getClass().getMethod("getMessage");
+                            return (String) m.invoke(e);
                         } catch (Exception ex2) {
-                            detail = event.toString();
+                            return e.toString();
                         }
                     }
-                }
-                state.recentEvents.add(0, new TuiState.TuiEvent(name, detail, System.currentTimeMillis()));
+                });
+
+                state.recentEvents.add(0, new TuiEvent(name, detail, System.currentTimeMillis()));
                 while (state.recentEvents.size() > 8) {
                     state.recentEvents.remove(state.recentEvents.size() - 1);
                 }

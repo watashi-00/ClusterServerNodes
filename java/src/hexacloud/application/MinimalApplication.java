@@ -137,7 +137,17 @@ public class MinimalApplication {
     // CUSTOM DISCOVERABLE EVENT SUBSYSTEM
     // ==========================================
 
-    public static record DeveloperCustomEvent(String message) implements Event {}
+    public static class DeveloperCustomEvent implements Event {
+        private final String message;
+
+        public DeveloperCustomEvent(String message) {
+            this.message = message;
+        }
+
+        public String message() {
+            return message;
+        }
+    }
 
     public static class DemoEventController implements EventController {
 

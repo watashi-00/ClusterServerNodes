@@ -1,5 +1,7 @@
 package hexacloud.core.utils;
 
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -68,18 +70,19 @@ public class DebugUtils {
         debugEnabled = enabled;
     }
 
-    public static void setTuiModeActive(boolean active) {
-        tuiModeActive = active;
-        if (active) {
-            System.setOut(new java.io.PrintStream(new RedirectorOutputStream(false), true, java.nio.charset.StandardCharsets.UTF_8));
-            System.setErr(new java.io.PrintStream(new RedirectorOutputStream(true), true, java.nio.charset.StandardCharsets.UTF_8));
-        } else {
-            System.setOut(originalOut);
-            System.setErr(originalErr);
-        }
-    }
 
-    private static class RedirectorOutputStream extends java.io.OutputStream {
+    
+    public static void setTuiModeActive(boolean active) {
+            if (active) {
+                System.setOut(PrintStreamFactory.create(false));
+                System.setErr(PrintStreamFactory.create(true));
+            } else {
+                System.setOut(originalOut);
+                System.setErr(originalErr);
+            }
+        }
+
+    static class RedirectorOutputStream extends java.io.OutputStream {
         private final boolean isError;
         private final java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
 
@@ -107,7 +110,7 @@ public class DebugUtils {
             byte[] bytes = buffer.toByteArray();
             buffer.reset();
             if (bytes.length > 0) {
-                String line = new String(bytes, java.nio.charset.StandardCharsets.UTF_8).trim();
+                String line = new String(bytes, StandardCharsets.UTF_8).trim();
                 if (!line.isEmpty()) {
                     if (isError) {
                         captureLog(LogLevel.ERROR, null, null, line);
@@ -230,14 +233,10 @@ public class DebugUtils {
     public static void error(String clusterName, String serviceHost, String message, Throwable t) {
         if (t != null) {
             Throwable cause = t.getCause() != null ? t.getCause() : t;
-            String details;
-            if (cause instanceof java.net.ConnectException) {
-                details = " -> Connection refused";
-            } else if (cause instanceof java.net.http.HttpConnectTimeoutException || (cause instanceof java.io.IOException && cause.getMessage() != null && cause.getMessage().contains("timed out"))) {
-                details = " -> Connection timeout";
-            } else {
-                details = " -> " + cause.toString();
-            }
+            String details = Casts.<String>matchValue(cause)
+                .when(java.net.ConnectException.class, e -> " -> Connection refused")
+                .when(java.io.IOException.class, e -> (e.getMessage() != null && e.getMessage().contains("timed out")) ? " -> Connection timeout" : null)
+                .orElse(" -> " + cause.toString());
             captureLog(LogLevel.ERROR, clusterName, serviceHost, message + details, t);
         } else {
             captureLog(LogLevel.ERROR, clusterName, serviceHost, message, null);

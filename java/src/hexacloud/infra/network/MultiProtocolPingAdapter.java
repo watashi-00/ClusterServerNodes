@@ -28,7 +28,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
     public MultiProtocolPingAdapter() {
         this.client = HttpClient.newBuilder()
             .connectTimeout(ClusterConfig.HTTP_CONNECT_TIMEOUT)
-            .version(ClusterConfig.HTTP_VERSION)
+            .version(ClusterConfig.HTTP_VERSION.resolveHttpVersion(ClusterConfig.HTTP_VERSION))
             .executor(ThreadManager.newVirtualThreadPool())
             .build();
     }

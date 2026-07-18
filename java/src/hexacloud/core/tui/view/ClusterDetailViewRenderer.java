@@ -9,6 +9,8 @@ import hexacloud.core.tui.TuiRenderer;
 import hexacloud.core.tui.TuiState;
 import hexacloud.core.utils.DebugUtils;
 import hexacloud.core.utils.NativeTerminal;
+import hexacloud.core.utils.StrUtils;
+
 import static hexacloud.core.tui.TuiConstants.*;
 
 /**
@@ -94,7 +96,7 @@ public class ClusterDetailViewRenderer {
             }
         }
         for (int r = y; r <= 12; r++) {
-            NativeTerminal.printAt(33, r, " ".repeat(hostColWidth + 20));
+            NativeTerminal.printAt(33, r, StrUtils.repeat(" ", hostColWidth + 20));
         }
 
         // Inner console logs
@@ -127,7 +129,7 @@ public class ClusterDetailViewRenderer {
             }
         }
         for (int r = y; r <= logsEndY; r++) {
-            NativeTerminal.printAt(4, r, " ".repeat(W - 7));
+            NativeTerminal.printAt(4, r, StrUtils.repeat(" ", W - 7));
         }
 
         StringBuilder controlsStr = new StringBuilder();
@@ -141,7 +143,7 @@ public class ClusterDetailViewRenderer {
                 controlsStr.append("  [K] Token  [S] Secure");
             }
         }
-        NativeTerminal.printAt(2, H - 1, " ".repeat(W - 4));
+        NativeTerminal.printAt(2, H - 1, StrUtils.repeat(" ", W - 4));
         NativeTerminal.printAt(2, H - 1, WHITE_BOLD + "Controls:" + RESET + controlsStr.toString());
     }
 }
