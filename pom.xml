@@ -134,7 +134,7 @@
             <plugin>
                 <groupId>com.github.watashi-00</groupId>
                 <artifactId>source-overlay-plugin</artifactId>
-                <version>1.0.4</version>
+                <version>1.0.5</version>
                 <configuration>
                     <mainSources>java/src</mainSources>
                     <generatedSources>target/generated-sources/overlay</generatedSources>
