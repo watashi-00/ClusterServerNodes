@@ -14,6 +14,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.Casts;
 import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.JsonSerializer;
 import hexacloud.core.utils.StrUtils;
 import hexacloud.core.utils.ThreadManager;
 
@@ -90,7 +92,10 @@ public class WsTransport implements ServerTransport {
 
             ClientConnection client = new ClientConnection(socket, out);
             clients.add(client);
-            client.send("{\"type\":\"Connected\",\"message\":\"GateBridge WebSocket event stream connected\"}");
+            Map<String, Object> connected = new LinkedHashMap<>();
+            connected.put("type", "Connected");
+            connected.put("message", "GateBridge WebSocket event stream connected");
+            client.send(JsonSerializer.serialize(connected));
             waitForClientClose(socket);
             clients.remove(client);
             client.close();
@@ -160,41 +165,54 @@ public class WsTransport implements ServerTransport {
 
     private String toJson(Event event) {
         return Casts.<String>matchValue(event)
-            .when(ClusterEvent.ClusterRegistered.class,
-                e -> "{\"type\":\"ClusterRegistered\",\"clusterName\":\"" + json(e.clusterName()) + "\"}")
-            .when(ClusterEvent.NodeRegistered.class,
-                e -> "{\"type\":\"NodeRegistered\",\"host\":\"" + json(e.node().getFullHost())
-                    + "\",\"status\":\"" + e.node().status() + "\"}")
-            .when(ClusterEvent.NodeDeregistered.class,
-                e -> "{\"type\":\"NodeDeregistered\",\"host\":\"" + json(e.host()) + "\"}")
-            .when(ClusterEvent.NodeStatusChanged.class,
-                e -> "{\"type\":\"NodeStatusChanged\",\"host\":\"" + json(e.host())
-                    + "\",\"status\":\"" + e.status() + "\"}")
-            .when(ClusterEvent.NodeTelemetryUpdated.class,
-                e -> "{\"type\":\"NodeTelemetryUpdated\",\"host\":\"" + json(e.host()) + "\"}")
-            .when(ClusterEvent.NodeEventSubmitted.class,
-                e -> "{\"type\":\"NodeEventSubmitted\",\"host\":\"" + json(e.host())
-                    + "\",\"port\":" + e.port()
-                    + ",\"protocol\":\"" + json(e.protocol().name())
-                    + "\",\"format\":\"" + json(e.format().toString())
-                    + "\",\"event\":\"" + json(e.event())
-                    + "\",\"attributes\":" + attributesJson(e.attributes()) + "}")
-            .otherwise(e ->
-                "{\"type\":\"" + json(e.getClass().getSimpleName()) + "\"}");
-    }
-
-    private String attributesJson(Map<String, String> attributes) {
-        if (attributes == null || attributes.isEmpty()) {
-            return "{}";
-        }
-        return attributes.entrySet().stream()
-            .map(entry -> "\"" + json(entry.getKey()) + "\":\"" + json(entry.getValue()) + "\"")
-            .collect(Collectors.joining(",", "{", "}"));
-    }
-
-    private String json(String value) {
-        if (value == null) return "";
-        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+            .when(ClusterEvent.ClusterRegistered.class, e -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "ClusterRegistered");
+                map.put("clusterName", e.clusterName());
+                return JsonSerializer.serialize(map);
+            })
+            .when(ClusterEvent.NodeRegistered.class, e -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "NodeRegistered");
+                map.put("host", e.node().getFullHost());
+                map.put("status", e.node().status());
+                return JsonSerializer.serialize(map);
+            })
+            .when(ClusterEvent.NodeDeregistered.class, e -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "NodeDeregistered");
+                map.put("host", e.host());
+                return JsonSerializer.serialize(map);
+            })
+            .when(ClusterEvent.NodeStatusChanged.class, e -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "NodeStatusChanged");
+                map.put("host", e.host());
+                map.put("status", e.status());
+                return JsonSerializer.serialize(map);
+            })
+            .when(ClusterEvent.NodeTelemetryUpdated.class, e -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "NodeTelemetryUpdated");
+                map.put("host", e.host());
+                return JsonSerializer.serialize(map);
+            })
+            .when(ClusterEvent.NodeEventSubmitted.class, e -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", "NodeEventSubmitted");
+                map.put("host", e.host());
+                map.put("port", e.port());
+                map.put("protocol", e.protocol());
+                map.put("format", e.format());
+                map.put("event", e.event());
+                map.put("attributes", e.attributes());
+                return JsonSerializer.serialize(map);
+            })
+            .otherwise(e -> {
+                Map<String, Object> map = new LinkedHashMap<>();
+                map.put("type", e.getClass().getSimpleName());
+                return JsonSerializer.serialize(map);
+            });
     }
 
     @Override
