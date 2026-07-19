@@ -29,6 +29,7 @@ public class ThreadManager {
     public static ThreadFactory virtualThreadFactory(String namePrefix) {
         return new ThreadFactory() {
             private int counter = 0;
+
             @Override
             public synchronized Thread newThread(Runnable r) {
                 Thread t = new Thread(r);
