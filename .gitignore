@@ -18,3 +18,5 @@ target/
 
 # Ignore code review reports
 CODE_REVIEW.md
+
+.agent

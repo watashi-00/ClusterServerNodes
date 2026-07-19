@@ -206,16 +206,14 @@ public class NativeTerminal {
                     // Wait up to 50ms for the next bytes of the escape sequence to arrive
                     long start = System.currentTimeMillis();
                     while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
-                        Thread.sleep(1);
-                        //Thread.onSpinWait();
+                        ThreadManager.spinWait();
                     }
                     if (System.in.available() > 0) {
                         int c2 = System.in.read();
                         if (c2 == '[') {
                             start = System.currentTimeMillis();
                             while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
-                                // Thread.onSpinWait();
-                                Thread.sleep(1);
+                                ThreadManager.spinWait();
                             }
                             if (System.in.available() > 0) {
                                 int c3 = System.in.read();

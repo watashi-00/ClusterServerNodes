@@ -43,4 +43,12 @@ public class ThreadManager {
     public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize, String namePrefix) {
         return Executors.newScheduledThreadPool(corePoolSize, virtualThreadFactory(namePrefix));
     }
+
+    public static void spinWait() {
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 }

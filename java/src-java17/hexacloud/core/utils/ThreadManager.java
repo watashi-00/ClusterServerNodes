@@ -43,4 +43,8 @@ public class ThreadManager {
     public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize, String namePrefix) {
         return Executors.newScheduledThreadPool(corePoolSize, virtualThreadFactory(namePrefix));
     }
+
+    public static void spinWait() {
+        Thread.onSpinWait();
+    }
 }

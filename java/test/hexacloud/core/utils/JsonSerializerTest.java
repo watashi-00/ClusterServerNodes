@@ -83,4 +83,24 @@ public class JsonSerializerTest {
         assertTrue(json.contains("\"childField\":\"child\""));
         assertTrue(json.contains("\"parentField\":42"));
     }
+
+    static class Friend {
+        final String name;
+        Friend(String name) { this.name = name; }
+    }
+
+    @Test
+    public void testSerializeNestedStructures() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("message", "amazing message");
+
+        Map<String, Object> dataItem = new LinkedHashMap<>();
+        dataItem.put("name", "watashi");
+        payload.put("data", Arrays.asList(dataItem));
+
+        payload.put("friends", Arrays.asList(new Friend("Bob"), new Friend("Charlie")));
+
+        String json = JsonSerializer.serialize(payload);
+        assertEquals("{\"message\":\"amazing message\",\"data\":[{\"name\":\"watashi\"}],\"friends\":[{\"name\":\"Bob\"},{\"name\":\"Charlie\"}]}", json);
+    }
 }
