@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.network;
 
 public enum CharsetUtils {
     UTF_8,

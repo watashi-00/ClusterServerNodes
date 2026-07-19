@@ -2,10 +2,11 @@ package hexacloud.application;
 
 import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.ports.RunningGatewayPort;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.infra.gateway.GatewayFactory;
 import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;
+import hexacloud.core.event.EventFormat;
 import hexacloud.core.event.Subscribe;
 import hexacloud.core.cluster.event.ClusterEvent.NodeRegistered;
 import hexacloud.core.cluster.event.ClusterEvent.NodeEventSubmitted;
@@ -33,7 +34,7 @@ public class Main {
             .enableHttp(true)
             .enableWs(true)
             .registerController(new CustomAppController())
-            .requireToken(true, "developer-secret-token")
+            .requireToken(true, "watashi_secretKey")
             .rateLimit(200, 60)
             .allowedIps("127.0.0.1")
             .timeout(4500);
@@ -42,7 +43,7 @@ public class Main {
         // both the pull-based ping side and the new event submission contract.
         builder.registerServer(new ServerNode(
                 "http://localhost", 3001, NodeStatus.OFFLINE, false,
-                PingProtocol.HTTP, "/health", "Authorization", "Bearer developer-secret-token"
+                PingProtocol.HTTP, "/health", "X-Cluster-Token", "watashi_secretKey"
             ))
             .registerServer(new ServerNode(
                 "http://localhost", 3002, NodeStatus.OFFLINE, false,
@@ -69,8 +70,8 @@ public class Main {
         runningGateway.eventManager().dispatch(new NodeEventSubmitted(
             "http://localhost:3001",
             3001,
-            "HTTP",
-            "json",
+            PingProtocol.HTTP,
+            EventFormat.JSON,
             "demo.boot",
             Collections.singletonMap("source", "Main")
         ));

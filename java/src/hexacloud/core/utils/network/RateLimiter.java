@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.network;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;

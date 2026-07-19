@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.concurrent;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,5 +29,9 @@ public class ThreadManager {
 
     public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize, String namePrefix) {
         return Executors.newScheduledThreadPool(corePoolSize, virtualThreadFactory(namePrefix));
+    }
+
+    public static void spinWait() {
+        Thread.onSpinWait();
     }
 }

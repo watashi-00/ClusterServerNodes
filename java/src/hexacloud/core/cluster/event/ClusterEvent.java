@@ -3,8 +3,10 @@ package hexacloud.core.cluster.event;
 import java.util.Map;
 
 import hexacloud.core.event.Event;
+import hexacloud.core.event.EventFormat;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.model.NodeStatus;
+import hexacloud.core.model.PingProtocol;
 
 /**
  * Marker interface for all Cluster Domain Events.
@@ -22,6 +24,6 @@ public interface ClusterEvent extends Event {
 
     record NodeTelemetryUpdated(String host) implements ClusterEvent {}
 
-    record NodeEventSubmitted(String host, int port, String protocol, String format, String event,
+    record NodeEventSubmitted(String host, int port, PingProtocol protocol, EventFormat format, String event,
                               Map<String, String> attributes) implements ClusterEvent {}
 }

@@ -8,7 +8,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.NodeUpdateResult;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
 import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.cluster.event.ClusterEventBusManager;

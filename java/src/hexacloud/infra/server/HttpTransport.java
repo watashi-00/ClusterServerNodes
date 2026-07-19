@@ -12,8 +12,10 @@ import java.util.function.BiConsumer;
 
 import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.ThreadManager;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.concurrent.ThreadManager;
+import hexacloud.core.utils.network.HttpHeader;
+import hexacloud.core.utils.network.ContentType;
 
 /**
  * Concrete HTTP implementation of ServerTransport bound to a local port
@@ -75,7 +77,7 @@ public class HttpTransport implements ServerTransport {
 
                     if(!targetCluster.checkRateLimit(clientIp)) {
                         String response = "429 Too Many Requests";
-                        exchange.getResponseHeaders().set("Retry-After", "10");
+                        exchange.getResponseHeaders().set(HttpHeader.RETRY_AFTER.value(), "10");
                         exchange.sendResponseHeaders(429, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
                             os.write(response.getBytes());
@@ -83,7 +85,7 @@ public class HttpTransport implements ServerTransport {
                         return;
                     }
 
-                    String token = exchange.getRequestHeaders().getFirst("X-Cluster-Token");
+                    String token = exchange.getRequestHeaders().getFirst(HttpHeader.X_CLUSTER_TOKEN.value());
                     if(token == null || token.isEmpty()) {
                         String query = exchange.getRequestURI().getQuery();
                         if(query != null && query.contains("token=")) {
@@ -107,7 +109,11 @@ public class HttpTransport implements ServerTransport {
 
                     BiConsumer<String, PrintWriter> handler = targetRegistry.getRoutes().get(routeName);
                     if(handler != null) {
-                        exchange.getResponseHeaders().set("Content-Type", "text/plain");
+                        if (routeName.equals("GET_NODES_JSON")) {
+                            exchange.getResponseHeaders().set(HttpHeader.CONTENT_TYPE.value(), ContentType.APPLICATION_JSON.value());
+                        } else {
+                            exchange.getResponseHeaders().set(HttpHeader.CONTENT_TYPE.value(), ContentType.TEXT_PLAIN.value());
+                        }
                         exchange.sendResponseHeaders(200, 0); // chunked transfer
                         
                         try(OutputStream os = exchange.getResponseBody();

@@ -1,6 +1,5 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.common;
 
-import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;

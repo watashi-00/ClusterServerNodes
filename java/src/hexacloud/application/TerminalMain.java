@@ -3,7 +3,7 @@ package hexacloud.application;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.ports.RunningGatewayPort;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.tui.TerminalUiFactory;
 import hexacloud.infra.gateway.GatewayFactory;
 
