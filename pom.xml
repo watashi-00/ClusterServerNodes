@@ -135,6 +135,23 @@
                 <groupId>com.github.watashi-00</groupId>
                 <artifactId>source-overlay-plugin</artifactId>
                 <version>1.0.4</version>
+                <configuration>
+                    <mainSources>java/src</mainSources>
+                    <generatedSources>target/generated-sources/overlay</generatedSources>
+                    <excludes>
+                        <exclude>hexacloud/application</exclude>
+                    </excludes>
+                    <overlays>
+                        <overlay>
+                            <jdkVersion>17</jdkVersion>
+                            <directory>java/src-java17</directory>
+                        </overlay>
+                        <overlay>
+                            <jdkVersion>8</jdkVersion>
+                            <directory>java/src-java8</directory>
+                        </overlay>
+                    </overlays>
+                </configuration>
                 <executions>
                     <execution>
                         <phase>generate-sources</phase>

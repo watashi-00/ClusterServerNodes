@@ -45,6 +45,10 @@ public class ThreadManager {
     }
 
     public static void spinWait() {
-        Thread.onSpinWait();
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }
