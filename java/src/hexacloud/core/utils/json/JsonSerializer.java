@@ -1,9 +1,10 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.json;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Map;
+import hexacloud.core.utils.common.Casts;
 
 /**
  * Custom lightweight reflection-based JSON serializer compatible with Java 8+.

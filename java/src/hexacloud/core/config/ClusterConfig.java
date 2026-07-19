@@ -2,7 +2,7 @@ package hexacloud.core.config;
 
 import java.time.Duration;
 
-import hexacloud.core.utils.HttpVersion;
+import hexacloud.core.utils.network.HttpVersion;
 
 public class ClusterConfig {
 

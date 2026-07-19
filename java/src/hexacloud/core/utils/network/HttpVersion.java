@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.network;
 
 import java.net.http.HttpClient;
 

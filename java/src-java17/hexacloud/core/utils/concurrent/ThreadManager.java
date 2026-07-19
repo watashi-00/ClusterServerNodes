@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.concurrent;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -45,10 +45,6 @@ public class ThreadManager {
     }
 
     public static void spinWait() {
-        try {
-            Thread.sleep(1);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        Thread.onSpinWait();
     }
 }

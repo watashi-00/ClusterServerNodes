@@ -7,9 +7,9 @@ import hexacloud.core.model.ServerNode;
 import hexacloud.core.tui.TerminalUI;
 import hexacloud.core.tui.TuiRenderer;
 import hexacloud.core.tui.TuiState;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.NativeTerminal;
-import hexacloud.core.utils.StrUtils;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.terminal.NativeTerminal;
+import hexacloud.core.utils.common.StrUtils;
 
 import static hexacloud.core.tui.TuiConstants.*;
 

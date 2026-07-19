@@ -11,8 +11,8 @@ import java.util.function.BiConsumer;
 
 import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.ThreadManager;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.concurrent.ThreadManager;
 
 /**
  * Concrete Telnet implementation of ServerTransport bound to a local port

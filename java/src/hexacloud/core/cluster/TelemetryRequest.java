@@ -4,8 +4,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import hexacloud.core.model.TelemetryParameter;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.StrUtils;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.common.StrUtils;
 
 /**
  * Data carrier class that handles parsing raw telemetry input parameters.

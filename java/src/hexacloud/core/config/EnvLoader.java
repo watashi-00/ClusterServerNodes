@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 
 public class EnvLoader {
 
@@ -31,7 +31,7 @@ public class EnvLoader {
 
         // 3. Try loading from dynamically resolved resources/ directory
         if(!loaded) {
-            java.io.File resourcesDir = hexacloud.core.utils.PathUtils.findResourcesDir();
+            java.io.File resourcesDir = hexacloud.core.utils.common.PathUtils.findResourcesDir();
             if (resourcesDir != null) {
                 java.io.File propFile = new java.io.File(resourcesDir, propFileName);
                 if (propFile.exists()) {

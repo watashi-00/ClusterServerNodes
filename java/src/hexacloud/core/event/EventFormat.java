@@ -1,6 +1,6 @@
 package hexacloud.core.event;
 
-import hexacloud.core.utils.StrUtils;
+import hexacloud.core.utils.common.StrUtils;
 
 /**
  * Supported formats for cluster telemetry node events.

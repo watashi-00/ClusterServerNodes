@@ -9,8 +9,8 @@ import hexacloud.core.cluster.event.ClusterEvent.NodeStatusChanged;
 import hexacloud.core.contracts.ClusterOperations;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.utils.Casts;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.Casts;
+import hexacloud.core.utils.common.DebugUtils;
 
 public class ClusterManager implements ClusterListener, ClusterOperations {
 

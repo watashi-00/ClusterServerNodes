@@ -1,7 +1,7 @@
 package hexacloud.core.tui;
 
 import hexacloud.core.tui.view.*;
-import hexacloud.core.utils.NativeTerminal;
+import hexacloud.core.utils.terminal.NativeTerminal;
 import static hexacloud.core.tui.TuiConstants.*;
 
 /**

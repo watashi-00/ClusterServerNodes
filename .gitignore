@@ -20,3 +20,4 @@ target/
 CODE_REVIEW.md
 
 .agent
+.state

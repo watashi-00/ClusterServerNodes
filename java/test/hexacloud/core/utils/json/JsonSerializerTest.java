@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.json;
 
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;

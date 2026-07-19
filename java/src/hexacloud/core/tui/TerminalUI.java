@@ -8,9 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.event.TuiEvent;
-import hexacloud.core.utils.Casts;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.NativeTerminal;
+import hexacloud.core.utils.common.Casts;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.terminal.NativeTerminal;
 import hexacloud.core.ports.RunningGatewayPort;
 
 /**
@@ -190,7 +190,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
         System.out.println("\n>>> GateBridge Gateway is running in background.");
         System.out.println(">>> Standard logging is active. Press ENTER to open the DevOps TUI Dashboard anytime.");
 
-        hexacloud.core.utils.ThreadManager.startVirtual("TuiToggleListener", () -> {
+        hexacloud.core.utils.concurrent.ThreadManager.startVirtual("TuiToggleListener", () -> {
             boolean toggleActive = false;
             while (true) {
                 if (!toggleActive) {
@@ -319,7 +319,7 @@ public class TerminalUI implements hexacloud.core.ports.TerminalUiPort {
             });
 
             // Start low-latency non-blocking input listener on a lightweight virtual thread
-            hexacloud.core.utils.ThreadManager.startVirtual("TuiInputReader", () -> {
+            hexacloud.core.utils.concurrent.ThreadManager.startVirtual("TuiInputReader", () -> {
                 while (state.running) {
                     int key = NativeTerminal.readKey();
                     if (key != -1) {

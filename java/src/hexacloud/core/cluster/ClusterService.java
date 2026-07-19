@@ -7,7 +7,7 @@ import hexacloud.core.event.EventFormat;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.NodeUpdateResult;
 import hexacloud.core.model.PingProtocol;
-import hexacloud.core.utils.StrUtils;
+import hexacloud.core.utils.common.StrUtils;
 
 /**
  * Service class handling orchestration logic for cluster and node operations.

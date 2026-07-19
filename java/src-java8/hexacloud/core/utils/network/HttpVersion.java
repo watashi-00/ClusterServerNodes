@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.network;
 
 public enum HttpVersion {
     HTTP_1_1,

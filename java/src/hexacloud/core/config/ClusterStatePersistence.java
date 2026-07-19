@@ -13,7 +13,7 @@ import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.model.PingProtocol;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 
 /**
  * Persistence layer to serialize and deserialize cluster and node gateway configurations.
@@ -40,16 +40,11 @@ public class ClusterStatePersistence {
         }
 
         if(dir == null || dir.trim().isEmpty()) {
-            File resourcesDir = hexacloud.core.utils.PathUtils.findResourcesDir();
-            if (resourcesDir != null) {
-                dir = resourcesDir.getPath();
-            } else {
-                dir = "."; // fallback
-            }
+            dir = ".state";
         }
 
         File dirFile = new File(dir);
-        if (!dirFile.exists() && !dir.equals(".")) {
+        if (!dirFile.exists()) {
             dirFile.mkdirs();
         }
 

@@ -2,7 +2,7 @@ package hexacloud.application;
 
 import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.ports.RunningGatewayPort;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.infra.gateway.GatewayFactory;
 import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;

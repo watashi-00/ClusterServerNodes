@@ -1,7 +1,8 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.terminal;
 
 import java.io.File;
 import java.io.FileWriter;
+import hexacloud.core.utils.concurrent.ThreadManager;
 
 public class NativeTerminal {
     private static boolean loaded = false;

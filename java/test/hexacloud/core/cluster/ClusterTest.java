@@ -19,7 +19,7 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.PingProtocol;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.ClusterController;
-import hexacloud.core.utils.Casts;
+import hexacloud.core.utils.common.Casts;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;

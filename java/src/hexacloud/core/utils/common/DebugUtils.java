@@ -1,4 +1,4 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.common;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
