@@ -6,8 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 import hexacloud.core.model.NodeStatus;
+import hexacloud.core.model.NodeUpdateResult;
 import hexacloud.core.model.ServerNode;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.config.ClusterConfig;
 import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
@@ -27,8 +28,6 @@ public class Cluster {
     private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
     private List<ServerNode> tempCluster;
     private boolean batchMode = false;
-
-    public static record NodeUpdateResult(String host, String protocol, boolean statusChanged, boolean telemetryUpdated) {}
 
     public Cluster() {
         this(ClusterConfig.DEFAULT_CLUSTER_NAME, null);

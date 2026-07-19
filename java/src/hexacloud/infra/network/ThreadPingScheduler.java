@@ -11,8 +11,8 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.PingResult;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.ports.PingClientPort;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.ThreadManager;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.concurrent.ThreadManager;
 import hexacloud.core.config.ClusterConfig;
 
 /**

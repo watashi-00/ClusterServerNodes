@@ -1,7 +1,8 @@
 package hexacloud.core.config;
 
-import java.net.http.HttpClient;
 import java.time.Duration;
+
+import hexacloud.core.utils.network.HttpVersion;
 
 public class ClusterConfig {
 
@@ -22,7 +23,7 @@ public class ClusterConfig {
     // HTTP Defaults
     public static final Duration HTTP_CONNECT_TIMEOUT = Duration.ofSeconds(2);
     public static final Duration HTTP_REQUEST_TIMEOUT = Duration.ofSeconds(2);
-    public static final HttpClient.Version HTTP_VERSION = HttpClient.Version.HTTP_1_1;
+    public static final HttpVersion HTTP_VERSION = HttpVersion.requestVersion(HttpVersion.HTTP_1_1);
 
     private ClusterConfig() {}
 }

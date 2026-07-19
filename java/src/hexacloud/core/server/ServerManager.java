@@ -8,7 +8,7 @@ import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.contracts.ServerOperations;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.infra.server.HttpTransport;
 import hexacloud.infra.server.TelnetTransport;
 import hexacloud.infra.server.WsTransport;
@@ -35,7 +35,7 @@ public class ServerManager implements ServerOperations {
 
     private void autoRegisterControllers() {
         try {
-            List<Class<?>> controllers = hexacloud.core.utils.PathUtils.scanClasspathForImplementations(hexacloud.core.server.route.RouteController.class);
+            List<Class<?>> controllers = hexacloud.core.utils.common.PathUtils.scanClasspathForImplementations(hexacloud.core.server.route.RouteController.class);
             for (Class<?> clazz : controllers) {
                 if (clazz.getName().equals(ClusterController.class.getName())) {
                     continue;

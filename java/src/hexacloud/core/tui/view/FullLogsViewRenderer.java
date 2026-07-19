@@ -4,8 +4,10 @@ import java.util.List;
 import hexacloud.core.tui.TerminalUI;
 import hexacloud.core.tui.TuiRenderer;
 import hexacloud.core.tui.TuiState;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.NativeTerminal;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.terminal.NativeTerminal;
+import hexacloud.core.utils.common.StrUtils;
+
 import static hexacloud.core.tui.TuiConstants.*;
 
 /**
@@ -70,10 +72,10 @@ public class FullLogsViewRenderer {
 
         // Clear any remaining lines in viewport
         for (int r = y; r <= H - 3; r++) {
-            NativeTerminal.printAt(4, r, " ".repeat(W - 7));
+            NativeTerminal.printAt(4, r, StrUtils.repeat(" ", W - 7));
         }
 
-        NativeTerminal.printAt(2, H - 1, " ".repeat(W - 4));
+        NativeTerminal.printAt(2, H - 1, StrUtils.repeat(" ", W - 4));
         NativeTerminal.printAt(2, H - 1, WHITE_BOLD + "Controls:" + RESET + " [Backspace] Back to Dashboard  [UP/DOWN] Scroll logs");
     }
 }

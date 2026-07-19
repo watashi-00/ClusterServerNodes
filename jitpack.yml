@@ -1,2 +1,10 @@
+install:
+  - |
+    if [[ $RELEASE_TAG == *"jdk8" ]]; then
+      mvn install -Pjava8 -Dmaven.test.skip=true
+    elif [[ $RELEASE_TAG == *"jdk21" ]]; then
+      mvn install -Pjava21 -DskipTests
+    fi
+
 jdk:
   - openjdk21

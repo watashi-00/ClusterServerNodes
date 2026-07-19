@@ -1,8 +1,8 @@
 package hexacloud.core.cluster;
 
 import hexacloud.core.config.EnvLoader;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.RateLimiter;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.network.RateLimiter;
 
 public class ClusterSecurityManager {
 

@@ -7,11 +7,12 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
+import java.util.function.BiConsumer;
 
 import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.ThreadManager;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.concurrent.ThreadManager;
 
 /**
  * Concrete Telnet implementation of ServerTransport bound to a local port
@@ -48,11 +49,9 @@ public class TelnetTransport implements ServerTransport {
     }
 
     private void conn(Socket socket, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
-        try(
-            socket;
+        try{
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-        ) {
             String clientIp = socket.getInetAddress().getHostAddress();
 
             String line = in.readLine();
@@ -109,7 +108,7 @@ public class TelnetTransport implements ServerTransport {
                 args = tokens.length > 2 ? (firstTokenArgs + " " + tokens[2].trim()).trim() : firstTokenArgs;
             }
 
-            var handler = targetRegistry.getRoutes().get(command);
+            BiConsumer<String, PrintWriter> handler = targetRegistry.getRoutes().get(command);
 
             if(handler == null) {
                 DebugUtils.error("Telnet: Unknown command '" + command + "' received from client.");
@@ -123,6 +122,12 @@ public class TelnetTransport implements ServerTransport {
             
         } catch(IOException ex) {
             DebugUtils.error("Failed to process request from client", ex);
+        } finally {
+            try {
+                socket.close();
+            } catch(IOException ex) {
+                DebugUtils.error("Failed to close client socket", ex);
+            }
         }
     }
 

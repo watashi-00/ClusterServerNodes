@@ -12,8 +12,8 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.model.PingResult;
 import hexacloud.core.ports.PingClientPort;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.ThreadManager;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.concurrent.ThreadManager;
 import hexacloud.core.config.ClusterConfig;
 
 /**
@@ -28,7 +28,7 @@ public class MultiProtocolPingAdapter implements PingClientPort {
     public MultiProtocolPingAdapter() {
         this.client = HttpClient.newBuilder()
             .connectTimeout(ClusterConfig.HTTP_CONNECT_TIMEOUT)
-            .version(ClusterConfig.HTTP_VERSION)
+            .version(ClusterConfig.HTTP_VERSION.resolveHttpVersion(ClusterConfig.HTTP_VERSION))
             .executor(ThreadManager.newVirtualThreadPool())
             .build();
     }
@@ -38,15 +38,15 @@ public class MultiProtocolPingAdapter implements PingClientPort {
         String uriStr = node.getFullHost();
 
         switch (node.pingProtocol()) {
-            case NONE -> {
+            case NONE: {
                 setNode(node);
                 return CompletableFuture.completedFuture(new PingResult(node.status(), false));
             }
-            case WEBSOCKET -> {return fetchWsPingAsync(clusterName, node, uriStr);}
-            case TCP -> {return fetchTcpPingAsync(clusterName, node, uriStr);}
-            case UDP -> {return fetchUdpPingAsync(clusterName, node, uriStr);}
-            case GRPC -> {return fetchGrpcPingAsync(clusterName, node, uriStr);}
-            default -> {}
+            case WEBSOCKET: {return fetchWsPingAsync(clusterName, node, uriStr);}
+            case TCP: {return fetchTcpPingAsync(clusterName, node, uriStr);}
+            case UDP: {return fetchUdpPingAsync(clusterName, node, uriStr);}
+            case GRPC: {return fetchGrpcPingAsync(clusterName, node, uriStr);}
+            default: {}
         };
 
         // Standard HTTP fallback

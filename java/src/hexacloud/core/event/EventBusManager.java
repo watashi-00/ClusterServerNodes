@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 
 public class EventBusManager {
     private static final EventBusManager GLOBAL = new EventBusManager();
@@ -46,7 +46,7 @@ public class EventBusManager {
         }
 
         if(listeners != null) {
-            for(var listener : listeners) {
+            for(EventListener<?> listener : listeners) {
                 ((EventListener<T>) listener).onEvent(event);
             }
         }

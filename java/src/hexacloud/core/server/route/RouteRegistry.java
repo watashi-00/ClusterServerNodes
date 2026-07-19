@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 
 public class RouteRegistry {
 

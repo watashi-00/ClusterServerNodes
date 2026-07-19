@@ -74,8 +74,22 @@ if [ "${BUILD_NATIVE}" -ne 0 ]; then
     fi
 fi
 
-# Compile Java sources
-find java/src -name "*.java" -print0 | xargs -0 "${JAVAC_BIN}" -d "${OUTDIR}"
+# Parse arguments for Java 8 target
+MODE="java21"
+for arg in "$@"; do
+    if [ "$arg" = "java8" ] || [ "$arg" = "--java8" ]; then
+        MODE="java8"
+    fi
+done
+
+# Compile Java sources via Maven to handle overlays correctly
+if [ "$MODE" = "java8" ]; then
+    echo "Compiling GateBridge for Java 8 using Maven..."
+    mvn clean compile -Pjava8
+else
+    echo "Compiling GateBridge for Java 21 using Maven..."
+    mvn clean compile
+fi
 
 # Launch GateBridge TerminalMain TUI Bootstrap
-"${JAVA_BIN}" -cp "${OUTDIR}" hexacloud.application.TerminalMain
+"${JAVA_BIN}" -cp target/classes hexacloud.application.TerminalMain

@@ -2,6 +2,7 @@ package hexacloud.application;
 
 import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;
+import hexacloud.core.event.EventFormat;
 import hexacloud.core.event.Subscribe;
 import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.model.PingProtocol;
@@ -11,8 +12,8 @@ import hexacloud.core.server.route.RouteMapping;
 import hexacloud.core.model.NodeStatus;
 import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.ports.RunningGatewayPort;
-import hexacloud.core.utils.DebugUtils;
-import hexacloud.core.utils.ThreadManager;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.concurrent.ThreadManager;
 import hexacloud.infra.gateway.GatewayFactory;
 
 import java.io.PrintWriter;
@@ -34,7 +35,7 @@ public class MinimalApplication {
 
     public void run() {
         // Enable log prints for maximum visibility in the console output
-        DebugUtils.setDebugEnabled(true);
+        DebugUtils.setDebugEnabled(false);
         System.out.println("=== Starting GateBridge Minimal Demo Application (No TUI) ===");
 
         // 1. Programmatic Bootstrapping with Fluent Config API
@@ -78,8 +79,8 @@ public class MinimalApplication {
         runningGateway.eventManager().dispatch(new ClusterEvent.NodeEventSubmitted(
             "http://localhost:3001",
             3001,
-            "HTTP",
-            "json",
+            PingProtocol.HTTP,
+            EventFormat.JSON,
             "bootstrap.ready",
             Map.of(
                 "source", "MinimalApplication",
@@ -137,7 +138,17 @@ public class MinimalApplication {
     // CUSTOM DISCOVERABLE EVENT SUBSYSTEM
     // ==========================================
 
-    public static record DeveloperCustomEvent(String message) implements Event {}
+    public static class DeveloperCustomEvent implements Event {
+        private final String message;
+
+        public DeveloperCustomEvent(String message) {
+            this.message = message;
+        }
+
+        public String message() {
+            return message;
+        }
+    }
 
     public static class DemoEventController implements EventController {
 

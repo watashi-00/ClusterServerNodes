@@ -10,7 +10,7 @@ import hexacloud.core.ports.RunningGatewayPort;
 import hexacloud.core.ports.NodeBuilderPort;
 import hexacloud.core.server.ServerManager;
 import hexacloud.infra.network.ThreadPingScheduler;
-import hexacloud.core.utils.DebugUtils;
+import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.cluster.ClusterRegistry;
 
@@ -167,7 +167,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
 
     private void autoRegisterEventListeners() {
         try {
-            java.util.List<Class<?>> controllers = hexacloud.core.utils.PathUtils.scanClasspathForImplementations(hexacloud.core.event.EventController.class);
+            java.util.List<Class<?>> controllers = hexacloud.core.utils.common.PathUtils.scanClasspathForImplementations(hexacloud.core.event.EventController.class);
             for (Class<?> clazz : controllers) {
                 try {
                     hexacloud.core.event.EventController listener = (hexacloud.core.event.EventController) clazz.getDeclaredConstructor().newInstance();

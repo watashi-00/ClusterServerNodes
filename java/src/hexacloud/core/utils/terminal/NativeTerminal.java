@@ -1,7 +1,8 @@
-package hexacloud.core.utils;
+package hexacloud.core.utils.terminal;
 
 import java.io.File;
 import java.io.FileWriter;
+import hexacloud.core.utils.concurrent.ThreadManager;
 
 public class NativeTerminal {
     private static boolean loaded = false;
@@ -206,14 +207,14 @@ public class NativeTerminal {
                     // Wait up to 50ms for the next bytes of the escape sequence to arrive
                     long start = System.currentTimeMillis();
                     while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
-                        Thread.onSpinWait();
+                        ThreadManager.spinWait();
                     }
                     if (System.in.available() > 0) {
                         int c2 = System.in.read();
                         if (c2 == '[') {
                             start = System.currentTimeMillis();
                             while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
-                                Thread.onSpinWait();
+                                ThreadManager.spinWait();
                             }
                             if (System.in.available() > 0) {
                                 int c3 = System.in.read();
@@ -282,40 +283,44 @@ public class NativeTerminal {
                 // Fallback
             }
         }
+        boolean ttySuccess = true;
+
+        int width = readTerminalDimension(new ProcessBuilder("sh", "-c", "tput cols < /dev/tty"),-1);
+        int height = readTerminalDimension(new ProcessBuilder("sh", "-c", "tput lines < /dev/tty"),-1);
+
+        if (width == -1 || height == -1) {
+            ttySuccess = false;
+        }
+
+        if (ttySuccess) {
+            cachedWidth = width;
+            cachedHeight = height;
+        } else {
+            cachedWidth = readTerminalDimension(
+                new ProcessBuilder("sh", "-c", "tput cols"),
+                cachedWidth
+            );
+
+            cachedHeight = readTerminalDimension(
+                new ProcessBuilder("sh", "-c", "tput lines"),
+                cachedHeight
+            );
+        }
+    }
+
+    private static int readTerminalDimension(ProcessBuilder processBuilder, int defaultValue) {
         try {
-            Process pCol = new ProcessBuilder("sh", "-c", "tput cols < /dev/tty").start();
-            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pCol.getInputStream()))) {
-                String line = r.readLine();
+            Process process = processBuilder.start();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(process.getInputStream()))) {
+                String line = reader.readLine();
                 if (line != null) {
-                    cachedWidth = Integer.parseInt(line.trim());
-                }
-            }
-            Process pLine = new ProcessBuilder("sh", "-c", "tput lines < /dev/tty").start();
-            try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pLine.getInputStream()))) {
-                String line = r.readLine();
-                if (line != null) {
-                    cachedHeight = Integer.parseInt(line.trim());
+                    process.waitFor();
+                    return Integer.parseInt(line.trim());
                 }
             }
         } catch (Exception e) {
-            try {
-                Process pCol = new ProcessBuilder("sh", "-c", "tput cols").start();
-                try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pCol.getInputStream()))) {
-                    String line = r.readLine();
-                    if (line != null) {
-                        cachedWidth = Integer.parseInt(line.trim());
-                    }
-                }
-                Process pLine = new ProcessBuilder("sh", "-c", "tput lines").start();
-                try (java.io.BufferedReader r = new java.io.BufferedReader(new java.io.InputStreamReader(pLine.getInputStream()))) {
-                    String line = r.readLine();
-                    if (line != null) {
-                        cachedHeight = Integer.parseInt(line.trim());
-                    }
-                }
-            } catch (Exception ex) {
-                // Keep defaults
-            }
+            // Ignore
         }
+        return defaultValue;
     }
 }
