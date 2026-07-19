@@ -68,11 +68,11 @@ public class JsonSerializerTest {
     }
 
     static class SubClass extends BaseClass {
-        private final String childField = "child";
+        final String childField = "child";
     }
 
     static class BaseClass {
-        private final int parentField = 42;
+        final int parentField = 42;
     }
 
     @Test
