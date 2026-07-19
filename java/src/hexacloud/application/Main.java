@@ -6,6 +6,7 @@ import hexacloud.core.utils.DebugUtils;
 import hexacloud.infra.gateway.GatewayFactory;
 import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;
+import hexacloud.core.event.EventFormat;
 import hexacloud.core.event.Subscribe;
 import hexacloud.core.cluster.event.ClusterEvent.NodeRegistered;
 import hexacloud.core.cluster.event.ClusterEvent.NodeEventSubmitted;
@@ -69,8 +70,8 @@ public class Main {
         runningGateway.eventManager().dispatch(new NodeEventSubmitted(
             "http://localhost:3001",
             3001,
-            "HTTP",
-            "json",
+            PingProtocol.HTTP,
+            EventFormat.JSON,
             "demo.boot",
             Collections.singletonMap("source", "Main")
         ));

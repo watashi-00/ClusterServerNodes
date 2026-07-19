@@ -2,6 +2,7 @@ package hexacloud.application;
 
 import hexacloud.core.event.Event;
 import hexacloud.core.event.EventController;
+import hexacloud.core.event.EventFormat;
 import hexacloud.core.event.Subscribe;
 import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.model.PingProtocol;
@@ -78,8 +79,8 @@ public class MinimalApplication {
         runningGateway.eventManager().dispatch(new ClusterEvent.NodeEventSubmitted(
             "http://localhost:3001",
             3001,
-            "HTTP",
-            "json",
+            PingProtocol.HTTP,
+            EventFormat.JSON,
             "bootstrap.ready",
             Map.of(
                 "source", "MinimalApplication",

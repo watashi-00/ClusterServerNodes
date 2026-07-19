@@ -175,8 +175,8 @@ public class WsTransport implements ServerTransport {
             .when(ClusterEvent.NodeEventSubmitted.class,
                 e -> "{\"type\":\"NodeEventSubmitted\",\"host\":\"" + json(e.host())
                     + "\",\"port\":" + e.port()
-                    + ",\"protocol\":\"" + json(e.protocol())
-                    + "\",\"format\":\"" + json(e.format())
+                    + ",\"protocol\":\"" + json(e.protocol().name())
+                    + "\",\"format\":\"" + json(e.format().toString())
                     + "\",\"event\":\"" + json(e.event())
                     + "\",\"attributes\":" + attributesJson(e.attributes()) + "}")
             .otherwise(e ->

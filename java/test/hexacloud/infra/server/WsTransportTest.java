@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Test;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.event.EventBusManager;
+import hexacloud.core.event.EventFormat;
+import hexacloud.core.model.PingProtocol;
 import hexacloud.core.server.route.RouteRegistry;
 
 public class WsTransportTest {
@@ -55,8 +57,8 @@ public class WsTransportTest {
             EventBusManager.getGlobal().dispatch(new ClusterEvent.NodeEventSubmitted(
                 "http://127.0.0.1:7001",
                 7001,
-                "HTTP",
-                "json",
+                PingProtocol.HTTP,
+                EventFormat.JSON,
                 "cache.warmed",
                 Collections.singletonMap("detail", "products")
             ));
