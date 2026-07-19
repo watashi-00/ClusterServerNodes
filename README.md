@@ -1,11 +1,13 @@
 # GateBridge
 
-[![Java Version](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
+[![Java 8](https://img.shields.io/badge/Java-8-orange.svg)](https://openjdk.org/)
+[![Java 11](https://img.shields.io/badge/Java-11-orange.svg)](https://openjdk.org/projects/jdk/11/)
+[![Java 17](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.org/projects/jdk/17/)
+[![Java 21](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
 [![Build Status](https://img.shields.io/badge/Build-Maven-blue.svg)](https://maven.apache.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Release Version](https://img.shields.io/badge/Release-1.0.0.2--beta-brightgreen.svg)](https://github.com/watashi-00/GateBridge/releases)
 
-GateBridge is an ultra-lightweight, zero-dependency, Java-based cluster gateway framework designed for microservices and cloud infrastructure. Built on a non-blocking virtual threading runtime (Java 21/Loom), it provides dynamic route and event autodiscovery, customizable route controllers, a pub/sub custom event bus, and an interactive DevOps Terminal Console (TUI) with real-time hardware telemetry and on-demand detach/reattach capabilities.
+GateBridge is a lightweight, zero-dependency Java cluster gateway framework featuring multi-protocol transports, Loom-based virtual threading (with seamless Java 8 compatibility overlays), dynamic autodiscovery, and an interactive DevOps TUI telemetry console.
 
 ---
 

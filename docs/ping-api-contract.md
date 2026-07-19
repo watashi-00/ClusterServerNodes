@@ -135,3 +135,37 @@ Instead of the Gateway actively pinging the service node (Pull-based), a service
   ```
   TELEMETRY localhost 3004 event=cache.warmed protocol=grpc format=json detail=products
   ```
+
+---
+
+## 5. Exposing Telemetry via JSON REST API
+
+To retrieve the real-time telemetry metrics of all registered nodes in a cluster via an HTTP JSON endpoint, you can query:
+
+- **Method:** `GET`
+- **URL Path:** `/clusters/<clusterName>/get_nodes_json`
+- **Port:** Base gateway port + 1 (e.g. `3001` if base port is `3000`).
+- **Headers:** `X-Cluster-Token: <token_secret>`
+- **Example Request URL:**
+  ```
+  http://localhost:3001/clusters/watashi-00/get_nodes_json
+  ```
+- **Example Response (`application/json`):**
+  ```json
+  [
+    {
+      "host": "http://localhost",
+      "port": 3004,
+      "status": "ONLINE",
+      "isExternal": false,
+      "pingProtocol": "HTTP",
+      "pingPath": "/",
+      "pingHeaderName": null,
+      "pingHeaderValue": null,
+      "latencyMs": 12,
+      "cpuUsage": 5.3,
+      "ramUsage": 42.1,
+      "runtime": "NodeJS"
+    }
+  ]
+  ```

@@ -53,16 +53,50 @@ function deregisterService(callback) {
     });
 }
 
+let wsClient = null;
+
+function connectToEventStream() {
+    if (typeof WebSocket === 'undefined') {
+        console.warn("[Node Node] Global WebSocket is not supported in this Node.js version. Upgrade to Node.js 22+ to enable real-time event streaming.");
+        return;
+    }
+
+    console.log(`[Node Node] Connecting to Gateway WebSocket Event Stream on port 3002...`);
+    wsClient = new WebSocket('ws://127.0.0.1:3002');
+
+    wsClient.onopen = () => {
+        console.log("[Node Node] WebSocket Handshake successful! Listening to real-time event stream...");
+    };
+
+    wsClient.onmessage = (event) => {
+        console.log(`\x1b[36m[Node Node] Event Received from Gateway:\x1b[0m ${event.data}`);
+    };
+
+    wsClient.onerror = (err) => {
+        console.error(`[Node Node] WebSocket connection error: ${err.message || err}`);
+    };
+
+    wsClient.onclose = () => {
+        console.log(`[Node Node] WebSocket event stream connection closed.`);
+    };
+}
+
 // 4. Start HTTP Server
 server.listen(PORT, () => {
     console.log(`[Node Node] Starting HTTP Mock Service on port ${PORT}...`);
     registerService();
+    connectToEventStream();
     console.log(`[Node Node] Service is ONLINE. Press Ctrl+C to exit and deregister.`);
 });
 
 // 5. Graceful shutdown
 process.on('SIGINT', () => {
     console.log('\n[Node Node] Shutting down...');
+    if (wsClient) {
+        try {
+            wsClient.close();
+        } catch (e) {}
+    }
     deregisterService(() => {
         server.close(() => {
             console.log('[Node Node] Service stopped.');

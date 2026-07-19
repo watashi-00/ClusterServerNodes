@@ -7,6 +7,7 @@ import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.cluster.ClusterService;
 import hexacloud.core.cluster.TelemetryRequest;
 import hexacloud.core.model.ServerNode;
+import hexacloud.core.utils.json.JsonSerializer;
 
 public class ClusterController implements RouteController {
 
@@ -142,5 +143,11 @@ public class ClusterController implements RouteController {
         } catch (NumberFormatException e) {
             out.println("ERROR: Invalid format.");
         }
+    }
+
+    @RouteMapping("GET_NODES_JSON")
+    public void getNodesJson(String args, PrintWriter out) {
+        String json = JsonSerializer.serialize(this.cluster.getCluster());
+        out.println(json);
     }
 }

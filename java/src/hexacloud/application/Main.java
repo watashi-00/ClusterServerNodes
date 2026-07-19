@@ -34,7 +34,7 @@ public class Main {
             .enableHttp(true)
             .enableWs(true)
             .registerController(new CustomAppController())
-            .requireToken(true, "developer-secret-token")
+            .requireToken(true, "watashi_secretKey")
             .rateLimit(200, 60)
             .allowedIps("127.0.0.1")
             .timeout(4500);
@@ -43,7 +43,7 @@ public class Main {
         // both the pull-based ping side and the new event submission contract.
         builder.registerServer(new ServerNode(
                 "http://localhost", 3001, NodeStatus.OFFLINE, false,
-                PingProtocol.HTTP, "/health", "Authorization", "Bearer developer-secret-token"
+                PingProtocol.HTTP, "/health", "X-Cluster-Token", "watashi_secretKey"
             ))
             .registerServer(new ServerNode(
                 "http://localhost", 3002, NodeStatus.OFFLINE, false,

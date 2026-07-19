@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>GateBridge Core Framework</name>
-    <description>Lightweight cluster gateway, TUI telemetry console, and event handling library</description>
+    <description>Lightweight, zero-dependency Java cluster gateway framework featuring multi-protocol transports, Loom-based virtual threading, dynamic autodiscovery, and an interactive DevOps TUI telemetry console.</description>
 
     <repositories>
         <repository>
