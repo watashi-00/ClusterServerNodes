@@ -17,95 +17,90 @@ public class JsonSerializer {
         if (obj == null) {
             return "null";
         }
-        if (obj instanceof String) {
-            return "\"" + escapeJson((String) obj) + "\"";
-        }
-        if (obj instanceof Character) {
-            return "\"" + escapeJson(obj.toString()) + "\"";
-        }
-        if (obj instanceof Number || obj instanceof Boolean) {
-            return obj.toString();
-        }
-        if (obj instanceof Enum) {
-            return "\"" + obj.toString() + "\"";
-        }
-        if (obj instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) obj;
-            StringBuilder sb = new StringBuilder();
-            sb.append("{");
-            boolean first = true;
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (!first) {
-                    sb.append(",");
-                }
-                first = false;
-                String keyStr = entry.getKey() == null ? "null" : entry.getKey().toString();
-                sb.append("\"").append(escapeJson(keyStr)).append("\":");
-                sb.append(serialize(entry.getValue()));
-            }
-            sb.append("}");
-            return sb.toString();
-        }
-        if (obj instanceof Iterable) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("[");
-            boolean first = true;
-            for (Object item : (Iterable<?>) obj) {
-                if (!first) {
-                    sb.append(",");
-                }
-                first = false;
-                sb.append(serialize(item));
-            }
-            sb.append("]");
-            return sb.toString();
-        }
-        if (obj.getClass().isArray()) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("[");
-            int length = Array.getLength(obj);
-            for (int i = 0; i < length; i++) {
-                if (i > 0) {
-                    sb.append(",");
-                }
-                sb.append(serialize(Array.get(obj, i)));
-            }
-            sb.append("]");
-            return sb.toString();
-        }
 
-        // Serialization of standard objects/DTOs via reflection
-        try {
-            StringBuilder sb = new StringBuilder();
-            sb.append("{");
-            boolean first = true;
-            Class<?> clazz = obj.getClass();
-            while (clazz != null && clazz != Object.class) {
-                Field[] fields = clazz.getDeclaredFields();
-                for (Field field : fields) {
-                    int modifiers = field.getModifiers();
-                    if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) {
-                        continue;
-                    }
-                    if (field.isSynthetic()) {
-                        continue;
-                    }
+        return Casts.<String>matchValue(obj)
+            .when(String.class, s -> "\"" + escapeJson(s) + "\"")
+            .when(Character.class, c -> "\"" + escapeJson(c.toString()) + "\"")
+            .when(Number.class, n -> n.toString())
+            .when(Boolean.class, b -> b.toString())
+            .when(Enum.class, e -> "\"" + e.toString() + "\"")
+            .when(Map.class, map -> {
+                StringBuilder sb = new StringBuilder();
+                sb.append("{");
+                boolean first = true;
+                for (Map.Entry<?, ?> entry : ((Map<?, ?>) map).entrySet()) {
                     if (!first) {
                         sb.append(",");
                     }
                     first = false;
-                    field.setAccessible(true);
-                    Object val = field.get(obj);
-                    sb.append("\"").append(escapeJson(field.getName())).append("\":");
-                    sb.append(serialize(val));
+                    String keyStr = entry.getKey() == null ? "null" : entry.getKey().toString();
+                    sb.append("\"").append(escapeJson(keyStr)).append("\":");
+                    sb.append(serialize(entry.getValue()));
                 }
-                clazz = clazz.getSuperclass();
-            }
-            sb.append("}");
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize object to JSON via reflection", e);
-        }
+                sb.append("}");
+                return sb.toString();
+            })
+            .when(Iterable.class, iter -> {
+                StringBuilder sb = new StringBuilder();
+                sb.append("[");
+                boolean first = true;
+                for (Object item : iter) {
+                    if (!first) {
+                        sb.append(",");
+                    }
+                    first = false;
+                    sb.append(serialize(item));
+                }
+                sb.append("]");
+                return sb.toString();
+            })
+            .otherwise(other -> {
+                if (other.getClass().isArray()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("[");
+                    int length = Array.getLength(other);
+                    for (int i = 0; i < length; i++) {
+                        if (i > 0) {
+                            sb.append(",");
+                        }
+                        sb.append(serialize(Array.get(other, i)));
+                    }
+                    sb.append("]");
+                    return sb.toString();
+                }
+
+                try {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("{");
+                    boolean first = true;
+                    Class<?> clazz = other.getClass();
+                    while (clazz != null && clazz != Object.class) {
+                        Field[] fields = clazz.getDeclaredFields();
+                        for (Field field : fields) {
+                            int modifiers = field.getModifiers();
+                            if (Modifier.isStatic(modifiers) || Modifier.isTransient(modifiers)) {
+                                continue;
+                            }
+                            if (field.isSynthetic()) {
+                                continue;
+                            }
+                            if (!first) {
+                                sb.append(",");
+                            }
+                            first = false;
+                            field.setAccessible(true);
+                            Object val = field.get(other);
+                            sb.append("\"").append(escapeJson(field.getName())).append("\":");
+                            sb.append(serialize(val));
+                        }
+                        clazz = clazz.getSuperclass();
+                    }
+                    sb.append("}");
+                    return sb.toString();
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to serialize object to JSON via reflection", e);
+                }
+            });
     }
 
     /**
