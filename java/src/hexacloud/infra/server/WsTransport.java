@@ -72,6 +72,7 @@ public class WsTransport implements ServerTransport {
     }
 
     private void acceptClient(Socket socket) {
+        ClientConnection client = null;
         try {
             Map<String, String> headers = readHandshakeHeaders(socket.getInputStream());
             String key = headers.get("sec-websocket-key");
@@ -90,22 +91,40 @@ public class WsTransport implements ServerTransport {
             out.write(response.getBytes(StandardCharsets.US_ASCII));
             out.flush();
 
-            ClientConnection client = new ClientConnection(socket, out);
+            client = new ClientConnection(socket, out);
             clients.add(client);
             Map<String, Object> connected = new LinkedHashMap<>();
             connected.put("type", "Connected");
             connected.put("message", "GateBridge WebSocket event stream connected");
             client.send(JsonSerializer.serialize(connected));
             waitForClientClose(socket);
-            clients.remove(client);
-            client.close();
         } catch (Exception e) {
-            DebugUtils.error("WebSocket Transport failed to accept client", e);
-            try {
-                socket.close();
-            } catch (IOException ignored) {
+            if (running && !isNormalDisconnect(e)) {
+                DebugUtils.error("WebSocket Transport failed to accept client", e);
+            }
+        } finally {
+            if (client != null) {
+                clients.remove(client);
+                client.close();
+            } else {
+                try {
+                    socket.close();
+                } catch (IOException ignored) {
+                }
             }
         }
+    }
+
+    private boolean isNormalDisconnect(Throwable e) {
+        if (e instanceof SocketException) {
+            String msg = e.getMessage();
+            if (msg != null) {
+                String lower = msg.toLowerCase(Locale.ROOT);
+                return lower.contains("socket closed") || lower.contains("connection reset") || lower.contains("broken pipe");
+            }
+            return true;
+        }
+        return false;
     }
 
     private Map<String, String> readHandshakeHeaders(InputStream input) throws IOException {
@@ -141,9 +160,7 @@ public class WsTransport implements ServerTransport {
                 }
             }
         } catch (SocketException e) {
-            if (running && !socket.isClosed()) {
-                throw e;
-            }
+            // Handled as normal socket close
         }
     }
 

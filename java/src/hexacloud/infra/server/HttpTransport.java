@@ -34,6 +34,17 @@ public class HttpTransport implements ServerTransport {
             server.createContext("/", new HttpHandler() {
                 @Override
                 public void handle(HttpExchange exchange) throws IOException {
+                    // CORS Configuration
+                    exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+                    exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
+                    exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "X-Cluster-Token, Content-Type, Authorization");
+
+                    // Handle preflight OPTIONS requests
+                    if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                        exchange.sendResponseHeaders(204, -1);
+                        return;
+                    }
+
                     String clientIp = exchange.getRemoteAddress().getAddress().getHostAddress();
                     String rawPath = exchange.getRequestURI().getPath();
                     hexacloud.core.cluster.Cluster targetCluster = cluster;
