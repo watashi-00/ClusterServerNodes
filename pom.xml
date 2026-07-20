@@ -41,7 +41,8 @@
         <overlay.dir.17>java/src-java17</overlay.dir.17>
         <overlay.dir.8>java/src-java8</overlay.dir.8>
 
-        <!-- Dependency Versions -->
+        <!-- Dependency / Plugin Versions -->
+        <source-overlay-plugin.version>1.0.5</source-overlay-plugin.version>
         <slf4j.version>2.0.12</slf4j.version>
         <junit.version>5.10.2</junit.version>
         <mockito.version>5.14.2</mockito.version>
@@ -147,7 +148,7 @@
             <plugin>
                 <groupId>com.github.watashi-00</groupId>
                 <artifactId>source-overlay-plugin</artifactId>
-                <version>1.0.4</version>
+                <version>${source-overlay-plugin.version}</version>
                 <configuration>
                     <mainSources>${project.sources.dir.default}</mainSources>
                     <generatedSources>target/generated-sources/overlay</generatedSources>
