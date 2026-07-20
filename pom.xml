@@ -29,6 +29,19 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.sources.dir>java/src</project.sources.dir>
+        <project.sources.dir.default>java/src</project.sources.dir.default>
+
+        <!-- Java Versions -->
+        <java.version.8>1.8</java.version.8>
+        <java.version.8.overlay>8</java.version.8.overlay>
+        <java.version.17>17</java.version.17>
+        <java.version.21>21</java.version.21>
+
+        <!-- Overlay Directories -->
+        <overlay.dir.17>java/src-java17</overlay.dir.17>
+        <overlay.dir.8>java/src-java8</overlay.dir.8>
+
+        <!-- Dependency Versions -->
         <slf4j.version>2.0.12</slf4j.version>
         <junit.version>5.10.2</junit.version>
         <mockito.version>5.14.2</mockito.version>
@@ -134,21 +147,21 @@
             <plugin>
                 <groupId>com.github.watashi-00</groupId>
                 <artifactId>source-overlay-plugin</artifactId>
-                <version>1.0.5</version>
+                <version>1.0.4</version>
                 <configuration>
-                    <mainSources>java/src</mainSources>
+                    <mainSources>${project.sources.dir.default}</mainSources>
                     <generatedSources>target/generated-sources/overlay</generatedSources>
                     <excludes>
                         <exclude>hexacloud/application</exclude>
                     </excludes>
                     <overlays>
                         <overlay>
-                            <jdkVersion>17</jdkVersion>
-                            <directory>java/src-java17</directory>
+                            <jdkVersion>${java.version.17}</jdkVersion>
+                            <directory>${overlay.dir.17}</directory>
                         </overlay>
                         <overlay>
-                            <jdkVersion>8</jdkVersion>
-                            <directory>java/src-java8</directory>
+                            <jdkVersion>${java.version.8.overlay}</jdkVersion>
+                            <directory>${overlay.dir.8}</directory>
                         </overlay>
                     </overlays>
                 </configuration>
