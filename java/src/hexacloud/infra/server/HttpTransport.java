@@ -70,6 +70,7 @@ public class HttpTransport implements ServerTransport {
 
                     if (targetCluster == null) {
                         String response = "404 Not Found - Cluster Not Found";
+                        exchange.getResponseHeaders().set(HttpHeader.CONNECTION.value(), "close");
                         exchange.sendResponseHeaders(404, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
                             os.write(response.getBytes());
@@ -79,6 +80,7 @@ public class HttpTransport implements ServerTransport {
 
                     if(!targetCluster.isIpAllowed(clientIp)) {
                         String response = "403 Forbidden - IP Not Allowed";
+                        exchange.getResponseHeaders().set(HttpHeader.CONNECTION.value(), "close");
                         exchange.sendResponseHeaders(403, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
                             os.write(response.getBytes());
@@ -88,6 +90,7 @@ public class HttpTransport implements ServerTransport {
 
                     if(!targetCluster.checkRateLimit(clientIp)) {
                         String response = "429 Too Many Requests";
+                        exchange.getResponseHeaders().set(HttpHeader.CONNECTION.value(), "close");
                         exchange.getResponseHeaders().set(HttpHeader.RETRY_AFTER.value(), "10");
                         exchange.sendResponseHeaders(429, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
@@ -111,6 +114,7 @@ public class HttpTransport implements ServerTransport {
 
                     if(!targetCluster.authenticate(token)) {
                         String response = "401 Unauthorized - Invalid or Missing API Token";
+                        exchange.getResponseHeaders().set(HttpHeader.CONNECTION.value(), "close");
                         exchange.sendResponseHeaders(401, response.length());
                         try(OutputStream os = exchange.getResponseBody()) {
                             os.write(response.getBytes());
