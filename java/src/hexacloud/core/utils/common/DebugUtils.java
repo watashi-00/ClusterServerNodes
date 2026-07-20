@@ -237,7 +237,7 @@ public class DebugUtils {
                 .when(java.io.IOException.class, e -> (e.getMessage() != null && e.getMessage().contains("timed out")) ? " -> Connection timeout" : null)
                 .orElse(" -> " + cause.toString());
             
-            if (isNormalNetworkException(cause)) {
+            if (isNormalNetworkException(t)) {
                 captureLog(LogLevel.ERROR, clusterName, serviceHost, message + details, null);
             } else {
                 captureLog(LogLevel.ERROR, clusterName, serviceHost, message + details, t);
@@ -248,30 +248,34 @@ public class DebugUtils {
     }
 
     private static boolean isNormalNetworkException(Throwable t) {
-        if (t == null) return false;
-        Throwable cause = t.getCause() != null ? t.getCause() : t;
-
-        if (cause instanceof java.net.ConnectException ||
-            cause instanceof java.net.SocketTimeoutException ||
-            cause instanceof java.net.UnknownHostException ||
-            cause instanceof java.util.concurrent.TimeoutException) {
-            return true;
-        }
-
-        String className = cause.getClass().getName();
-        if (className.equals("java.net.http.HttpConnectTimeoutException") ||
-            className.equals("java.net.http.HttpTimeoutException")) {
-            return true;
-        }
-
-        if (cause instanceof java.io.IOException) {
-            String msg = cause.getMessage();
-            if (msg != null) {
-                String lower = msg.toLowerCase(java.util.Locale.ROOT);
-                return lower.contains("timed out") || lower.contains("connection refused") || lower.contains("broken pipe") || lower.contains("socket closed");
+        Throwable current = t;
+        while (current != null) {
+            if (current instanceof java.net.ConnectException ||
+                current instanceof java.net.SocketTimeoutException ||
+                current instanceof java.net.UnknownHostException ||
+                current instanceof java.util.concurrent.TimeoutException ||
+                current instanceof java.nio.channels.ClosedChannelException) {
+                return true;
             }
-        }
 
+            String className = current.getClass().getName();
+            if (className.equals("java.net.http.HttpConnectTimeoutException") ||
+                className.equals("java.net.http.HttpTimeoutException")) {
+                return true;
+            }
+
+            if (current instanceof java.io.IOException) {
+                String msg = current.getMessage();
+                if (msg != null) {
+                    String lower = msg.toLowerCase(java.util.Locale.ROOT);
+                    if (lower.contains("timed out") || lower.contains("connection refused") || lower.contains("broken pipe") || lower.contains("socket closed")) {
+                        return true;
+                    }
+                }
+            }
+
+            current = current.getCause();
+        }
         return false;
     }
 }
