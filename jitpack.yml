@@ -1,5 +1,8 @@
 install:
   - |
+    if [ ! -z "$RELEASE_TAG" ]; then
+      mvn versions:set -DnewVersion=$RELEASE_TAG
+    fi
     if [[ $RELEASE_TAG == *"jdk8" ]]; then
       mvn install -Pjava8 -Dmaven.test.skip=true
     elif [[ $RELEASE_TAG == *"jdk21" ]]; then
