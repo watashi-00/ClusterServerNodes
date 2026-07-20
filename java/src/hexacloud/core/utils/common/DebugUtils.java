@@ -236,9 +236,42 @@ public class DebugUtils {
                 .when(java.net.ConnectException.class, e -> " -> Connection refused")
                 .when(java.io.IOException.class, e -> (e.getMessage() != null && e.getMessage().contains("timed out")) ? " -> Connection timeout" : null)
                 .orElse(" -> " + cause.toString());
-            captureLog(LogLevel.ERROR, clusterName, serviceHost, message + details, t);
+            
+            if (isNormalNetworkException(cause)) {
+                captureLog(LogLevel.ERROR, clusterName, serviceHost, message + details, null);
+            } else {
+                captureLog(LogLevel.ERROR, clusterName, serviceHost, message + details, t);
+            }
         } else {
             captureLog(LogLevel.ERROR, clusterName, serviceHost, message, null);
         }
+    }
+
+    private static boolean isNormalNetworkException(Throwable t) {
+        if (t == null) return false;
+        Throwable cause = t.getCause() != null ? t.getCause() : t;
+
+        if (cause instanceof java.net.ConnectException ||
+            cause instanceof java.net.SocketTimeoutException ||
+            cause instanceof java.net.UnknownHostException ||
+            cause instanceof java.util.concurrent.TimeoutException) {
+            return true;
+        }
+
+        String className = cause.getClass().getName();
+        if (className.equals("java.net.http.HttpConnectTimeoutException") ||
+            className.equals("java.net.http.HttpTimeoutException")) {
+            return true;
+        }
+
+        if (cause instanceof java.io.IOException) {
+            String msg = cause.getMessage();
+            if (msg != null) {
+                String lower = msg.toLowerCase(java.util.Locale.ROOT);
+                return lower.contains("timed out") || lower.contains("connection refused") || lower.contains("broken pipe") || lower.contains("socket closed");
+            }
+        }
+
+        return false;
     }
 }
