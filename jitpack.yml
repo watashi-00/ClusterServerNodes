@@ -1,11 +1,13 @@
 install:
   - |
-    if [ ! -z "$RELEASE_TAG" ]; then
-      mvn versions:set -DnewVersion=$RELEASE_TAG
+    if [ ! -z "$VERSION" ]; then
+      mvn versions:set -DnewVersion=$VERSION
     fi
-    if [[ $RELEASE_TAG == *"jdk8" ]]; then
+    if [[ $VERSION == *"jdk8" ]]; then
       mvn install -Pjava8 -Dmaven.test.skip=true
-    elif [[ $RELEASE_TAG == *"jdk21" ]]; then
+    elif [[ $VERSION == *"jdk17" ]]; then
+      mvn install -Pjava17 -DskipTests
+    elif [[ $VERSION == *"jdk21" ]]; then
       mvn install -Pjava21 -DskipTests
     fi
 
