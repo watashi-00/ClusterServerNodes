@@ -35,7 +35,7 @@ The workflow runs **TWO parallel jobs** (one for Java 8, one for Java 21):
    └─> Triggers maven.compiler.release=8
    └─> Triggers SourceOverlayMojo (GENERATE_SOURCES phase)
        ├─> Copies java/src/ → target/generated-sources/overlay
-       └─> Overlays java/src-java8/ → target/generated-sources/overlay
+       └─> Applies java/src-java17/ and java/src-java8/ sequentially (cascading overlays)
    └─> Compiles from target/generated-sources/overlay
    └─> Produces bytecode compatible with Java 8 (major version 52)
 4. Version computation: 1.0.0.5-beta-jdk8

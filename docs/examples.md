@@ -40,7 +40,7 @@ public class AppBootstrap {
 
 ## Zero-Configuration Dynamic Startup
 
-If your gateway state is already persisted inside `java/resources/hexacloud-state.properties`, you can bootstrap the entire monitor and gateway server network with a single line of code:
+If your gateway state is already persisted inside `.state/hexacloud-state.properties`, you can bootstrap the entire monitor and gateway server network with a single line of code:
 
 ```java
 import hexacloud.core.tui.TerminalUiFactory;
@@ -57,8 +57,8 @@ public class PureTerminalLauncher {
 The repository contains concrete client nodes written in various languages inside the [`show_case/`](../show_case/) folder to simulate real production service workloads:
 
 ### 1. Node.js Client Node (`node_node.js`)
-*   **Protocol:** Connects to the gateway via a Telnet TCP socket connection.
-*   **Functionality:** Registers itself by sending dynamic command lines and spins up a local HTTP listener on port `4001` that answers health pings.
+*   **Protocol:** Persistent WebSocket connection (built-in Node `WebSocket` client).
+*   **Functionality:** Establishes a persistent connection to the Gateway's WebSocket event stream (on port `base_port + 2`) to receive and display real-time push telemetry and custom events.
 *   **Command:** `node show_case/node_node.js`
 
 ### 2. Python Client Node (`python_node.py`)
