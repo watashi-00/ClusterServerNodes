@@ -105,6 +105,8 @@ public class TcpProxyTransport implements ServerTransport {
             int timeout = cluster.getTimeoutMs() > 0 ? cluster.getTimeoutMs() : 5000;
             nodeSocket = new Socket();
             nodeSocket.connect(new InetSocketAddress(targetHost, targetPort), timeout);
+            nodeSocket.setSoTimeout(timeout);
+            clientSocket.setSoTimeout(timeout);
             long latencyMs = System.currentTimeMillis() - startTime;
 
             // Update passive telemetry & latency metric

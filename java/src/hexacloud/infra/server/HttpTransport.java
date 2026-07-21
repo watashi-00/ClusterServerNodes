@@ -255,19 +255,27 @@ public class HttpTransport implements ServerTransport {
 
                                     // Send response status and body
                                     if (respIn != null) {
-                                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                                        byte[] buf = new byte[8192];
-                                        int len;
-                                        while ((len = respIn.read(buf)) != -1) {
-                                            baos.write(buf, 0, len);
+                                        try {
+                                            long contentLength = conn.getContentLengthLong();
+                                            if (respCode == 204 || respCode == 304 || contentLength == 0) {
+                                                exchange.sendResponseHeaders(respCode, -1);
+                                            } else {
+                                                // Chunked streaming for body
+                                                exchange.sendResponseHeaders(respCode, 0);
+                                                try (OutputStream os = exchange.getResponseBody()) {
+                                                    byte[] buf = new byte[8192];
+                                                    int len;
+                                                    while ((len = respIn.read(buf)) != -1) {
+                                                        os.write(buf, 0, len);
+                                                    }
+                                                    os.flush();
+                                                }
+                                            }
+                                        } finally {
+                                            try {
+                                                respIn.close();
+                                            } catch (IOException ignored) {}
                                         }
-                                        byte[] respBytes = baos.toByteArray();
-                                        exchange.sendResponseHeaders(respCode, respBytes.length);
-                                        try (OutputStream os = exchange.getResponseBody()) {
-                                            os.write(respBytes);
-                                            os.flush();
-                                        }
-                                        respIn.close();
                                     } else {
                                         if (respCode == 502) {
                                             byte[] respBytes = "502 Bad Gateway - Connection failed".getBytes(java.nio.charset.StandardCharsets.UTF_8);
