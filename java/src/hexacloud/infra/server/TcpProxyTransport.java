@@ -45,15 +45,29 @@ public class TcpProxyTransport implements ServerTransport {
             serverSocket = new ServerSocket(port);
             running = true;
             DebugUtils.info("TcpProxyTransport successfully bound and listening on port " + port);
-
-            while (active && !serverSocket.isClosed()) {
-                Socket clientSocket = serverSocket.accept();
-                activeSockets.add(clientSocket);
-                ThreadManager.startVirtual("TcpProxy-Handler-" + clientSocket.getRemoteSocketAddress(), () -> handleConnection(clientSocket, cluster));
-            }
         } catch (IOException ex) {
-            if (active) {
-                DebugUtils.error("TcpProxyTransport failed on port " + port, ex);
+            DebugUtils.error("TcpProxyTransport failed to bind on port " + port, ex);
+            running = false;
+            return;
+        }
+
+        try {
+            while (active && !serverSocket.isClosed()) {
+                try {
+                    Socket clientSocket = serverSocket.accept();
+                    activeSockets.add(clientSocket);
+                    ThreadManager.startVirtual("TcpProxy-Handler-" + clientSocket.getRemoteSocketAddress(), () -> handleConnection(clientSocket, cluster));
+                } catch (IOException ex) {
+                    if (active && !serverSocket.isClosed()) {
+                        DebugUtils.error("TcpProxyTransport transient error accepting connection on port " + port, ex);
+                        try {
+                            Thread.sleep(50); // Pause to prevent busy-spinning
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                }
             }
         } finally {
             running = false;
@@ -106,12 +120,17 @@ public class TcpProxyTransport implements ServerTransport {
             OutputStream nodeOut = finalNodeSocket.getOutputStream();
 
             // Bidirectional tunneling using virtual threads
-            Thread t1 = ThreadManager.startVirtual("TcpProxy-ClientToNode", () -> tunnel(clientIn, nodeOut, clientSocket, finalNodeSocket));
-            Thread t2 = ThreadManager.startVirtual("TcpProxy-NodeToClient", () -> tunnel(nodeIn, clientOut, clientSocket, finalNodeSocket));
+            Thread t1 = ThreadManager.startVirtual("TcpProxy-ClientToNode", () -> tunnel(clientIn, nodeOut, finalNodeSocket));
+            Thread t2 = ThreadManager.startVirtual("TcpProxy-NodeToClient", () -> tunnel(nodeIn, clientOut, clientSocket));
 
             // Wait for both tunneling threads to finish so cleanup can unregister active sockets
-            t1.join();
-            t2.join();
+            try {
+                t1.join();
+                t2.join();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                DebugUtils.log("TcpProxyTransport: Connection handler thread was interrupted.");
+            }
 
         } catch (Exception e) {
             DebugUtils.error("TcpProxyTransport: Exception during socket proxying", e);
@@ -125,7 +144,7 @@ public class TcpProxyTransport implements ServerTransport {
         }
     }
 
-    private void tunnel(InputStream in, OutputStream out, Socket s1, Socket s2) {
+    private void tunnel(InputStream in, OutputStream out, Socket outSocket) {
         byte[] buffer = new byte[8192];
         try {
             int bytesRead;
@@ -135,8 +154,11 @@ public class TcpProxyTransport implements ServerTransport {
             }
         } catch (IOException ignored) {
         } finally {
-            closeQuietly(s1);
-            closeQuietly(s2);
+            try {
+                if (outSocket != null && !outSocket.isClosed() && !outSocket.isOutputShutdown()) {
+                    outSocket.shutdownOutput();
+                }
+            } catch (IOException ignored) {}
         }
     }
 
