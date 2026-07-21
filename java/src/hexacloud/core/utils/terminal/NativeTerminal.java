@@ -118,7 +118,7 @@ public class NativeTerminal {
         return false;
     }
 
-    public static void initTerminal() {
+    public static synchronized void initTerminal() {
         if (loaded) {
             try {
                 initTerminal0();
@@ -142,7 +142,7 @@ public class NativeTerminal {
         }
     }
 
-    public static void resetTerminal() {
+    public static synchronized void resetTerminal() {
         if (loaded) {
             try {
                 resetTerminal0();
@@ -164,7 +164,7 @@ public class NativeTerminal {
         }
     }
 
-    public static void clearScreen() {
+    public static synchronized void clearScreen() {
         if (loaded) {
             try {
                 clearScreen0();
@@ -178,7 +178,7 @@ public class NativeTerminal {
         System.out.flush();
     }
 
-    public static void printAt(int x, int y, String text) {
+    public static synchronized void printAt(int x, int y, String text) {
         if (loaded) {
             try {
                 printAt0(x, y, text);
@@ -192,7 +192,7 @@ public class NativeTerminal {
         System.out.flush();
     }
 
-    public static int readKey() {
+    public static synchronized int readKey() {
         if (loaded) {
             try {
                 return readKey0();
@@ -234,7 +234,7 @@ public class NativeTerminal {
         return -1;
     }
 
-    public static boolean saveConfig(String filepath, String content) {
+    public static synchronized boolean saveConfig(String filepath, String content) {
         if (loaded) {
             try {
                 return saveConfig0(filepath, content);
@@ -254,17 +254,17 @@ public class NativeTerminal {
     private static int cachedHeight = 24;
     private static long lastSizeCheck = 0;
 
-    public static int getTerminalWidth() {
+    public static synchronized int getTerminalWidth() {
         updateTerminalSize();
-        return cachedWidth;
+        return Math.max(20, cachedWidth);
     }
 
-    public static int getTerminalHeight() {
+    public static synchronized int getTerminalHeight() {
         updateTerminalSize();
-        return cachedHeight;
+        return Math.max(5, cachedHeight);
     }
 
-    private static synchronized void updateTerminalSize() {
+    private static void updateTerminalSize() {
         long now = System.currentTimeMillis();
         if (now - lastSizeCheck < 200) {
             return;
