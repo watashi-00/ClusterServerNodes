@@ -16,12 +16,22 @@ GateBridge is a lightweight Java cluster gateway framework featuring multi-proto
 GateBridge offers a complete suite of modular internal services designed to run on resource-constrained environments (like 1GB RAM vCPUs):
 
 ### 1. Multi-Protocol Gateway Transports (`ServerManager`)
-The framework can run three independent network services concurrently on a single base port:
+The framework can run four independent network services concurrently on a single base port:
 *   **Telnet Server:** High-speed line-based command execution port using raw sockets.
 *   **HTTP REST Server:** Exposes JSON APIs for metrics, cluster node lists, and control loops (runs on `base_port + 1`).
 *   **WebSocket Stream Server:** Pushes real-time JSON event streams (telemetry updates, node status changes) to clients (runs on `base_port + 2`).
+*   **TCP Proxy Load-Balancer:** Raw Layer 4 network load-balancer tunneling bytes bidirectionally to active cluster nodes using virtual threads (runs on `base_port + 3`).
 
-### 2. Virtual Thread Concurrency Engine (`ThreadManager`)
+### 2. Layer 7 HTTP Reverse Proxy Load-Balancer
+The HTTP REST Server (on `base_port + 1`) acts as a Layer 7 reverse proxy. When a client requests `/clusters/{clusterName}/{path}`, GateBridge automatically:
+*   Resolves the target cluster and selects an online node using thread-safe, overflow-safe Round-Robin index selection.
+*   Proxies the HTTP method, headers, and body, streaming the response back using chunked transfer encoding (`Transfer-Encoding: chunked`) to avoid memory-buffering OOM vulnerabilities.
+*   Passively measures connection latency and extracts CPU/RAM telemetry from response headers (`X-Telemetry-CPU`, `X-Telemetry-RAM`) to update node metrics dynamically.
+
+### 3. Layer 4 TCP Tunneling Load-Balancer
+The TCP Proxy (on `base_port + 3`) performs raw layer 4 connection load-balancing, forwarding TCP streams bidirectionally using virtual threads. It supports robust TCP half-close sequences via output shutdown, preserving active connections while recovering immediately on EOF or socket errors.
+
+### 4. Virtual Thread Concurrency Engine (`ThreadManager`)
 GateBridge leverages **Java 21 Virtual Threads (Loom)** for lightweight asynchronous execution:
 *   **Zero OS Thread Spawning:** Spawns virtual threads inside JVM Heap memory instead of heavy OS kernel threads.
 *   **Fixed Thread Footprint:** The entire JVM stays constrained to exactly **9 platform OS threads** (6 base JVM threads + 3 carrier threads), regardless of how many concurrent WebSocket clients connect or pings are scheduled.
@@ -61,33 +71,41 @@ Eliminates manual bootstrapping:
 *   **Event Auto-Discovery:** Automatically scans the classpath for classes implementing `EventController` and binds `@Subscribe` handlers.
 *   **Package-Scoped Scanning:** Restricts classpath scanning to the main application package to maintain sub-millisecond startup times.
 
-### 6. Programmatic Fluent API & Nested Node Builders
+### 7. Programmatic Fluent API & Nested Node Builders
 Configure gateways and nodes programmatically without properties files:
 ```java
-GatewayBuilderPort builder = GatewayFactory.createGateway("my-cluster")
+// Create a named Gateway for a named Cluster
+GatewayBuilderPort builder = GatewayFactory.createGateway("gateway-1", "my-cluster")
     .port(3000)
     .requireToken(true, "secret-token")
     .rateLimit(100, 60)
-    .allowedIps("127.0.0.1");
+    .allowedIps("127.0.0.1")
+    .enableTcpProxy(true); // Enable L4 TCP proxy load-balancing
 
-// Register a node using the fluent builder
-builder.registerNode("http://node-a", 8080)
+// Configure Cluster Routing Mode
+builder.getCluster().setRoutingMode(Cluster.RoutingMode.HYBRID);
+
+// Register a named node using the fluent builder
+builder.registerNode("node-a", "http://node-a", 8080)
     .pingEnabled(true)
     .pingPath("/healthz")
     .pingHeader("Authorization", "Bearer token-abc")
     .register();
+
+// Start listeners and explicitly launch health check pings
+RunningGatewayPort gateway = builder.listen().startPingScheduler();
 ```
 
-### 7. Asynchronous Health Ping Scheduler
+### 8. Asynchronous Health Ping Scheduler
 *   Decoupled, multi-threaded node monitoring via customizable HTTP/TCP health checks.
 *   Supports custom ping paths, custom headers, and external/internal node flags.
 *   Dispatches lifecycle event bus triggers immediately on node status transitions.
 
-### 8. Global Event Bus & Interceptor Subsystem
+### 9. Global Event Bus & Interceptor Subsystem
 *   Lightweight, high-performance publish-subscribe event system.
 *   Exposes **Global Event Interceptors** to capture, audit, or log all dispatched events globally, providing real-time hooks for logging and metrics.
 
-### 9. DevOps Terminal UI Dashboard (TUI)
+### 10. DevOps Terminal UI Dashboard (TUI)
 An interactive command center for cluster operations:
 *   **Live Metrics:** Real-time system resources monitor (RAM Allocation/Usage, CPU, and Thread breakdown).
 *   **Explicit Thread Classification:** Displays exactly how many OS threads belong to the application logic versus internal JVM daemon services (e.g. `OS Threads: 9 (App: 1)`).
