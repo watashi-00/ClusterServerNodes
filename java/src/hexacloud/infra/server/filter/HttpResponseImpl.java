@@ -19,6 +19,7 @@ public class HttpResponseImpl implements HttpResponse {
 
     @Override
     public void setStatus(int statusCode) {
+        if (committed) return;
         try {
             exchange.sendResponseHeaders(statusCode, 0);
             committed = true;
@@ -34,7 +35,9 @@ public class HttpResponseImpl implements HttpResponse {
 
     @Override
     public PrintWriter getWriter() throws Exception {
-        committed = true;
+        if (!committed) {
+            setStatus(200);
+        }
         return new PrintWriter(exchange.getResponseBody(), true);
     }
 

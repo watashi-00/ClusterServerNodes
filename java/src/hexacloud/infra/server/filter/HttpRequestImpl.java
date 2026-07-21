@@ -21,7 +21,15 @@ public class HttpRequestImpl implements HttpRequest {
     @Override public String getQuery() { return exchange.getRequestURI().getQuery(); }
     @Override public String getHeader(String name) { return exchange.getRequestHeaders().getFirst(name); }
     @Override public Map<String, List<String>> getHeaders() { return exchange.getRequestHeaders(); }
-    @Override public String getClientIp() { return exchange.getRemoteAddress().getAddress().getHostAddress(); }
+    @Override public String getClientIp() {
+        if (exchange.getRemoteAddress() != null) {
+            if (exchange.getRemoteAddress().getAddress() != null) {
+                return exchange.getRemoteAddress().getAddress().getHostAddress();
+            }
+            return exchange.getRemoteAddress().getHostString();
+        }
+        return "127.0.0.1";
+    }
     @Override public void setAttribute(String key, Object value) { attributes.put(key, value); }
     @Override public Object getAttribute(String key) { return attributes.get(key); }
 }

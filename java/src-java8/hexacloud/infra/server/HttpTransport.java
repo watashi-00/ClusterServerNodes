@@ -17,6 +17,9 @@ import hexacloud.core.utils.concurrent.ThreadManager;
 import hexacloud.core.utils.network.HttpHeader;
 import hexacloud.core.utils.network.ContentType;
 
+import hexacloud.core.server.filter.HttpFilter;
+import java.util.List;
+
 /**
  * Concrete HTTP implementation of ServerTransport bound to a local port
  * and using a thread pool for routing and rate-limiting incoming traffic in Java 8.
@@ -27,7 +30,7 @@ public class HttpTransport implements ServerTransport {
     private boolean running = false;
 
     @Override
-    public void listen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
+    public void listen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster, List<HttpFilter> customFilters) {
         try {
             server = HttpServer.create(new InetSocketAddress(port), 0);
             server.setExecutor(ThreadManager.newVirtualThreadPool());
