@@ -201,27 +201,48 @@ public class NativeTerminal {
             }
         }
         try {
-            if (System.in.available() > 0) {
-                int c = System.in.read();
-                if (c == 27) { // Escape sequence parser for fallback mode
-                    // Wait up to 50ms for the next bytes of the escape sequence to arrive
-                    long start = System.currentTimeMillis();
-                    while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
-                        ThreadManager.spinWait();
+            if (sttyRawModeActive) {
+                if (System.in.available() > 0) {
+                    int c = System.in.read();
+                    if (c == 27) { // Escape sequence parser for fallback mode
+                        // Wait up to 50ms for the next bytes of the escape sequence to arrive
+                        long start = System.currentTimeMillis();
+                        while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
+                            ThreadManager.spinWait();
+                        }
+                        if (System.in.available() > 0) {
+                            int c2 = System.in.read();
+                            if (c2 == '[') {
+                                start = System.currentTimeMillis();
+                                while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
+                                    ThreadManager.spinWait();
+                                }
+                                if (System.in.available() > 0) {
+                                    int c3 = System.in.read();
+                                    if (c3 == 'A') return 1000; // UP Arrow
+                                    if (c3 == 'B') return 1001; // DOWN Arrow
+                                    if (c3 == 'C') return 1002; // RIGHT Arrow
+                                    if (c3 == 'D') return 1003; // LEFT Arrow
+                                }
+                            }
+                        }
                     }
+                    return c;
+                }
+            } else {
+                // In canonical/cooked mode (waiting for TUI toggle), perform a blocking read
+                int c = System.in.read();
+                if (c == 27) {
+                    // Escape sequence check (if any)
                     if (System.in.available() > 0) {
                         int c2 = System.in.read();
                         if (c2 == '[') {
-                            start = System.currentTimeMillis();
-                            while (System.in.available() == 0 && (System.currentTimeMillis() - start) < 50) {
-                                ThreadManager.spinWait();
-                            }
                             if (System.in.available() > 0) {
                                 int c3 = System.in.read();
-                                if (c3 == 'A') return 1000; // UP Arrow
-                                if (c3 == 'B') return 1001; // DOWN Arrow
-                                if (c3 == 'C') return 1002; // RIGHT Arrow
-                                if (c3 == 'D') return 1003; // LEFT Arrow
+                                if (c3 == 'A') return 1000;
+                                if (c3 == 'B') return 1001;
+                                if (c3 == 'C') return 1002;
+                                if (c3 == 'D') return 1003;
                             }
                         }
                     }
