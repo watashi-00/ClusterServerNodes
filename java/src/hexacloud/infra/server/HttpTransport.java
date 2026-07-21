@@ -170,7 +170,7 @@ public class HttpTransport implements ServerTransport {
                                     }
 
                                     long startTime = System.currentTimeMillis();
-                                    URL targetUrl = new URL(targetUrlStr);
+                                    URL targetUrl = java.net.URI.create(targetUrlStr).toURL();
                                     HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
                                     conn.setRequestMethod(r.getMethod());
                                     int timeout = targetCluster.getTimeoutMs() > 0 ? targetCluster.getTimeoutMs() : 5000;

@@ -155,7 +155,7 @@ public class L7RoutingTest {
         testCluster.setRoutingMode(Cluster.RoutingMode.TELEMETRY_ONLY);
 
         String urlStr = "http://127.0.0.1:" + gatewayPort + "/clusters/l7-test-cluster/api/data";
-        HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) java.net.URI.create(urlStr).toURL().openConnection();
         conn.setRequestMethod("GET");
         int responseCode = conn.getResponseCode();
 
@@ -165,7 +165,7 @@ public class L7RoutingTest {
     @Test
     public void testForwardingHeadersAndBody() throws Exception {
         String urlStr = "http://127.0.0.1:" + gatewayPort + "/clusters/l7-test-cluster/api/submit";
-        HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) java.net.URI.create(urlStr).toURL().openConnection();
         conn.setRequestMethod("POST");
         conn.setRequestProperty("X-Custom-Test", "HeaderValue123");
         conn.setDoOutput(true);
@@ -195,7 +195,7 @@ public class L7RoutingTest {
         }
 
         String urlStr = "http://127.0.0.1:" + gatewayPort + "/clusters/l7-test-cluster/api/data";
-        HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) java.net.URI.create(urlStr).toURL().openConnection();
         conn.setRequestMethod("GET");
         int responseCode = conn.getResponseCode();
 
@@ -203,7 +203,7 @@ public class L7RoutingTest {
     }
 
     private String sendGetRequest(String urlStr) throws Exception {
-        URL url = new URL(urlStr);
+        URL url = java.net.URI.create(urlStr).toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(2000);
