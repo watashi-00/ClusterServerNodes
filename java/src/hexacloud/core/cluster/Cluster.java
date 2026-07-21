@@ -34,7 +34,7 @@ public class Cluster {
     private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
     private List<ServerNode> tempCluster;
     private boolean batchMode = false;
-    private RoutingMode routingMode = RoutingMode.TELEMETRY_ONLY;
+    private volatile RoutingMode routingMode = RoutingMode.TELEMETRY_ONLY;
 
     public Cluster() {
         this(ClusterConfig.DEFAULT_CLUSTER_NAME, null);
