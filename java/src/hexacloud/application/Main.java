@@ -15,6 +15,7 @@ import hexacloud.core.model.PingProtocol;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.RouteController;
 import hexacloud.core.server.route.RouteMapping;
+import hexacloud.core.tui.TerminalUiFactory;
 import java.io.PrintWriter;
 import java.util.Collections;
 
@@ -76,6 +77,11 @@ public class Main {
             "demo.boot",
             Collections.singletonMap("source", "Main")
         ));
+
+        // Launch the DevOps Panel in non-blocking toggle mode (detach/reattach with ENTER)
+        TerminalUiFactory.createTui("MyCompany - GateBridge DevOps Panel")
+            .seedGateway(runningGateway)
+            .startToggleMode();
     }
 
     // Custom event verification
