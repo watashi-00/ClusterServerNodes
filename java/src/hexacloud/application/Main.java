@@ -28,12 +28,14 @@ public class Main {
     public void start() {
         DebugUtils.setDebugEnabled(false);
         
-        GatewayBuilderPort builder = GatewayFactory.createGateway("watashi-00")
+        GatewayBuilderPort builder = GatewayFactory.createGateway("watashi-cluster")
+            .gatewayName("gateway-1")
             .port(3000)
             .pingInterval(5)
             .enableTelnet(true)
             .enableHttp(true)
             .enableWs(true)
+            .enableTcpProxy(true) // Enables L4 TCP Proxy load-balancer on port 3003
             .registerController(new CustomAppController())
             .registerFilter(new CustomAppLoggingFilter())
             .requireToken(true, "watashi_secretKey")
@@ -41,26 +43,28 @@ public class Main {
             .allowedIps("127.0.0.1")
             .timeout(4500);
 
-        // Register servers with explicit protocol metadata so the demo shows
-        // both the pull-based ping side and the new event submission contract.
+        // Configure routing mode on cluster (HYBRID enables telemetry + proxy routing)
+        builder.getCluster().setRoutingMode(hexacloud.core.cluster.Cluster.RoutingMode.HYBRID);
+
+        // Register servers with explicit names and protocol metadata
         builder.registerServer(new ServerNode(
-                "http://localhost", 3001, NodeStatus.OFFLINE, false,
+                "node-http-1", "http://localhost", 3006, NodeStatus.OFFLINE, false,
                 PingProtocol.HTTP, "/health", "X-Cluster-Token", "watashi_secretKey"
             ))
             .registerServer(new ServerNode(
-                "http://localhost", 3002, NodeStatus.OFFLINE, false,
+                "node-grpc-1", "http://localhost", 3007, NodeStatus.OFFLINE, false,
                 PingProtocol.GRPC, "/grpc-health", null, null
             ))
             .registerServer(new ServerNode(
-                "http://localhost", 3003, NodeStatus.OFFLINE, false,
+                "node-ws-1", "http://localhost", 3008, NodeStatus.OFFLINE, false,
                 PingProtocol.WEBSOCKET, "/ws", null, null
             ))
             .registerServer(new ServerNode(
-                "http://localhost", 3004, NodeStatus.OFFLINE, false,
+                "node-tcp-1", "http://localhost", 3009, NodeStatus.OFFLINE, false,
                 PingProtocol.TCP, "/", null, null
             ))
             .registerServer(new ServerNode(
-                "http://localhost", 3005, NodeStatus.OFFLINE, false,
+                "node-udp-1", "http://localhost", 3010, NodeStatus.OFFLINE, false,
                 PingProtocol.UDP, "/", null, null
             ));
 
@@ -70,8 +74,8 @@ public class Main {
 
         runningGateway.eventManager().dispatch(new UserCustomEvent("Hello EventController scanning system!"));
         runningGateway.eventManager().dispatch(new NodeEventSubmitted(
-            "http://localhost:3001",
-            3001,
+            "http://localhost:3006",
+            3006,
             PingProtocol.HTTP,
             EventFormat.JSON,
             "demo.boot",

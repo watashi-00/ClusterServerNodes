@@ -23,6 +23,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     private int port = 3000;
     private boolean running = false;
     private String gatewayName;
+    private boolean tcpProxyEnabled = false;
 
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
@@ -167,6 +168,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     private void ensureServerManagerInitialized() {
         if(this.serverManager == null) {
             this.serverManager = new ServerManager(this.clusterManager.getCluster(), this.clusterEventManager);
+            this.serverManager.enableTcpProxy(this.tcpProxyEnabled);
         }
     }
 
@@ -328,5 +330,18 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     @Override
     public String getGatewayName() {
         return this.gatewayName != null ? this.gatewayName : "gw-" + port;
+    }
+
+    @Override
+    public Cluster getCluster() {
+        return this.clusterManager.getCluster();
+    }
+
+    @Override
+    public LocalGatewayAdapter enableTcpProxy(boolean enabled) {
+        this.tcpProxyEnabled = enabled;
+        ensureServerManagerInitialized();
+        this.serverManager.enableTcpProxy(enabled);
+        return this;
     }
 }

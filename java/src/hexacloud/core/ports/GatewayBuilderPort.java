@@ -110,4 +110,14 @@ public interface GatewayBuilderPort {
      * Transitions the gateway from the configuration builder phase to the running phase.
      */
     RunningGatewayPort listen(int port);
+
+    /**
+     * Get the cluster model instance managed by this gateway.
+     */
+    hexacloud.core.cluster.Cluster getCluster();
+
+    /**
+     * Enable or disable Layer 4 TCP proxy load balancing.
+     */
+    GatewayBuilderPort enableTcpProxy(boolean enabled);
 }
