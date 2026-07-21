@@ -12,6 +12,7 @@ import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
 import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.infra.server.HttpTransport;
+import hexacloud.infra.server.TcpProxyTransport;
 import hexacloud.infra.server.TelnetTransport;
 import hexacloud.infra.server.WsTransport;
 
@@ -26,6 +27,7 @@ public class ServerManager implements ServerOperations {
     private boolean telnetEnabled = false;
     private boolean httpEnabled = false;
     private boolean wsEnabled = false;
+    private boolean tcpProxyEnabled = false;
     private int port = 3000;
 
     public ServerManager(Cluster cluster, ClusterEventBusManager eventManager) {
@@ -92,6 +94,12 @@ public class ServerManager implements ServerOperations {
         return this;
     }
 
+    public ServerManager enableTcpProxy(boolean enabled) {
+        this.tcpProxyEnabled = enabled;
+        DebugUtils.log("ServerManager: TCP Proxy transport " + (enabled ? "AUTHORIZED" : "DISABLED"));
+        return this;
+    }
+
     public boolean isTelnetEnabled() {
         return telnetEnabled;
     }
@@ -102,6 +110,10 @@ public class ServerManager implements ServerOperations {
 
     public boolean isWsEnabled() {
         return wsEnabled;
+    }
+
+    public boolean isTcpProxyEnabled() {
+        return tcpProxyEnabled;
     }
 
     public ServerManager registerFilter(hexacloud.core.server.filter.HttpFilter filter) {
@@ -138,6 +150,13 @@ public class ServerManager implements ServerOperations {
             // WS runs on port + 2
             ws.listen(port + 2, routeRegistry, cluster, customFilters);
             activeTransports.add(ws);
+        }
+
+        if(tcpProxyEnabled) {
+            ServerTransport tcpProxy = new TcpProxyTransport();
+            // TCP Proxy runs on port + 3
+            tcpProxy.listen(port + 3, routeRegistry, cluster, customFilters);
+            activeTransports.add(tcpProxy);
         }
         
         if(activeTransports.isEmpty()) {

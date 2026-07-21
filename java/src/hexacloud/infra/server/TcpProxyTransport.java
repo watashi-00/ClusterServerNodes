@@ -1,0 +1,173 @@
+package hexacloud.infra.server;
+
+import hexacloud.core.cluster.Cluster;
+import hexacloud.core.model.NodeStatus;
+import hexacloud.core.model.ServerNode;
+import hexacloud.core.server.ServerTransport;
+import hexacloud.core.server.filter.HttpFilter;
+import hexacloud.core.server.route.RouteRegistry;
+import hexacloud.core.utils.common.DebugUtils;
+import hexacloud.core.utils.concurrent.ThreadManager;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+/**
+ * Concrete Layer 4 (Network Level) TCP Proxy Implementation of ServerTransport.
+ * Accepts raw TCP connections, routes traffic via Round-Robin load balancing across
+ * active cluster nodes, measures connection latency, and tunnels bytes bidirectionally using virtual threads.
+ */
+public class TcpProxyTransport implements ServerTransport {
+
+    private ServerSocket serverSocket;
+    private volatile boolean running = false;
+    private volatile boolean active = true;
+    private final AtomicInteger roundRobinIndex = new AtomicInteger(0);
+    private final Set<Socket> activeSockets = ConcurrentHashMap.newKeySet();
+
+    @Override
+    public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
+        new Thread(() -> serverListen(port, cluster), "TcpProxyServer-Listener-" + port).start();
+    }
+
+    private void serverListen(int port, Cluster cluster) {
+        DebugUtils.log("TcpProxyTransport starting to listen on port " + port);
+        try {
+            serverSocket = new ServerSocket(port);
+            running = true;
+            DebugUtils.info("TcpProxyTransport successfully bound and listening on port " + port);
+
+            while (active && !serverSocket.isClosed()) {
+                Socket clientSocket = serverSocket.accept();
+                activeSockets.add(clientSocket);
+                ThreadManager.startVirtual("TcpProxy-Handler-" + clientSocket.getRemoteSocketAddress(), () -> handleConnection(clientSocket, cluster));
+            }
+        } catch (IOException ex) {
+            if (active) {
+                DebugUtils.error("TcpProxyTransport failed on port " + port, ex);
+            }
+        } finally {
+            running = false;
+        }
+    }
+
+    private void handleConnection(Socket clientSocket, Cluster cluster) {
+        Socket nodeSocket = null;
+        try {
+            if (cluster == null || cluster.getRoutingMode() == Cluster.RoutingMode.TELEMETRY_ONLY) {
+                DebugUtils.log("TcpProxyTransport: Cluster is null or routing is disabled for cluster.");
+                closeQuietly(clientSocket);
+                return;
+            }
+
+            List<ServerNode> activeNodes = cluster.getCluster().stream()
+                    .filter(n -> n != null && n.status() == NodeStatus.ONLINE)
+                    .collect(Collectors.toList());
+
+            if (activeNodes.isEmpty()) {
+                DebugUtils.log("TcpProxyTransport: No active nodes in cluster " + cluster.getClusterName());
+                closeQuietly(clientSocket);
+                return;
+            }
+
+            // Thread-safe Round-Robin node selection
+            int index = (roundRobinIndex.getAndIncrement() & Integer.MAX_VALUE) % activeNodes.size();
+            ServerNode selectedNode = activeNodes.get(index);
+
+            String targetHost = selectedNode.getHostWithoutProtocol();
+            int targetPort = selectedNode.port();
+
+            // Connect to backend node and measure latency
+            long startTime = System.currentTimeMillis();
+            int timeout = cluster.getTimeoutMs() > 0 ? cluster.getTimeoutMs() : 5000;
+            nodeSocket = new Socket();
+            nodeSocket.connect(new InetSocketAddress(targetHost, targetPort), timeout);
+            long latencyMs = System.currentTimeMillis() - startTime;
+
+            // Update passive telemetry & latency metric
+            selectedNode.setLatencyMs((int) latencyMs);
+            cluster.updateTelemetryServer(selectedNode.host(), selectedNode.port(), null, null, null, (int) latencyMs, null);
+
+            activeSockets.add(nodeSocket);
+
+            Socket finalNodeSocket = nodeSocket;
+            InputStream clientIn = clientSocket.getInputStream();
+            OutputStream clientOut = clientSocket.getOutputStream();
+            InputStream nodeIn = finalNodeSocket.getInputStream();
+            OutputStream nodeOut = finalNodeSocket.getOutputStream();
+
+            // Bidirectional tunneling using virtual threads
+            Thread t1 = ThreadManager.startVirtual("TcpProxy-ClientToNode", () -> tunnel(clientIn, nodeOut, clientSocket, finalNodeSocket));
+            Thread t2 = ThreadManager.startVirtual("TcpProxy-NodeToClient", () -> tunnel(nodeIn, clientOut, clientSocket, finalNodeSocket));
+
+            // Wait for both tunneling threads to finish so cleanup can unregister active sockets
+            t1.join();
+            t2.join();
+
+        } catch (Exception e) {
+            DebugUtils.error("TcpProxyTransport: Exception during socket proxying", e);
+        } finally {
+            if (nodeSocket != null) {
+                closeQuietly(nodeSocket);
+                activeSockets.remove(nodeSocket);
+            }
+            closeQuietly(clientSocket);
+            activeSockets.remove(clientSocket);
+        }
+    }
+
+    private void tunnel(InputStream in, OutputStream out, Socket s1, Socket s2) {
+        byte[] buffer = new byte[8192];
+        try {
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+                out.flush();
+            }
+        } catch (IOException ignored) {
+        } finally {
+            closeQuietly(s1);
+            closeQuietly(s2);
+        }
+    }
+
+    private void closeQuietly(Socket socket) {
+        if (socket != null && !socket.isClosed()) {
+            try {
+                socket.close();
+            } catch (IOException ignored) {}
+        }
+    }
+
+    @Override
+    public void stop() {
+        active = false;
+        running = false;
+        if (serverSocket != null && !serverSocket.isClosed()) {
+            try {
+                serverSocket.close();
+            } catch (IOException e) {
+                DebugUtils.error("Error closing TcpProxyTransport server socket", e);
+            }
+        }
+        for (Socket s : activeSockets) {
+            closeQuietly(s);
+        }
+        activeSockets.clear();
+        DebugUtils.log("TcpProxyTransport stopped.");
+    }
+
+    @Override
+    public boolean isRunning() {
+        return running;
+    }
+}
