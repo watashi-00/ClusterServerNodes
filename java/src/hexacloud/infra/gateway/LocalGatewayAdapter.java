@@ -219,10 +219,10 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
         this.running = true;
 
         System.out.println("=================================================");
-        System.out.println("🚀 GATEBRIDGE NODE STARTED: " + getGatewayName());
-        System.out.println("👉 Admin Port: " + getPort());
-        System.out.println("👉 Transports: HTTP=" + isHttpEnabled() + ", WS=" + isWsEnabled() + ", Telnet=" + isTelnetEnabled() + ", TCP Proxy=" + this.serverManager.isTcpProxyEnabled());
-        System.out.println("👉 Active Clusters:");
+        System.out.println("GATEBRIDGE NODE STARTED: " + getGatewayName());
+        System.out.println("Admin Port: " + getPort());
+        System.out.println("Transports: HTTP=" + isHttpEnabled() + ", WS=" + isWsEnabled() + ", Telnet=" + isTelnetEnabled() + ", TCP Proxy=" + this.serverManager.isTcpProxyEnabled());
+        System.out.println("Active Clusters:");
         for (Cluster cluster : ClusterRegistry.getInstance().getClusters()) {
             System.out.println("   - Cluster: " + cluster.getClusterName() + " | RoutingMode: " + cluster.getRoutingMode() + " | Nodes: " + cluster.getCluster().size());
         }
