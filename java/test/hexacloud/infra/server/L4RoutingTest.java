@@ -151,6 +151,7 @@ public class L4RoutingTest {
         assertTrue(manager.isTcpProxyEnabled());
 
         manager.listen(basePort);
+        Thread.sleep(150); // Allow async listener socket to bind
 
         int expectedTcpProxyPort = basePort + 3;
         String resp = sendTcpMessage("127.0.0.1", expectedTcpProxyPort, "server-manager-test");
