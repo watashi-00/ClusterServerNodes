@@ -1,19 +1,16 @@
 package hexacloud.core.server.filter.builtin;
 
 import hexacloud.core.cluster.Cluster;
-import hexacloud.core.server.filter.HttpFilter;
 import hexacloud.core.server.filter.HttpFilterChain;
 import hexacloud.core.server.filter.HttpRequest;
 import hexacloud.core.server.filter.HttpResponse;
 import hexacloud.core.server.filter.Order;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 public class BuiltinFiltersTest {

@@ -27,8 +27,6 @@ import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.utils.concurrent.ThreadManager;
-import hexacloud.core.utils.network.HttpHeader;
-import hexacloud.core.utils.network.ContentType;
 
 /**
  * Concrete HTTP implementation of ServerTransport bound to a local port
