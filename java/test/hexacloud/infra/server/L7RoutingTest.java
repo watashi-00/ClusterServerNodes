@@ -73,7 +73,14 @@ public class L7RoutingTest {
             public void handle(HttpExchange exchange) throws IOException {
                 exchange.getResponseHeaders().set("X-Telemetry-CPU", "40.0");
                 exchange.getResponseHeaders().set("X-Telemetry-RAM", "80.0");
-                byte[] resp = "Response from Backend 2".getBytes(StandardCharsets.UTF_8);
+                String method = exchange.getRequestMethod();
+                String customHeader = exchange.getRequestHeaders().getFirst("X-Custom-Test");
+                String body = "";
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(exchange.getRequestBody(), StandardCharsets.UTF_8))) {
+                    body = reader.lines().collect(Collectors.joining("\n"));
+                }
+                String respStr = "Response from Backend 2 | Method: " + method + " | Header: " + customHeader + " | Body: " + body;
+                byte[] resp = respStr.getBytes(StandardCharsets.UTF_8);
                 exchange.sendResponseHeaders(200, resp.length);
                 try (OutputStream os = exchange.getResponseBody()) {
                     os.write(resp);

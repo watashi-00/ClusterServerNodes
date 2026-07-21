@@ -160,7 +160,7 @@ public class HttpTransport implements ServerTransport {
 
                                     // Thread-safe Round-Robin selection
                                     AtomicInteger rrIdx = roundRobinIndices.computeIfAbsent(targetClusterName, k -> new AtomicInteger(0));
-                                    int selectedIndex = Math.abs(rrIdx.getAndIncrement() % activeNodes.size());
+                                    int selectedIndex = (rrIdx.getAndIncrement() & Integer.MAX_VALUE) % activeNodes.size();
                                     ServerNode targetNode = activeNodes.get(selectedIndex);
 
                                     // Forward HTTP request to backend node
@@ -210,17 +210,21 @@ public class HttpTransport implements ServerTransport {
                                         }
                                     }
 
-                                    int respCode;
-                                    InputStream respIn;
+                                    int respCode = 502;
+                                    InputStream respIn = null;
                                     try {
                                         respCode = conn.getResponseCode();
                                         respIn = conn.getInputStream();
                                     } catch (IOException ioEx) {
-                                        respCode = conn.getResponseCode();
-                                        if (respCode > 0) {
-                                            respIn = conn.getErrorStream();
-                                        } else {
-                                            throw ioEx;
+                                        try {
+                                            respCode = conn.getResponseCode();
+                                            if (respCode > 0) {
+                                                respIn = conn.getErrorStream();
+                                            } else {
+                                                respCode = 502;
+                                            }
+                                        } catch (Exception ignored) {
+                                            respCode = 502;
                                         }
                                     }
 
@@ -265,7 +269,17 @@ public class HttpTransport implements ServerTransport {
                                         }
                                         respIn.close();
                                     } else {
-                                        exchange.sendResponseHeaders(respCode, -1);
+                                        if (respCode == 502) {
+                                            byte[] respBytes = "502 Bad Gateway - Connection failed".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                                            exchange.getResponseHeaders().set("Content-Type", "text/plain");
+                                            exchange.sendResponseHeaders(502, respBytes.length);
+                                            try (OutputStream os = exchange.getResponseBody()) {
+                                                os.write(respBytes);
+                                                os.flush();
+                                            }
+                                        } else {
+                                            exchange.sendResponseHeaders(respCode, -1);
+                                        }
                                     }
 
                                 } else {
