@@ -36,4 +36,15 @@ public class ServerNodeTest {
         assertEquals(NodeStatus.ONLINE, updatedNode.status());
         assertEquals(NodeStatus.OFFLINE, node.status()); // Immutable check
     }
+
+    @org.junit.jupiter.api.Test
+    public void testIsDynamicDefaultAndModifier() {
+        ServerNode node = new ServerNode("node-test", "http://localhost", 9091, NodeStatus.OFFLINE, false);
+        org.junit.jupiter.api.Assertions.assertFalse(node.isDynamic(), "Should default to false");
+        
+        ServerNode dynamicNode = node.withDynamic(true);
+        org.junit.jupiter.api.Assertions.assertTrue(dynamicNode.isDynamic(), "Modified node should be dynamic");
+        org.junit.jupiter.api.Assertions.assertEquals("node-test", dynamicNode.name());
+    }
 }
+

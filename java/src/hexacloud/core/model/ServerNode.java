@@ -14,6 +14,7 @@ public class ServerNode {
     private final String pingPath;
     private final String pingHeaderName;
     private final String pingHeaderValue;
+    private final boolean isDynamic;
 
     private int latencyMs = 0;
     private double cpuUsage = 0.0;
@@ -21,10 +22,10 @@ public class ServerNode {
     private String runtime = "";
 
     /**
-     * Primary constructor including node name.
+     * Primary constructor including node name and isDynamic flag.
      */
     public ServerNode(String name, String host, int port, NodeStatus status, boolean isExternal,
-                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue) {
+                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue, boolean isDynamic) {
         this.name = name != null && !name.isEmpty() ? name : (host + ":" + port);
         this.host = host;
         this.port = port;
@@ -34,6 +35,15 @@ public class ServerNode {
         this.pingPath = pingPath != null ? pingPath : "/";
         this.pingHeaderName = pingHeaderName;
         this.pingHeaderValue = pingHeaderValue;
+        this.isDynamic = isDynamic;
+    }
+
+    /**
+     * Legacy constructor including node name.
+     */
+    public ServerNode(String name, String host, int port, NodeStatus status, boolean isExternal,
+                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue) {
+        this(name, host, port, status, isExternal, pingProtocol, pingPath, pingHeaderName, pingHeaderValue, false);
     }
 
     /**
