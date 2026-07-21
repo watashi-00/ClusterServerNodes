@@ -65,6 +65,11 @@ public interface GatewayBuilderPort {
     GatewayBuilderPort registerController(hexacloud.core.server.route.RouteController controller);
 
     /**
+     * Register a custom HTTP filter to intercept incoming HTTP traffic.
+     */
+    GatewayBuilderPort registerFilter(hexacloud.core.server.filter.HttpFilter filter);
+
+    /**
      * Set rate limit rules for the cluster gateway.
      */
     GatewayBuilderPort rateLimit(int requests, int durationSeconds);

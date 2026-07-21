@@ -3,6 +3,8 @@ package hexacloud.core.server;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.contracts.ServerOperations;
@@ -19,6 +21,7 @@ public class ServerManager implements ServerOperations {
     protected final ClusterEventBusManager eventManager;
     private final RouteRegistry routeRegistry;
     private final List<ServerTransport> activeTransports = new ArrayList<>();
+    private final List<hexacloud.core.server.filter.HttpFilter> customFilters = new CopyOnWriteArrayList<>();
     
     private boolean telnetEnabled = false;
     private boolean httpEnabled = false;
@@ -101,6 +104,15 @@ public class ServerManager implements ServerOperations {
         return wsEnabled;
     }
 
+    public ServerManager registerFilter(hexacloud.core.server.filter.HttpFilter filter) {
+        this.customFilters.add(filter);
+        return this;
+    }
+
+    public List<hexacloud.core.server.filter.HttpFilter> getCustomFilters() {
+        return customFilters;
+    }
+
     @Override
     public ServerManager listen(int port) {
         DebugUtils.log("ServerManager: Starting authorized protocol listeners on base port " + port + "...");
@@ -110,21 +122,21 @@ public class ServerManager implements ServerOperations {
 
         if(telnetEnabled) {
             ServerTransport telnet = new TelnetTransport();
-            telnet.listen(port, routeRegistry, cluster);
+            telnet.listen(port, routeRegistry, cluster, customFilters);
             activeTransports.add(telnet);
         }
         
         if(httpEnabled) {
             ServerTransport http = new HttpTransport();
             // HTTP runs on port + 1
-            http.listen(port + 1, routeRegistry, cluster);
+            http.listen(port + 1, routeRegistry, cluster, customFilters);
             activeTransports.add(http);
         }
         
         if(wsEnabled) {
             ServerTransport ws = new WsTransport();
             // WS runs on port + 2
-            ws.listen(port + 2, routeRegistry, cluster);
+            ws.listen(port + 2, routeRegistry, cluster, customFilters);
             activeTransports.add(ws);
         }
         

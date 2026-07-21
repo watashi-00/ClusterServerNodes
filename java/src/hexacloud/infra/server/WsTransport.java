@@ -23,6 +23,7 @@ import hexacloud.core.cluster.event.ClusterEvent;
 import hexacloud.core.event.Event;
 import hexacloud.core.event.EventBusManager;
 import hexacloud.core.event.EventListener;
+import hexacloud.core.server.filter.HttpFilter;
 import hexacloud.core.server.ServerTransport;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.utils.common.Casts;
@@ -45,7 +46,7 @@ public class WsTransport implements ServerTransport {
     private volatile boolean running = false;
 
     @Override
-    public void listen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster) {
+    public void listen(int port, RouteRegistry registry, hexacloud.core.cluster.Cluster cluster, List<HttpFilter> customFilters) {
         threadPool.execute(() -> serverListen(port));
     }
 

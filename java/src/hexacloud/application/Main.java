@@ -15,6 +15,7 @@ import hexacloud.core.model.PingProtocol;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.RouteController;
 import hexacloud.core.server.route.RouteMapping;
+import hexacloud.core.tui.TerminalUiFactory;
 import java.io.PrintWriter;
 import java.util.Collections;
 
@@ -34,6 +35,7 @@ public class Main {
             .enableHttp(true)
             .enableWs(true)
             .registerController(new CustomAppController())
+            .registerFilter(new CustomAppLoggingFilter())
             .requireToken(true, "watashi_secretKey")
             .rateLimit(200, 60)
             .allowedIps("127.0.0.1")
@@ -75,6 +77,11 @@ public class Main {
             "demo.boot",
             Collections.singletonMap("source", "Main")
         ));
+
+        // Launch the DevOps Panel in non-blocking toggle mode (detach/reattach with ENTER)
+        TerminalUiFactory.createTui("MyCompany - GateBridge DevOps Panel")
+            .seedGateway(runningGateway)
+            .startToggleMode();
     }
 
     // Custom event verification
@@ -116,6 +123,20 @@ public class Main {
         @RouteMapping("HELLO")
         public void sayHello(String args, PrintWriter out) {
             out.println("HELLO FROM DEVELOPER ROUTE! Args: " + args);
+        }
+    }
+
+    // Custom HTTP logging filter implementing HttpFilter contract
+    @hexacloud.core.server.filter.Order(50)
+    public static class CustomAppLoggingFilter implements hexacloud.core.server.filter.HttpFilter {
+        @Override
+        public void doFilter(
+            hexacloud.core.server.filter.HttpRequest req,
+            hexacloud.core.server.filter.HttpResponse res,
+            hexacloud.core.server.filter.HttpFilterChain chain
+        ) throws Exception {
+            DebugUtils.info("[CustomAppLoggingFilter] Intercepted HTTP Request: " + req.getMethod() + " " + req.getPath());
+            chain.doFilter(req, res);
         }
     }
 }
