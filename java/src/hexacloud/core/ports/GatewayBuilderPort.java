@@ -15,6 +15,11 @@ public interface GatewayBuilderPort {
     NodeBuilderPort registerNode(String host, int port);
 
     /**
+     * Start configuring a named server node with custom health check parameters.
+     */
+    NodeBuilderPort registerNode(String name, String host, int port);
+
+    /**
      * Set the main Telnet listening port.
      */
     GatewayBuilderPort port(int port);

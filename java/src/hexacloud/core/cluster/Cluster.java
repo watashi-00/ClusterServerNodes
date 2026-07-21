@@ -18,6 +18,12 @@ import hexacloud.core.server.route.ClusterController;
 
 public class Cluster {
 
+    public enum RoutingMode {
+        TELEMETRY_ONLY,
+        LOAD_BALANCER_ONLY,
+        HYBRID
+    }
+
     private final ConcurrentHashMap<String, ServerNode> cluster;
     private final ClusterEventBusManager eventManager;
     private final ClusterSecurityManager securityManager;
@@ -28,6 +34,7 @@ public class Cluster {
     private String clusterUri = ClusterConfig.DEFAULT_CLUSTER_URI;
     private List<ServerNode> tempCluster;
     private boolean batchMode = false;
+    private RoutingMode routingMode = RoutingMode.TELEMETRY_ONLY;
 
     public Cluster() {
         this(ClusterConfig.DEFAULT_CLUSTER_NAME, null);
@@ -45,6 +52,14 @@ public class Cluster {
         this.routeRegistry = new RouteRegistry();
         this.routeRegistry.registerController(new ClusterController(this));
         ClusterRegistry.getInstance().registerCluster(this);
+    }
+
+    public RoutingMode getRoutingMode() {
+        return routingMode;
+    }
+
+    public void setRoutingMode(RoutingMode routingMode) {
+        this.routingMode = routingMode;
     }
 
     public RouteRegistry getRouteRegistry() {
@@ -67,7 +82,7 @@ public class Cluster {
             if (host == null) return;
 
             ServerNode validNode = new ServerNode(
-                host, node.port(), node.status(), node.isExternal(),
+                node.name(), host, node.port(), node.status(), node.isExternal(),
                 node.pingProtocol(), node.pingPath(), node.pingHeaderName(), node.pingHeaderValue()
             );
             addClusterNode(validNode);

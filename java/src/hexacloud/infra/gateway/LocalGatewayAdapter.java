@@ -66,6 +66,11 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     }
 
     @Override
+    public NodeBuilderPort registerNode(String name, String host, int port) {
+        return new NodeBuilder(this, this.clusterManager.getCluster(), name, host, port);
+    }
+
+    @Override
     public LocalGatewayAdapter port(int port) {
         this.port = port;
         return this;
@@ -210,6 +215,17 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
         DebugUtils.log("LocalGatewayAdapter: Starting server listeners on port " + port);
         this.serverManager.listen(port);
         this.running = true;
+
+        System.out.println("=================================================");
+        System.out.println("🚀 GATEBRIDGE NODE STARTED: " + getGatewayName());
+        System.out.println("👉 Admin Port: " + getPort());
+        System.out.println("👉 Transports: HTTP=" + isHttpEnabled() + ", WS=" + isWsEnabled() + ", Telnet=" + isTelnetEnabled());
+        System.out.println("👉 Active Clusters:");
+        for (Cluster cluster : ClusterRegistry.getInstance().getClusters()) {
+            System.out.println("   - Cluster: " + cluster.getClusterName() + " | RoutingMode: " + cluster.getRoutingMode() + " | Nodes: " + cluster.getCluster().size());
+        }
+        System.out.println("=================================================");
+
         return this;
     }
 

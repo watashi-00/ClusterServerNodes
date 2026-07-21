@@ -5,6 +5,7 @@ package hexacloud.core.model;
  * Contains connection coordinates, status metadata, and health-check configurations.
  */
 public class ServerNode {
+    private final String name;
     private final String host;
     private final int port;
     private final NodeStatus status;
@@ -20,10 +21,11 @@ public class ServerNode {
     private String runtime = "";
 
     /**
-     * Complete constructor to specify custom health check parameters.
+     * Primary constructor including node name.
      */
-    public ServerNode(String host, int port, NodeStatus status, boolean isExternal,
+    public ServerNode(String name, String host, int port, NodeStatus status, boolean isExternal,
                       PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue) {
+        this.name = name != null && !name.isEmpty() ? name : (host + ":" + port);
         this.host = host;
         this.port = port;
         this.status = status;
@@ -35,18 +37,42 @@ public class ServerNode {
     }
 
     /**
+     * Legacy constructor without node name parameter.
+     */
+    public ServerNode(String host, int port, NodeStatus status, boolean isExternal,
+                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue) {
+        this(host + ":" + port, host, port, status, isExternal, pingProtocol, pingPath, pingHeaderName, pingHeaderValue);
+    }
+
+    public ServerNode(String name, String host, int port, NodeStatus status, boolean isExternal,
+                      boolean pingEnabled, String pingPath, String pingHeaderName, String pingHeaderValue) {
+        this(name, host, port, status, isExternal, pingEnabled ? PingProtocol.HTTP : PingProtocol.NONE, pingPath, pingHeaderName, pingHeaderValue);
+    }
+
+    /**
      * Compatibility constructor using boolean pingEnabled.
      */
     public ServerNode(String host, int port, NodeStatus status, boolean isExternal,
                       boolean pingEnabled, String pingPath, String pingHeaderName, String pingHeaderValue) {
-        this(host, port, status, isExternal, pingEnabled ? PingProtocol.HTTP : PingProtocol.NONE, pingPath, pingHeaderName, pingHeaderValue);
+        this(host + ":" + port, host, port, status, isExternal, pingEnabled ? PingProtocol.HTTP : PingProtocol.NONE, pingPath, pingHeaderName, pingHeaderValue);
+    }
+
+    public ServerNode(String name, String host, int port, NodeStatus status, boolean isExternal) {
+        this(name, host, port, status, isExternal, PingProtocol.HTTP, "/", null, null);
     }
 
     /**
      * Constructor for default health-check settings.
      */
     public ServerNode(String host, int port, NodeStatus status, boolean isExternal) {
-        this(host, port, status, isExternal, PingProtocol.HTTP, "/", null, null);
+        this(host + ":" + port, host, port, status, isExternal, PingProtocol.HTTP, "/", null, null);
+    }
+
+    /**
+     * Get the node name identifier.
+     */
+    public String name() {
+        return name;
     }
 
     /**
@@ -148,7 +174,7 @@ public class ServerNode {
      * Create a new immutable ServerNode instance with an updated status.
      */
     public ServerNode withStatus(NodeStatus newStatus) {
-        ServerNode node = new ServerNode(this.host, this.port, newStatus, this.isExternal,
+        ServerNode node = new ServerNode(this.name, this.host, this.port, newStatus, this.isExternal,
                 this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue);
         node.setLatencyMs(this.latencyMs);
         node.setCpuUsage(this.cpuUsage);
@@ -161,7 +187,7 @@ public class ServerNode {
      * Create a new immutable ServerNode instance with an updated ping protocol.
      */
     public ServerNode withPingProtocol(PingProtocol newProtocol) {
-        ServerNode node = new ServerNode(this.host, this.port, this.status, this.isExternal,
+        ServerNode node = new ServerNode(this.name, this.host, this.port, this.status, this.isExternal,
                 newProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue);
         node.setLatencyMs(this.latencyMs);
         node.setCpuUsage(this.cpuUsage);
