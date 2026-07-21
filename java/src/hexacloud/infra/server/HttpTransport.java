@@ -244,7 +244,7 @@ public class HttpTransport implements ServerTransport {
                                     if (respHeaderFields != null) {
                                         for (Map.Entry<String, List<String>> entry : respHeaderFields.entrySet()) {
                                             String hName = entry.getKey();
-                                            if (hName == null || hName.equalsIgnoreCase("Transfer-Encoding")) {
+                                            if (hName == null || hName.equalsIgnoreCase("Transfer-Encoding") || hName.equalsIgnoreCase("Content-Length")) {
                                                 continue;
                                             }
                                             for (String val : entry.getValue()) {
