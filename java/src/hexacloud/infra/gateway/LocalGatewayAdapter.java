@@ -252,6 +252,13 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     }
 
     @Override
+    public LocalGatewayAdapter registerFilter(hexacloud.core.server.filter.HttpFilter filter) {
+        ensureServerManagerInitialized();
+        this.serverManager.registerFilter(filter);
+        return this;
+    }
+
+    @Override
     public LocalGatewayAdapter rateLimit(int requests, int durationSeconds) {
         this.clusterManager.getCluster().setRateLimit(requests, durationSeconds);
         return this;

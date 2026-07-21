@@ -17,7 +17,8 @@ public class TerminalMain {
             .pingInterval(5)
             .enableTelnet(true)
             .enableHttp(true)
-            .enableWs(true);
+            .enableWs(true)
+            .registerFilter(new Main.CustomAppLoggingFilter());
 
         builder.registerServer(3001, NodeStatus.OFFLINE)
             .registerServer(3002, NodeStatus.OFFLINE)
