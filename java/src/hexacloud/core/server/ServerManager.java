@@ -3,6 +3,8 @@ package hexacloud.core.server;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.contracts.ServerOperations;
@@ -19,7 +21,7 @@ public class ServerManager implements ServerOperations {
     protected final ClusterEventBusManager eventManager;
     private final RouteRegistry routeRegistry;
     private final List<ServerTransport> activeTransports = new ArrayList<>();
-    private final List<hexacloud.core.server.filter.HttpFilter> customFilters = new ArrayList<>();
+    private final List<hexacloud.core.server.filter.HttpFilter> customFilters = new CopyOnWriteArrayList<>();
     
     private boolean telnetEnabled = false;
     private boolean httpEnabled = false;
