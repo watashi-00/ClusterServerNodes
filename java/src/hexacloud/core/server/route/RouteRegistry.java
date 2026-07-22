@@ -24,14 +24,28 @@ public class RouteRegistry {
                 Class<?>[] paramTypes = method.getParameterTypes();
                 if(paramTypes.length == 2 && paramTypes[0] == String.class && paramTypes[1] == PrintWriter.class) {
                     method.setAccessible(true);
-                    BiConsumer<String, PrintWriter> handler = (args, out) -> {
-                        try {
-                            method.invoke(controller, args, out);
-                        } catch(Exception e) {
-                            DebugUtils.error("Failed to invoke route method: " + method.getName(), e);
-                            out.println("ERROR: Internal server error");
-                        }
-                    };
+                    BiConsumer<String, PrintWriter> handler;
+                    try {
+                        java.lang.invoke.MethodHandles.Lookup lookup = java.lang.invoke.MethodHandles.lookup();
+                        final java.lang.invoke.MethodHandle mh = lookup.unreflect(method);
+                        handler = (args, out) -> {
+                            try {
+                                mh.invoke(controller, args, out);
+                            } catch(Throwable e) {
+                                DebugUtils.error("Failed to invoke route method: " + method.getName(), e);
+                                out.println("ERROR: Internal server error");
+                            }
+                        };
+                    } catch (Exception ex) {
+                        handler = (args, out) -> {
+                            try {
+                                method.invoke(controller, args, out);
+                            } catch(Exception e) {
+                                DebugUtils.error("Failed to invoke route method: " + method.getName(), e);
+                                out.println("ERROR: Internal server error");
+                            }
+                        };
+                    }
                     routes.put(command, handler);
                     DebugUtils.log("RouteScanner: Registered command '" + command + "' mapping to method " + clazz.getSimpleName() + "." + method.getName());
                 } else {
