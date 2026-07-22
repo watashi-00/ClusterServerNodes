@@ -44,6 +44,9 @@ public class UndertowHttpTransport implements ServerTransport {
     private final ConcurrentHashMap<String, RouteHandlerInfo> routeCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HttpString> headerCache = new ConcurrentHashMap<>(128);
     private static final java.util.concurrent.ConcurrentLinkedQueue<byte[]> BUFFER_POOL = new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private static final HttpString CORS_ALLOW_ORIGIN = HttpString.tryFromString("Access-Control-Allow-Origin");
+    private static final HttpString CORS_ALLOW_METHODS = HttpString.tryFromString("Access-Control-Allow-Methods");
+    private static final HttpString CORS_ALLOW_HEADERS = HttpString.tryFromString("Access-Control-Allow-Headers");
     private final ExecutorService virtualExecutor = ThreadManager.newVirtualThreadPool();
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
@@ -158,11 +161,11 @@ public class UndertowHttpTransport implements ServerTransport {
 
     private void processRequest(HttpServerExchange exchange, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         // Set CORS headers
-        exchange.getResponseHeaders().put(HttpString.tryFromString("Access-Control-Allow-Origin"), "*");
-        exchange.getResponseHeaders().put(HttpString.tryFromString("Access-Control-Allow-Methods"), "GET, POST, OPTIONS, PUT, DELETE");
-        exchange.getResponseHeaders().put(HttpString.tryFromString("Access-Control-Allow-Headers"), "X-Cluster-Token, Content-Type, Authorization");
+        exchange.getResponseHeaders().put(CORS_ALLOW_ORIGIN, "*");
+        exchange.getResponseHeaders().put(CORS_ALLOW_METHODS, "GET, POST, OPTIONS, PUT, DELETE");
+        exchange.getResponseHeaders().put(CORS_ALLOW_HEADERS, "X-Cluster-Token, Content-Type, Authorization");
 
-        if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod().toString())) {
+        if (io.undertow.util.Methods.OPTIONS.equals(exchange.getRequestMethod())) {
             exchange.setStatusCode(204);
             return;
         }

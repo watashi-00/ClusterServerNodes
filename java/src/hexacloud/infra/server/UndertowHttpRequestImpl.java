@@ -19,9 +19,21 @@ public class UndertowHttpRequestImpl implements HttpRequest {
         this.exchange = exchange;
     }
 
+    private String method;
+
     @Override
     public String getMethod() {
-        return exchange.getRequestMethod().toString();
+        if (method == null) {
+            io.undertow.util.HttpString requestMethod = exchange.getRequestMethod();
+            if (io.undertow.util.Methods.GET.equals(requestMethod)) {
+                method = "GET";
+            } else if (io.undertow.util.Methods.POST.equals(requestMethod)) {
+                method = "POST";
+            } else {
+                method = requestMethod.toString();
+            }
+        }
+        return method;
     }
 
     @Override

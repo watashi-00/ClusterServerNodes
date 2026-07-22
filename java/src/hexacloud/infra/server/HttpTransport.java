@@ -103,7 +103,7 @@ public class HttpTransport implements ServerTransport {
                     exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
                     exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "X-Cluster-Token, Content-Type, Authorization");
 
-                    if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    if ("OPTIONS".equals(exchange.getRequestMethod())) {
                         exchange.sendResponseHeaders(204, -1);
                         return;
                     }
