@@ -36,9 +36,9 @@ public class Cluster {
     private boolean batchMode = false;
     private volatile RoutingMode routingMode = RoutingMode.TELEMETRY_ONLY;
 
-    private final java.util.Set<String> staticNodes = new java.util.concurrent.ConcurrentHashMap<String, Boolean>().newKeySet();
-    private final java.util.Set<String> persistedStaticNodes = new java.util.concurrent.ConcurrentHashMap<String, Boolean>().newKeySet();
-    private final java.util.Set<String> registeredStaticNodesThisRun = new java.util.concurrent.ConcurrentHashMap<String, Boolean>().newKeySet();
+    private final java.util.Set<String> staticNodes = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.Set<String> persistedStaticNodes = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.Set<String> registeredStaticNodesThisRun = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private boolean bootstrapMode = true;
 
     public java.util.Set<String> getStaticNodes() {
