@@ -5,8 +5,6 @@ import io.undertow.util.HttpString;
 import io.undertow.util.Headers;
 import hexacloud.core.server.filter.HttpResponse;
 import java.io.PrintWriter;
-import java.io.OutputStreamWriter;
-import java.nio.charset.StandardCharsets;
 
 public class UndertowHttpResponseImpl implements HttpResponse {
 

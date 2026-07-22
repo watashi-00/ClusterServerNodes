@@ -1,11 +1,11 @@
 package hexacloud.infra.server;
 
 import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
-import io.undertow.util.HeaderValues;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
 import hexacloud.core.model.ServerNode;
@@ -28,7 +28,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,12 +44,23 @@ public class UndertowHttpTransport implements ServerTransport {
     private boolean running = false;
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinIndices = new ConcurrentHashMap<>();
     private final ExecutorService virtualExecutor = ThreadManager.newVirtualThreadPool();
+    private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
+            .version(java.net.http.HttpClient.Version.HTTP_2)
+            .connectTimeout(java.time.Duration.ofMillis(5000))
+            .build();
 
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
             server = Undertow.builder()
                     .addHttpListener(port, "0.0.0.0")
+                    .setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, true)
+                    .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, true)
+                    .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, false)
+                    .setServerOption(UndertowOptions.ENABLE_CONNECTOR_STATISTICS, false)
+                    .setIoThreads(Runtime.getRuntime().availableProcessors())
+                    .setWorkerThreads(Runtime.getRuntime().availableProcessors())
+                    .setBufferSize(16384)
                     .setHandler(new HttpHandler() {
                         @Override
                         public void handleRequest(HttpServerExchange exchange) throws Exception {
@@ -192,71 +202,64 @@ public class UndertowHttpTransport implements ServerTransport {
                         }
 
                         long startTime = System.currentTimeMillis();
-                        URL targetUrl = java.net.URI.create(targetUrlStr).toURL();
-                        HttpURLConnection conn = (HttpURLConnection) targetUrl.openConnection();
-                        conn.setRequestMethod(r.getMethod());
+                        java.net.http.HttpRequest.Builder reqBuilder = java.net.http.HttpRequest.newBuilder()
+                                .uri(java.net.URI.create(targetUrlStr));
+
                         int timeout = targetCluster.getTimeoutMs() > 0 ? targetCluster.getTimeoutMs() : 5000;
-                        conn.setConnectTimeout(timeout);
-                        conn.setReadTimeout(timeout);
-                        conn.setUseCaches(false);
-                        conn.setInstanceFollowRedirects(false);
+                        reqBuilder.timeout(java.time.Duration.ofMillis(timeout));
 
                         // Copy request headers
                         Map<String, List<String>> reqHeaders = r.getHeaders();
                         if (reqHeaders != null) {
                             for (Map.Entry<String, List<String>> entry : reqHeaders.entrySet()) {
                                 String hName = entry.getKey();
-                                if (hName == null || hName.equalsIgnoreCase("Host") || hName.equalsIgnoreCase("Content-Length")) {
+                                if (hName == null || hName.equalsIgnoreCase("Host") || hName.equalsIgnoreCase("Content-Length") || hName.equalsIgnoreCase("Connection") || hName.equalsIgnoreCase("Upgrade")) {
                                     continue;
                                 }
                                 for (String val : entry.getValue()) {
-                                    conn.addRequestProperty(hName, val);
+                                    reqBuilder.header(hName, val);
                                 }
                             }
                         }
 
                         // Forward body if present
                         String method = r.getMethod();
+                        java.net.http.HttpRequest.BodyPublisher bodyPublisher;
                         boolean hasBody = "POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method);
                         if (hasBody) {
-                            conn.setDoOutput(true);
                             if (!exchange.isBlocking()) {
                                 exchange.startBlocking();
                             }
-                            try (InputStream reqIn = exchange.getInputStream();
-                                 OutputStream connOut = conn.getOutputStream()) {
-                                byte[] buf = new byte[8192];
-                                int len;
-                                while ((len = reqIn.read(buf)) != -1) {
-                                    connOut.write(buf, 0, len);
-                                }
-                                connOut.flush();
+                            byte[] bodyBytes;
+                            try (InputStream reqIn = exchange.getInputStream()) {
+                                bodyBytes = reqIn.readAllBytes();
                             }
+                            bodyPublisher = java.net.http.HttpRequest.BodyPublishers.ofByteArray(bodyBytes);
+                        } else {
+                            bodyPublisher = java.net.http.HttpRequest.BodyPublishers.noBody();
                         }
+                        reqBuilder.method(method, bodyPublisher);
+
+                        java.net.http.HttpRequest proxyRequest = reqBuilder.build();
 
                         int respCode = 502;
-                        InputStream respIn = null;
+                        java.net.http.HttpResponse<InputStream> proxyResponse = null;
                         try {
-                            respCode = conn.getResponseCode();
-                            respIn = conn.getInputStream();
-                        } catch (IOException ioEx) {
-                            try {
-                                respCode = conn.getResponseCode();
-                                if (respCode > 0) {
-                                    respIn = conn.getErrorStream();
-                                } else {
-                                    respCode = 502;
-                                }
-                            } catch (Exception ignored) {
-                                respCode = 502;
-                            }
+                            proxyResponse = httpClient.send(proxyRequest, java.net.http.HttpResponse.BodyHandlers.ofInputStream());
+                            respCode = proxyResponse.statusCode();
+                        } catch (Exception ex) {
+                            respCode = 502;
                         }
 
                         long latencyMs = System.currentTimeMillis() - startTime;
 
                         // Passive Telemetry extraction
-                        Double cpuVal = parseHeaderDouble(conn, "X-Telemetry-CPU", "X-Node-CPU");
-                        Double ramVal = parseHeaderDouble(conn, "X-Telemetry-RAM", "X-Node-RAM");
+                        Double cpuVal = null;
+                        Double ramVal = null;
+                        if (proxyResponse != null) {
+                            cpuVal = parseHeaderDouble(proxyResponse.headers(), "X-Telemetry-CPU", "X-Node-CPU");
+                            ramVal = parseHeaderDouble(proxyResponse.headers(), "X-Telemetry-RAM", "X-Node-RAM");
+                        }
 
                         targetCluster.updateTelemetryServer(targetNode.host(), targetNode.port(), cpuVal, ramVal, null, (int) latencyMs, null);
                         if (cpuVal != null) targetNode.setCpuUsage(cpuVal);
@@ -264,11 +267,10 @@ public class UndertowHttpTransport implements ServerTransport {
                         targetNode.setLatencyMs((int) latencyMs);
 
                         // Copy response headers to client
-                        Map<String, List<String>> respHeaderFields = conn.getHeaderFields();
-                        if (respHeaderFields != null) {
-                            for (Map.Entry<String, List<String>> entry : respHeaderFields.entrySet()) {
+                        if (proxyResponse != null) {
+                            for (Map.Entry<String, List<String>> entry : proxyResponse.headers().map().entrySet()) {
                                 String hName = entry.getKey();
-                                if (hName == null || hName.equalsIgnoreCase("Transfer-Encoding") || hName.equalsIgnoreCase("Content-Length")) {
+                                if (hName == null || hName.equalsIgnoreCase("Transfer-Encoding") || hName.equalsIgnoreCase("Content-Length") || hName.equalsIgnoreCase("Connection")) {
                                     continue;
                                 }
                                 for (String val : entry.getValue()) {
@@ -279,11 +281,11 @@ public class UndertowHttpTransport implements ServerTransport {
 
                         // Send response
                         exchange.setStatusCode(respCode);
-                        if (respIn != null) {
+                        if (proxyResponse != null) {
                             if (!exchange.isBlocking()) {
                                 exchange.startBlocking();
                             }
-                            try (InputStream in = respIn;
+                            try (InputStream in = proxyResponse.body();
                                  OutputStream os = exchange.getOutputStream()) {
                                 byte[] buf = new byte[8192];
                                 int len;
@@ -355,13 +357,16 @@ public class UndertowHttpTransport implements ServerTransport {
         exchange.getResponseSender().send("500 Internal Server Error - Execution failure: " + e.getMessage());
     }
 
-    private Double parseHeaderDouble(HttpURLConnection conn, String... headerNames) {
+    private Double parseHeaderDouble(java.net.http.HttpHeaders headers, String... headerNames) {
         for (String hName : headerNames) {
-            String val = conn.getHeaderField(hName);
-            if (val != null && !val.trim().isEmpty()) {
-                try {
-                    return Double.parseDouble(val.replace("%", "").trim());
-                } catch (NumberFormatException ignored) {}
+            java.util.Optional<String> valOpt = headers.firstValue(hName);
+            if (valOpt.isPresent()) {
+                String val = valOpt.get();
+                if (!val.trim().isEmpty()) {
+                    try {
+                        return Double.parseDouble(val.replace("%", "").trim());
+                    } catch (NumberFormatException ignored) {}
+                }
             }
         }
         return null;
