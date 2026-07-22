@@ -167,8 +167,8 @@ public class DashboardViewRenderer {
             for (int i = 27; i < W - 31; i++) sep.append("─");
             NativeTerminal.printAt(26, 8, CYAN + "├" + sep.substring(1, sep.length() - 1) + "┤" + RESET);
 
-            String headerLine = String.format("%%-" + hostColWidth + "s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS");
-            NativeTerminal.printAt(28, 9, WHITE_BOLD + String.format("%-" + hostColWidth + "s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS") + RESET);
+            String headerLine = String.format("%-" + hostColWidth + "s %-8s %-14s", "SERVICE HOST", "PORT", "STATUS");
+            NativeTerminal.printAt(28, 9, WHITE_BOLD + headerLine + RESET);
 
             tui.adjustServicesViewport(4);
 
