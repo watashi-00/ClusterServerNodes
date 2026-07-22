@@ -27,10 +27,11 @@ public class RouteRegistry {
                     BiConsumer<String, PrintWriter> handler;
                     try {
                         java.lang.invoke.MethodHandles.Lookup lookup = java.lang.invoke.MethodHandles.lookup();
-                        final java.lang.invoke.MethodHandle mh = lookup.unreflect(method);
+                        java.lang.invoke.MethodHandle mh = lookup.unreflect(method);
+                        final java.lang.invoke.MethodHandle boundMh = mh.bindTo(controller);
                         handler = (args, out) -> {
                             try {
-                                mh.invoke(controller, args, out);
+                                boundMh.invokeExact(args, out);
                             } catch(Throwable e) {
                                 DebugUtils.error("Failed to invoke route method: " + method.getName(), e);
                                 out.println("ERROR: Internal server error");
