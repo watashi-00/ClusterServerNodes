@@ -65,6 +65,11 @@ public class ClusterStatePersistence {
         }
     }
 
+    private static String escapeKey(String key) {
+        if (key == null) return "";
+        return key.replace(":", "\\:").replace("=", "\\=");
+    }
+
     private static void saveClusterState(Cluster cluster) {
         String name = cluster.getClusterName();
         String filePath = resolveStateFilePath(name);
@@ -78,11 +83,11 @@ public class ClusterStatePersistence {
 
             writer.println("# === BEGIN CLUSTER CONFIG ===");
             String prefix = "cluster." + name + ".";
-            writer.println(prefix + "requireToken=" + cluster.isRequireToken());
-            writer.println(prefix + "timeoutMs=" + cluster.getTimeoutMs());
-            writer.println(prefix + "allowedIps=" + (cluster.getAllowedIps() != null ? cluster.getAllowedIps() : ""));
-            writer.println(prefix + "rateLimitRequests=" + cluster.getRateLimitRequests());
-            writer.println(prefix + "rateLimitDurationSeconds=" + cluster.getRateLimitDurationSeconds());
+            writer.println(escapeKey(prefix + "requireToken") + "=" + cluster.isRequireToken());
+            writer.println(escapeKey(prefix + "timeoutMs") + "=" + cluster.getTimeoutMs());
+            writer.println(escapeKey(prefix + "allowedIps") + "=" + (cluster.getAllowedIps() != null ? cluster.getAllowedIps() : ""));
+            writer.println(escapeKey(prefix + "rateLimitRequests") + "=" + cluster.getRateLimitRequests());
+            writer.println(escapeKey(prefix + "rateLimitDurationSeconds") + "=" + cluster.getRateLimitDurationSeconds());
             writer.println("# === END CLUSTER CONFIG ===");
             writer.println();
 
@@ -93,25 +98,25 @@ public class ClusterStatePersistence {
 
                 writer.println("# === BEGIN NODE " + nodeKey + " ===");
                 String nodePrefix = "node." + name + "." + nodeKey + ".";
-                writer.println(nodePrefix + "host=" + node.host());
-                writer.println(nodePrefix + "port=" + node.port());
-                writer.println(nodePrefix + "isExternal=" + node.isExternal());
-                writer.println(nodePrefix + "isDynamic=" + node.isDynamic());
-                writer.println(nodePrefix + "pingEnabled=" + node.pingEnabled());
-                writer.println(nodePrefix + "pingProtocol=" + node.pingProtocol().name());
-                writer.println(nodePrefix + "pingPath=" + node.pingPath());
+                writer.println(escapeKey(nodePrefix + "host") + "=" + node.host());
+                writer.println(escapeKey(nodePrefix + "port") + "=" + node.port());
+                writer.println(escapeKey(nodePrefix + "isExternal") + "=" + node.isExternal());
+                writer.println(escapeKey(nodePrefix + "isDynamic") + "=" + node.isDynamic());
+                writer.println(escapeKey(nodePrefix + "pingEnabled") + "=" + node.pingEnabled());
+                writer.println(escapeKey(nodePrefix + "pingProtocol") + "=" + node.pingProtocol().name());
+                writer.println(escapeKey(nodePrefix + "pingPath") + "=" + node.pingPath());
                 if (node.pingHeaderName() != null) {
-                    writer.println(nodePrefix + "pingHeaderName=" + node.pingHeaderName());
+                    writer.println(escapeKey(nodePrefix + "pingHeaderName") + "=" + node.pingHeaderName());
                 }
                 writer.println("# === END NODE " + nodeKey + " ===");
                 writer.println();
             }
 
             writer.println("# === BEGIN NODE LIST ===");
-            writer.println(prefix + "nodes=" + String.join(",", nodeKeys));
+            writer.println(escapeKey(prefix + "nodes") + "=" + String.join(",", nodeKeys));
             
             java.util.List<String> staticKeys = new java.util.ArrayList<>(cluster.getStaticNodes());
-            writer.println(prefix + "staticNodes=" + String.join(",", staticKeys));
+            writer.println(escapeKey(prefix + "staticNodes") + "=" + String.join(",", staticKeys));
             writer.println("# === END NODE LIST ===");
             writer.println();
 
