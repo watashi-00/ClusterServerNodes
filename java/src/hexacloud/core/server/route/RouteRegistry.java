@@ -31,7 +31,7 @@ public class RouteRegistry {
                         final java.lang.invoke.MethodHandle boundMh = mh.bindTo(controller);
                         handler = (args, out) -> {
                             try {
-                                boundMh.invokeExact(args, out);
+                                boundMh.invoke(args, out);
                             } catch(Throwable e) {
                                 DebugUtils.error("Failed to invoke route method: " + method.getName(), e);
                                 out.println("ERROR: Internal server error");
