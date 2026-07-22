@@ -11,6 +11,12 @@ import hexacloud.core.utils.common.DebugUtils;
 public class RouteRegistry {
 
     private final Map<String, BiConsumer<String, PrintWriter>> routes = new HashMap<>();
+    private final java.util.Set<String> publicRoutes = new java.util.concurrent.ConcurrentHashMap().newKeySet();
+
+    public boolean isRoutePublic(String routeName) {
+        if (routeName == null) return false;
+        return publicRoutes.contains(routeName.toUpperCase());
+    }
 
     public void registerController(RouteController controller) {
         if(controller == null) return;
@@ -20,6 +26,9 @@ public class RouteRegistry {
             if(method.isAnnotationPresent(RouteMapping.class)) {
                 RouteMapping mapping = method.getAnnotation(RouteMapping.class);
                 String command = mapping.value().toUpperCase();
+                if (mapping.isPublic()) {
+                    publicRoutes.add(command);
+                }
                 
                 Class<?>[] paramTypes = method.getParameterTypes();
                 if(paramTypes.length == 2 && paramTypes[0] == String.class && paramTypes[1] == PrintWriter.class) {

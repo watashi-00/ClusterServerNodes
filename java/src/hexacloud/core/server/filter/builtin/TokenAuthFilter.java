@@ -14,6 +14,13 @@ public class TokenAuthFilter implements HttpFilter {
 
     @Override
     public void doFilter(HttpRequest request, HttpResponse response, HttpFilterChain chain) throws Exception {
+        String path = request.getPath();
+        String routeName = (path != null && path.length() > 1) ? path.substring(1).toUpperCase() : "";
+        if (cluster.getRouteRegistry() != null && cluster.getRouteRegistry().isRoutePublic(routeName)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
         String token = request.getHeader("X-Cluster-Token");
         if (token == null || token.isEmpty()) {
             String query = request.getQuery();
