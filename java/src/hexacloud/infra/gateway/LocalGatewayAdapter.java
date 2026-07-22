@@ -309,6 +309,11 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     }
 
     @Override
+    public boolean isTcpProxyEnabled() {
+        return serverManager != null && serverManager.isTcpProxyEnabled();
+    }
+
+    @Override
     public boolean isRunning() {
         return running;
     }
