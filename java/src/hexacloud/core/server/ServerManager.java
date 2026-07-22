@@ -12,6 +12,7 @@ import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
 import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.infra.server.HttpTransport;
+import hexacloud.infra.server.UndertowHttpTransport;
 import hexacloud.infra.server.TcpProxyTransport;
 import hexacloud.infra.server.TelnetTransport;
 import hexacloud.infra.server.WsTransport;
@@ -29,6 +30,7 @@ public class ServerManager implements ServerOperations {
     private boolean wsEnabled = false;
     private boolean tcpProxyEnabled = false;
     private int port = 3000;
+    private hexacloud.core.server.HttpEngine httpEngine = hexacloud.core.server.HttpEngine.JDK_DEFAULT;
 
     public ServerManager(Cluster cluster, ClusterEventBusManager eventManager) {
         this.cluster = cluster;
@@ -116,6 +118,16 @@ public class ServerManager implements ServerOperations {
         return tcpProxyEnabled;
     }
 
+    public hexacloud.core.server.HttpEngine getHttpEngine() {
+        return httpEngine;
+    }
+
+    public void setHttpEngine(hexacloud.core.server.HttpEngine httpEngine) {
+        if (httpEngine != null) {
+            this.httpEngine = httpEngine;
+        }
+    }
+
     public ServerManager registerFilter(hexacloud.core.server.filter.HttpFilter filter) {
         this.customFilters.add(filter);
         return this;
@@ -139,7 +151,12 @@ public class ServerManager implements ServerOperations {
         }
         
         if(httpEnabled) {
-            ServerTransport http = new HttpTransport();
+            ServerTransport http;
+            if (httpEngine == hexacloud.core.server.HttpEngine.UNDERTOW) {
+                http = new UndertowHttpTransport();
+            } else {
+                http = new HttpTransport();
+            }
             // HTTP runs on port + 1
             http.listen(port + 1, routeRegistry, cluster, customFilters);
             activeTransports.add(http);

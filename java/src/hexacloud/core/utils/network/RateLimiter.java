@@ -7,8 +7,8 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class RateLimiter {
 
-    private int maxRequests;
-    private long windowSizeMs;
+    private volatile int maxRequests;
+    private volatile long windowSizeMs;
     private final ReentrantLock limitLock = new ReentrantLock();
     private final ConcurrentHashMap<String, ClientWindow> clientRequestWindows = new ConcurrentHashMap<>();
 
@@ -33,16 +33,8 @@ public class RateLimiter {
     }
 
     public boolean allowRequest(String clientId) {
-        int maxReq;
-        long windowSize;
-
-        limitLock.lock();
-        try {
-            maxReq = maxRequests;
-            windowSize = windowSizeMs;
-        } finally {
-            limitLock.unlock();
-        }
+        int maxReq = maxRequests;
+        long windowSize = windowSizeMs;
 
         if(maxReq <= 0 || windowSize <= 0) {
             return true;

@@ -95,6 +95,11 @@ public interface GatewayBuilderPort {
     GatewayBuilderPort timeout(int timeoutMs);
 
     /**
+     * Set the HTTP engine to use (JDK_DEFAULT or UNDERTOW).
+     */
+    GatewayBuilderPort httpEngine(hexacloud.core.server.HttpEngine engine);
+
+    /**
      * Set the custom name of this gateway.
      */
     GatewayBuilderPort gatewayName(String name);

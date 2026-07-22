@@ -1,0 +1,85 @@
+package hexacloud.infra.server;
+
+import io.undertow.server.HttpServerExchange;
+import io.undertow.util.HeaderValues;
+import hexacloud.core.server.filter.HttpRequest;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
+
+public class UndertowHttpRequestImpl implements HttpRequest {
+
+    private final HttpServerExchange exchange;
+    private final Map<String, Object> attributes = new HashMap<>();
+    private final URI requestUri;
+
+    public UndertowHttpRequestImpl(HttpServerExchange exchange) {
+        this.exchange = exchange;
+        // Construct standard URI
+        String query = exchange.getQueryString();
+        String url = exchange.getRequestURL();
+        if (query != null && !query.isEmpty()) {
+            this.requestUri = URI.create(url + "?" + query);
+        } else {
+            this.requestUri = URI.create(url);
+        }
+    }
+
+    @Override
+    public String getMethod() {
+        return exchange.getRequestMethod().toString();
+    }
+
+    @Override
+    public URI getRequestURI() {
+        return requestUri;
+    }
+
+    @Override
+    public String getPath() {
+        return exchange.getRequestPath();
+    }
+
+    @Override
+    public String getQuery() {
+        return exchange.getQueryString();
+    }
+
+    @Override
+    public String getHeader(String name) {
+        return exchange.getRequestHeaders().getFirst(name);
+    }
+
+    @Override
+    public Map<String, List<String>> getHeaders() {
+        Map<String, List<String>> map = new HashMap<>();
+        for (HeaderValues hv : exchange.getRequestHeaders()) {
+            List<String> values = new ArrayList<>();
+            for (String v : hv) {
+                values.add(v);
+            }
+            map.put(hv.getHeaderName().toString(), values);
+        }
+        return map;
+    }
+
+    @Override
+    public String getClientIp() {
+        if (exchange.getSourceAddress() != null && exchange.getSourceAddress().getAddress() != null) {
+            return exchange.getSourceAddress().getAddress().getHostAddress();
+        }
+        return "127.0.0.1";
+    }
+
+    @Override
+    public void setAttribute(String key, Object value) {
+        attributes.put(key, value);
+    }
+
+    @Override
+    public Object getAttribute(String key) {
+        return attributes.get(key);
+    }
+}
