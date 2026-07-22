@@ -33,6 +33,16 @@ public class TcpProxyTransport implements ServerTransport {
     private volatile boolean active = true;
     private final AtomicInteger roundRobinIndex = new AtomicInteger(0);
     private final Set<Socket> activeSockets = ConcurrentHashMap.newKeySet();
+    private static final java.util.concurrent.ConcurrentLinkedQueue<byte[]> BUFFER_POOL = new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+    private void configureSocket(Socket socket) {
+        try {
+            socket.setTcpNoDelay(true);
+            socket.setKeepAlive(true);
+            socket.setReceiveBufferSize(65536);
+            socket.setSendBufferSize(65536);
+        } catch (Exception ignored) {}
+    }
 
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
@@ -55,6 +65,7 @@ public class TcpProxyTransport implements ServerTransport {
             while (active && !serverSocket.isClosed()) {
                 try {
                     Socket clientSocket = serverSocket.accept();
+                    configureSocket(clientSocket);
                     activeSockets.add(clientSocket);
                     ThreadManager.startVirtual("TcpProxy-Handler-" + clientSocket.getRemoteSocketAddress(), () -> handleConnection(clientSocket, cluster));
                 } catch (IOException ex) {
@@ -104,6 +115,7 @@ public class TcpProxyTransport implements ServerTransport {
             long startTime = System.currentTimeMillis();
             int timeout = cluster.getTimeoutMs() > 0 ? cluster.getTimeoutMs() : 5000;
             nodeSocket = new Socket();
+            configureSocket(nodeSocket);
             nodeSocket.connect(new InetSocketAddress(targetHost, targetPort), timeout);
             long latencyMs = System.currentTimeMillis() - startTime;
 
@@ -145,7 +157,10 @@ public class TcpProxyTransport implements ServerTransport {
     }
 
     private void tunnel(InputStream in, OutputStream out, Socket outSocket) {
-        byte[] buffer = new byte[8192];
+        byte[] buffer = BUFFER_POOL.poll();
+        if (buffer == null) {
+            buffer = new byte[8192];
+        }
         try {
             int bytesRead;
             while ((bytesRead = in.read(buffer)) != -1) {
@@ -154,6 +169,7 @@ public class TcpProxyTransport implements ServerTransport {
             }
         } catch (IOException ignored) {
         } finally {
+            BUFFER_POOL.offer(buffer);
             try {
                 if (outSocket != null && !outSocket.isClosed() && !outSocket.isOutputShutdown()) {
                     outSocket.shutdownOutput();

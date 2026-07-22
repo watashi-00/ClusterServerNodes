@@ -49,7 +49,7 @@ public class HttpTransport implements ServerTransport {
     private HttpServer server;
     private boolean running = false;
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinIndices = new ConcurrentHashMap<>();
-    private static final ThreadLocal<byte[]> COPY_BUFFER = ThreadLocal.withInitial(() -> new byte[8192]);
+    private static final java.util.concurrent.ConcurrentLinkedQueue<byte[]> BUFFER_POOL = new java.util.concurrent.ConcurrentLinkedQueue<>();
     private final ConcurrentHashMap<String, RouteHandlerInfo> routeCache = new ConcurrentHashMap<>();
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
@@ -275,14 +275,19 @@ public class HttpTransport implements ServerTransport {
                                         } else {
                                             // Chunked streaming for body
                                             exchange.sendResponseHeaders(respCode, 0);
+                                            byte[] buf = BUFFER_POOL.poll();
+                                            if (buf == null) {
+                                                buf = new byte[8192];
+                                            }
                                             try (InputStream in = proxyResponse.body();
                                                  OutputStream os = exchange.getResponseBody()) {
-                                                byte[] buf = COPY_BUFFER.get();
                                                 int len;
                                                 while ((len = in.read(buf)) != -1) {
                                                     os.write(buf, 0, len);
                                                 }
                                                 os.flush();
+                                            } finally {
+                                                BUFFER_POOL.offer(buf);
                                             }
                                         }
                                     } else {

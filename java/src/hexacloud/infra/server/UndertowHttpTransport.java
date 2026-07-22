@@ -43,7 +43,7 @@ public class UndertowHttpTransport implements ServerTransport {
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinIndices = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, RouteHandlerInfo> routeCache = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, HttpString> headerCache = new ConcurrentHashMap<>(128);
-    private static final ThreadLocal<byte[]> COPY_BUFFER = ThreadLocal.withInitial(() -> new byte[8192]);
+    private static final java.util.concurrent.ConcurrentLinkedQueue<byte[]> BUFFER_POOL = new java.util.concurrent.ConcurrentLinkedQueue<>();
     private final ExecutorService virtualExecutor = ThreadManager.newVirtualThreadPool();
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
@@ -345,14 +345,19 @@ public class UndertowHttpTransport implements ServerTransport {
                             if (!exchange.isBlocking()) {
                                 exchange.startBlocking();
                             }
+                            byte[] buf = BUFFER_POOL.poll();
+                            if (buf == null) {
+                                buf = new byte[8192];
+                            }
                             try (InputStream in = proxyResponse.body();
                                  OutputStream os = exchange.getOutputStream()) {
-                                byte[] buf = COPY_BUFFER.get();
                                 int len;
                                 while ((len = in.read(buf)) != -1) {
                                     os.write(buf, 0, len);
                                 }
                                 os.flush();
+                            } finally {
+                                BUFFER_POOL.offer(buf);
                             }
                         } else {
                             if (respCode == 502) {
