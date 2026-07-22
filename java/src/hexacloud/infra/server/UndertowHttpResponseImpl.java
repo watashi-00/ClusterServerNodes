@@ -11,8 +11,6 @@ public class UndertowHttpResponseImpl implements HttpResponse {
     private final HttpServerExchange exchange;
     private PrintWriter writer;
 
-    private java.io.StringWriter stringWriter;
-
     public UndertowHttpResponseImpl(HttpServerExchange exchange) {
         this.exchange = exchange;
     }
@@ -35,8 +33,10 @@ public class UndertowHttpResponseImpl implements HttpResponse {
     @Override
     public PrintWriter getWriter() throws Exception {
         if (writer == null) {
-            stringWriter = new java.io.StringWriter();
-            writer = new PrintWriter(stringWriter);
+            if (!exchange.isResponseStarted()) {
+                exchange.setStatusCode(200);
+            }
+            writer = new PrintWriter(exchange.getOutputStream(), true);
         }
         return writer;
     }
@@ -49,8 +49,6 @@ public class UndertowHttpResponseImpl implements HttpResponse {
     public void flushBuffer() {
         if (writer != null) {
             writer.flush();
-            String content = stringWriter.toString();
-            exchange.getResponseSender().send(content);
         }
     }
 }
