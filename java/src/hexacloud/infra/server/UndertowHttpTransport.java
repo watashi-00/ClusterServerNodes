@@ -126,16 +126,19 @@ public class UndertowHttpTransport implements ServerTransport {
                                     return;
                                 }
                             } else {
-                                // Direct route: dispatch to standard Undertow worker platform threads
-                                if (exchange.isInIoThread()) {
-                                    exchange.dispatch(exchange.getConnection().getWorker(), () -> {
-                                        try {
-                                            processRequest(exchange, registry, cluster, customFilters);
-                                        } catch (Exception e) {
-                                            handleError(exchange, e);
-                                        }
-                                    });
-                                    return;
+                                // Direct route: run inline on I/O threads in MAX_PERFORMANCE mode to bypass dispatching overhead,
+                                // or dispatch to standard Undertow worker platform threads in STANDARD mode.
+                                if (performanceProfile != hexacloud.core.server.PerformanceProfile.MAX_PERFORMANCE) {
+                                    if (exchange.isInIoThread()) {
+                                        exchange.dispatch(exchange.getConnection().getWorker(), () -> {
+                                            try {
+                                                processRequest(exchange, registry, cluster, customFilters);
+                                            } catch (Exception e) {
+                                                handleError(exchange, e);
+                                            }
+                                        });
+                                        return;
+                                    }
                                 }
                             }
                             processRequest(exchange, registry, cluster, customFilters);
