@@ -9,7 +9,7 @@ import java.util.List;
 
 public class HttpRequestImpl implements HttpRequest {
     private final HttpExchange exchange;
-    private final Map<String, Object> attributes = new HashMap<>();
+    private Map<String, Object> attributes;
 
     public HttpRequestImpl(HttpExchange exchange) {
         this.exchange = exchange;
@@ -30,6 +30,13 @@ public class HttpRequestImpl implements HttpRequest {
         }
         return "127.0.0.1";
     }
-    @Override public void setAttribute(String key, Object value) { attributes.put(key, value); }
-    @Override public Object getAttribute(String key) { return attributes.get(key); }
+    @Override public void setAttribute(String key, Object value) {
+        if (attributes == null) {
+            attributes = new HashMap<>();
+        }
+        attributes.put(key, value);
+    }
+    @Override public Object getAttribute(String key) {
+        return attributes == null ? null : attributes.get(key);
+    }
 }

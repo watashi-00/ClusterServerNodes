@@ -12,19 +12,11 @@ import java.util.ArrayList;
 public class UndertowHttpRequestImpl implements HttpRequest {
 
     private final HttpServerExchange exchange;
-    private final Map<String, Object> attributes = new HashMap<>();
-    private final URI requestUri;
+    private Map<String, Object> attributes;
+    private URI requestUri;
 
     public UndertowHttpRequestImpl(HttpServerExchange exchange) {
         this.exchange = exchange;
-        // Construct standard URI
-        String query = exchange.getQueryString();
-        String url = exchange.getRequestURL();
-        if (query != null && !query.isEmpty()) {
-            this.requestUri = URI.create(url + "?" + query);
-        } else {
-            this.requestUri = URI.create(url);
-        }
     }
 
     @Override
@@ -34,6 +26,15 @@ public class UndertowHttpRequestImpl implements HttpRequest {
 
     @Override
     public URI getRequestURI() {
+        if (requestUri == null) {
+            String query = exchange.getQueryString();
+            String url = exchange.getRequestURL();
+            if (query != null && !query.isEmpty()) {
+                this.requestUri = URI.create(url + "?" + query);
+            } else {
+                this.requestUri = URI.create(url);
+            }
+        }
         return requestUri;
     }
 
@@ -75,11 +76,14 @@ public class UndertowHttpRequestImpl implements HttpRequest {
 
     @Override
     public void setAttribute(String key, Object value) {
+        if (attributes == null) {
+            attributes = new HashMap<>();
+        }
         attributes.put(key, value);
     }
 
     @Override
     public Object getAttribute(String key) {
-        return attributes.get(key);
+        return attributes == null ? null : attributes.get(key);
     }
 }
