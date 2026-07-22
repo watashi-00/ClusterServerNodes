@@ -189,7 +189,7 @@ public class UndertowHttpTransport implements ServerTransport {
                         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
                     }
                     exchange.setStatusCode(200);
-                    try (PrintWriter out = new PrintWriter(exchange.getOutputStream(), true)) {
+                    try (PrintWriter out = new PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(exchange.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8)))) {
                         String query = exchange.getQueryString();
                         String args = query != null ? query : "";
                         routeInfo.handler.accept(args, out);
