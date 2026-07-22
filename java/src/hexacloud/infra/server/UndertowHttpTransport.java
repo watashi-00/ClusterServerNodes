@@ -112,16 +112,31 @@ public class UndertowHttpTransport implements ServerTransport {
             server = builder.setHandler(new HttpHandler() {
                         @Override
                         public void handleRequest(HttpServerExchange exchange) throws Exception {
-                            // Dispatch immediately from I/O thread to Virtual Thread pool
-                            if (exchange.isInIoThread()) {
-                                exchange.dispatch(virtualExecutor, () -> {
-                                    try {
-                                        processRequest(exchange, registry, cluster, customFilters);
-                                    } catch (Exception e) {
-                                        handleError(exchange, e);
-                                    }
-                                });
-                                return;
+                            String path = exchange.getRequestPath();
+                            if (path.startsWith("/clusters/")) {
+                                // Proxy route: dispatch to Virtual Threads
+                                if (exchange.isInIoThread()) {
+                                    exchange.dispatch(virtualExecutor, () -> {
+                                        try {
+                                            processRequest(exchange, registry, cluster, customFilters);
+                                        } catch (Exception e) {
+                                            handleError(exchange, e);
+                                        }
+                                    });
+                                    return;
+                                }
+                            } else {
+                                // Direct route: dispatch to standard Undertow worker platform threads
+                                if (exchange.isInIoThread()) {
+                                    exchange.dispatch(exchange.getConnection().getWorker(), () -> {
+                                        try {
+                                            processRequest(exchange, registry, cluster, customFilters);
+                                        } catch (Exception e) {
+                                            handleError(exchange, e);
+                                        }
+                                    });
+                                    return;
+                                }
                             }
                             processRequest(exchange, registry, cluster, customFilters);
                         }

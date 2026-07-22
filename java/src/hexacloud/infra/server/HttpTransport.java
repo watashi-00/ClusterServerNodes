@@ -91,6 +91,7 @@ public class HttpTransport implements ServerTransport {
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
             rebuildFilters(cluster, customFilters);
+            DebugUtils.log("HTTP Transport (JDK) starting on port " + port + " with profile: " + performanceProfile);
             server = HttpServer.create(new InetSocketAddress(port), 2048);
             server.setExecutor(ThreadManager.newVirtualThreadPool());
             server.createContext("/", new HttpHandler() {
