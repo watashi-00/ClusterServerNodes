@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -40,6 +41,7 @@ public class UndertowHttpTransport implements ServerTransport {
     private Undertow server;
     private boolean running = false;
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinIndices = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, RouteHandlerInfo> routeCache = new ConcurrentHashMap<>();
     private final ExecutorService virtualExecutor = ThreadManager.newVirtualThreadPool();
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
@@ -47,6 +49,29 @@ public class UndertowHttpTransport implements ServerTransport {
             .build();
 
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
+    private final List<HttpFilter> activeFilters = new CopyOnWriteArrayList<>();
+
+    private void rebuildFilters(Cluster cluster, List<HttpFilter> customFilters) {
+        activeFilters.clear();
+        String allowedIps = cluster.getAllowedIps();
+        if (allowedIps != null && !allowedIps.trim().isEmpty()) {
+            activeFilters.add(new IpRestrictionFilter(cluster));
+        }
+        if (cluster.getRateLimitRequests() > 0 && cluster.getRateLimitDurationSeconds() > 0) {
+            activeFilters.add(new RateLimitFilter(cluster));
+        }
+        if (cluster.isRequireToken()) {
+            activeFilters.add(new TokenAuthFilter(cluster));
+        }
+        activeFilters.addAll(customFilters);
+
+        // Sort custom filters by @Order annotation value (if present)
+        activeFilters.sort((f1, f2) -> {
+            int o1 = f1.getClass().isAnnotationPresent(Order.class) ? f1.getClass().getAnnotation(Order.class).value() : 100;
+            int o2 = f2.getClass().isAnnotationPresent(Order.class) ? f2.getClass().getAnnotation(Order.class).value() : 100;
+            return Integer.compare(o1, o2);
+        });
+    }
 
     @Override
     public void setPerformanceProfile(hexacloud.core.server.PerformanceProfile profile) {
@@ -58,6 +83,7 @@ public class UndertowHttpTransport implements ServerTransport {
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
+            rebuildFilters(cluster, customFilters);
             Undertow.Builder builder = Undertow.builder()
                     .addHttpListener(port, "0.0.0.0");
 
@@ -127,18 +153,7 @@ public class UndertowHttpTransport implements ServerTransport {
             UndertowHttpResponseImpl res = new UndertowHttpResponseImpl(exchange);
 
             // 2. Build active filter chain
-            List<HttpFilter> activeFilters = new ArrayList<>();
-            activeFilters.add(new IpRestrictionFilter(cluster));
-            activeFilters.add(new RateLimitFilter(cluster));
-            activeFilters.add(new TokenAuthFilter(cluster));
-            activeFilters.addAll(customFilters);
-
-            // Sort filters by @Order
-            activeFilters.sort((f1, f2) -> {
-                int o1 = f1.getClass().isAnnotationPresent(Order.class) ? f1.getClass().getAnnotation(Order.class).value() : 100;
-                int o2 = f2.getClass().isAnnotationPresent(Order.class) ? f2.getClass().getAnnotation(Order.class).value() : 100;
-                return Integer.compare(o1, o2);
-            });
+            // Filters are pre-compiled in this.activeFilters list
 
             // 3. Define Route execution handler
             BiConsumer<HttpRequest, HttpResponse> routeHandler = (r, s) -> {
@@ -332,10 +347,14 @@ public class UndertowHttpTransport implements ServerTransport {
 
                     } else {
                         // Direct Custom Routes
-                        String routeName = rawPath.length() > 1 ? rawPath.substring(1).toUpperCase() : "GET_NODES";
-                        BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
-                        if (handler != null) {
-                            if (routeName.equals("GET_NODES_JSON")) {
+                        RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(rawPath, path -> {
+                            String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
+                            BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
+                            return new RouteHandlerInfo(handler, routeName);
+                        });
+
+                        if (routeInfo.handler != null) {
+                            if (routeInfo.routeName.equals("GET_NODES_JSON")) {
                                 s.setContentType("application/json");
                             } else {
                                 s.setContentType("text/plain");
@@ -346,12 +365,12 @@ public class UndertowHttpTransport implements ServerTransport {
                             try (PrintWriter out = s.getWriter()) {
                                 String query = r.getQuery();
                                 String args = query != null ? query : "";
-                                handler.accept(args, out);
+                                routeInfo.handler.accept(args, out);
                             }
                         } else {
                             s.setStatus(404);
                             try (PrintWriter out = s.getWriter()) {
-                                out.print("404 Not Found - Unknown Route: " + routeName);
+                                out.print("404 Not Found - Unknown Route: " + routeInfo.routeName);
                             }
                         }
                     }
@@ -361,8 +380,12 @@ public class UndertowHttpTransport implements ServerTransport {
             };
 
             // 4. Run chain
-            HttpFilterChainImpl chain = new HttpFilterChainImpl(activeFilters, routeHandler);
-            chain.doFilter(req, res);
+            if (!activeFilters.isEmpty()) {
+                HttpFilterChainImpl chain = new HttpFilterChainImpl(activeFilters, routeHandler);
+                chain.doFilter(req, res);
+            } else {
+                routeHandler.accept(req, res);
+            }
             res.flushBuffer();
 
         } catch (Exception e) {
@@ -407,5 +430,15 @@ public class UndertowHttpTransport implements ServerTransport {
     @Override
     public boolean isRunning() {
         return running;
+    }
+
+    private static class RouteHandlerInfo {
+        final BiConsumer<String, PrintWriter> handler;
+        final String routeName;
+
+        RouteHandlerInfo(BiConsumer<String, PrintWriter> handler, String routeName) {
+            this.handler = handler;
+            this.routeName = routeName;
+        }
     }
 }

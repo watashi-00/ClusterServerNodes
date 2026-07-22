@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -48,12 +49,36 @@ public class HttpTransport implements ServerTransport {
     private HttpServer server;
     private boolean running = false;
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinIndices = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, RouteHandlerInfo> routeCache = new ConcurrentHashMap<>();
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
             .connectTimeout(java.time.Duration.ofMillis(5000))
             .build();
 
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
+    private final List<HttpFilter> activeFilters = new CopyOnWriteArrayList<>();
+
+    private void rebuildFilters(Cluster cluster, List<HttpFilter> customFilters) {
+        activeFilters.clear();
+        String allowedIps = cluster.getAllowedIps();
+        if (allowedIps != null && !allowedIps.trim().isEmpty()) {
+            activeFilters.add(new IpRestrictionFilter(cluster));
+        }
+        if (cluster.getRateLimitRequests() > 0 && cluster.getRateLimitDurationSeconds() > 0) {
+            activeFilters.add(new RateLimitFilter(cluster));
+        }
+        if (cluster.isRequireToken()) {
+            activeFilters.add(new TokenAuthFilter(cluster));
+        }
+        activeFilters.addAll(customFilters);
+
+        // Sort custom filters by @Order annotation value (if present)
+        activeFilters.sort((f1, f2) -> {
+            int o1 = f1.getClass().isAnnotationPresent(Order.class) ? f1.getClass().getAnnotation(Order.class).value() : 100;
+            int o2 = f2.getClass().isAnnotationPresent(Order.class) ? f2.getClass().getAnnotation(Order.class).value() : 100;
+            return Integer.compare(o1, o2);
+        });
+    }
 
     @Override
     public void setPerformanceProfile(hexacloud.core.server.PerformanceProfile profile) {
@@ -65,6 +90,7 @@ public class HttpTransport implements ServerTransport {
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
+            rebuildFilters(cluster, customFilters);
             server = HttpServer.create(new InetSocketAddress(port), 2048);
             server.setExecutor(ThreadManager.newVirtualThreadPool());
             server.createContext("/", new HttpHandler() {
@@ -84,20 +110,6 @@ public class HttpTransport implements ServerTransport {
                         // 1. Instantiate Wrappers
                         HttpRequestImpl req = new HttpRequestImpl(exchange);
                         HttpResponseImpl res = new HttpResponseImpl(exchange);
-
-                        // 2. Build complete filters list (Built-in + Custom user filters)
-                        List<HttpFilter> activeFilters = new ArrayList<>();
-                        activeFilters.add(new IpRestrictionFilter(cluster));
-                        activeFilters.add(new RateLimitFilter(cluster));
-                        activeFilters.add(new TokenAuthFilter(cluster));
-                        activeFilters.addAll(customFilters);
-
-                        // Sort custom filters by @Order annotation value (if present)
-                        activeFilters.sort((f1, f2) -> {
-                            int o1 = f1.getClass().isAnnotationPresent(Order.class) ? f1.getClass().getAnnotation(Order.class).value() : 100;
-                            int o2 = f2.getClass().isAnnotationPresent(Order.class) ? f2.getClass().getAnnotation(Order.class).value() : 100;
-                            return Integer.compare(o1, o2);
-                        });
 
                         // 3. Final Route execution handler
                         BiConsumer<HttpRequest, HttpResponse> routeHandler = (r, s) -> {
@@ -290,10 +302,14 @@ public class HttpTransport implements ServerTransport {
                                     }
 
                                 } else {
-                                    String routeName = rawPath.length() > 1 ? rawPath.substring(1).toUpperCase() : "GET_NODES";
-                                    BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
-                                    if (handler != null) {
-                                        if (routeName.equals("GET_NODES_JSON")) {
+                                    RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(rawPath, path -> {
+                                        String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
+                                        BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
+                                        return new RouteHandlerInfo(handler, routeName);
+                                    });
+
+                                    if (routeInfo.handler != null) {
+                                        if (routeInfo.routeName.equals("GET_NODES_JSON")) {
                                             s.setContentType("application/json");
                                         } else {
                                             s.setContentType("text/plain");
@@ -304,12 +320,12 @@ public class HttpTransport implements ServerTransport {
                                         try (PrintWriter out = s.getWriter()) {
                                             String query = r.getQuery();
                                             String args = query != null ? query : "";
-                                            handler.accept(args, out);
+                                            routeInfo.handler.accept(args, out);
                                         }
                                     } else {
                                         s.setStatus(404);
                                         try (PrintWriter out = s.getWriter()) {
-                                            out.print("404 Not Found - Unknown Route: " + routeName);
+                                            out.print("404 Not Found - Unknown Route: " + routeInfo.routeName);
                                         }
                                     }
                                 }
@@ -319,8 +335,12 @@ public class HttpTransport implements ServerTransport {
                         };
 
                         // 4. Run chain
-                        HttpFilterChainImpl chain = new HttpFilterChainImpl(activeFilters, routeHandler);
-                        chain.doFilter(req, res);
+                        if (!activeFilters.isEmpty()) {
+                            HttpFilterChainImpl chain = new HttpFilterChainImpl(activeFilters, routeHandler);
+                            chain.doFilter(req, res);
+                        } else {
+                            routeHandler.accept(req, res);
+                        }
 
                     } catch (Exception e) {
                         DebugUtils.error("HttpTransport: Exception caught in filter chain pipeline: " + e.getMessage(), e);
@@ -376,5 +396,15 @@ public class HttpTransport implements ServerTransport {
     @Override
     public boolean isRunning() {
         return running;
+    }
+
+    private static class RouteHandlerInfo {
+        final BiConsumer<String, PrintWriter> handler;
+        final String routeName;
+
+        RouteHandlerInfo(BiConsumer<String, PrintWriter> handler, String routeName) {
+            this.handler = handler;
+            this.routeName = routeName;
+        }
     }
 }
