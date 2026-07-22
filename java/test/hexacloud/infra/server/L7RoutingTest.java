@@ -100,8 +100,13 @@ public class L7RoutingTest {
         testCluster.registerServer(node1);
         testCluster.registerServer(node2);
 
+        RouteRegistry registry = new RouteRegistry();
+        registry.getRoutes().put("CUSTOM_PATH", (args, out) -> {
+            out.print("fast_path_buffered_output:" + args);
+        });
+
         transport = new HttpTransport();
-        transport.listen(gatewayPort, new RouteRegistry(), testCluster, new ArrayList<>());
+        transport.listen(gatewayPort, registry, testCluster, new ArrayList<>());
 
         waitUntilRunning(transport);
     }
@@ -200,6 +205,13 @@ public class L7RoutingTest {
         int responseCode = conn.getResponseCode();
 
         assertEquals(503, responseCode, "Should return 503 Service Unavailable when no active nodes are present");
+    }
+
+    @Test
+    public void testFastPathDirectRoute() throws Exception {
+        String urlStr = "http://127.0.0.1:" + gatewayPort + "/custom_path?foo=bar";
+        String resp = sendGetRequest(urlStr);
+        assertEquals("fast_path_buffered_output:foo=bar", resp);
     }
 
     private String sendGetRequest(String urlStr) throws Exception {

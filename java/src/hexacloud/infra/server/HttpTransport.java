@@ -127,7 +127,7 @@ public class HttpTransport implements ServerTransport {
                                     exchange.getResponseHeaders().set("Content-Type", "text/plain");
                                 }
                                 exchange.sendResponseHeaders(200, 0);
-                                try (PrintWriter out = new PrintWriter(exchange.getResponseBody(), true)) {
+                                try (PrintWriter out = new PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(exchange.getResponseBody(), java.nio.charset.StandardCharsets.UTF_8)))) {
                                     String query = exchange.getRequestURI().getQuery();
                                     String args = query != null ? query : "";
                                     routeInfo.handler.accept(args, out);
