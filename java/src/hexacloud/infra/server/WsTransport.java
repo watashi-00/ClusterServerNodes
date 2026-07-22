@@ -154,9 +154,10 @@ public class WsTransport implements ServerTransport {
 
     private void waitForClientClose(Socket socket) throws IOException {
         InputStream in = socket.getInputStream();
+        byte[] buf = new byte[4096];
         try {
             while (running && !socket.isClosed()) {
-                if (in.read() == -1) {
+                if (in.read(buf) == -1) {
                     break;
                 }
             }
