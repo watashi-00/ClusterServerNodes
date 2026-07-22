@@ -68,35 +68,53 @@ public class ClusterStatePersistence {
     private static void saveClusterState(Cluster cluster) {
         String name = cluster.getClusterName();
         String filePath = resolveStateFilePath(name);
-        Properties props = new Properties();
 
-        String prefix = "cluster." + name + ".";
-        props.setProperty(prefix + "requireToken", String.valueOf(cluster.isRequireToken()));
-        props.setProperty(prefix + "timeoutMs", String.valueOf(cluster.getTimeoutMs()));
-        props.setProperty(prefix + "allowedIps", cluster.getAllowedIps());
-        props.setProperty(prefix + "rateLimitRequests", String.valueOf(cluster.getRateLimitRequests()));
-        props.setProperty(prefix + "rateLimitDurationSeconds", String.valueOf(cluster.getRateLimitDurationSeconds()));
+        try (java.io.PrintWriter writer = new java.io.PrintWriter(new java.io.FileOutputStream(filePath))) {
+            writer.println("# =========================================================");
+            writer.println("# Persisted GateBridge Cluster Gateway State for " + name);
+            writer.println("# Generated automatically - DO NOT EDIT MANUALLY unless necessary");
+            writer.println("# =========================================================");
+            writer.println();
 
-        List<String> nodeKeys = new ArrayList<>();
-        for (ServerNode node : cluster.getCluster()) {
-            String nodeKey = node.getFullHost();
-            nodeKeys.add(nodeKey);
+            writer.println("# === BEGIN CLUSTER CONFIG ===");
+            String prefix = "cluster." + name + ".";
+            writer.println(prefix + "requireToken=" + cluster.isRequireToken());
+            writer.println(prefix + "timeoutMs=" + cluster.getTimeoutMs());
+            writer.println(prefix + "allowedIps=" + (cluster.getAllowedIps() != null ? cluster.getAllowedIps() : ""));
+            writer.println(prefix + "rateLimitRequests=" + cluster.getRateLimitRequests());
+            writer.println(prefix + "rateLimitDurationSeconds=" + cluster.getRateLimitDurationSeconds());
+            writer.println("# === END CLUSTER CONFIG ===");
+            writer.println();
 
-            String nodePrefix = "node." + name + "." + nodeKey + ".";
-            props.setProperty(nodePrefix + "host", node.host());
-            props.setProperty(nodePrefix + "port", String.valueOf(node.port()));
-            props.setProperty(nodePrefix + "isExternal", String.valueOf(node.isExternal()));
-            props.setProperty(nodePrefix + "pingEnabled", String.valueOf(node.pingEnabled()));
-            props.setProperty(nodePrefix + "pingProtocol", node.pingProtocol().name());
-            props.setProperty(nodePrefix + "pingPath", node.pingPath());
-            if (node.pingHeaderName() != null) {
-                props.setProperty(nodePrefix + "pingHeaderName", node.pingHeaderName());
+            java.util.List<String> nodeKeys = new java.util.ArrayList<>();
+            for (ServerNode node : cluster.getCluster()) {
+                String nodeKey = node.getFullHost();
+                nodeKeys.add(nodeKey);
+
+                writer.println("# === BEGIN NODE " + nodeKey + " ===");
+                String nodePrefix = "node." + name + "." + nodeKey + ".";
+                writer.println(nodePrefix + "host=" + node.host());
+                writer.println(nodePrefix + "port=" + node.port());
+                writer.println(nodePrefix + "isExternal=" + node.isExternal());
+                writer.println(nodePrefix + "isDynamic=" + node.isDynamic());
+                writer.println(nodePrefix + "pingEnabled=" + node.pingEnabled());
+                writer.println(nodePrefix + "pingProtocol=" + node.pingProtocol().name());
+                writer.println(nodePrefix + "pingPath=" + node.pingPath());
+                if (node.pingHeaderName() != null) {
+                    writer.println(nodePrefix + "pingHeaderName=" + node.pingHeaderName());
+                }
+                writer.println("# === END NODE " + nodeKey + " ===");
+                writer.println();
             }
-        }
-        props.setProperty(prefix + "nodes", String.join(",", nodeKeys));
 
-        try (FileOutputStream out = new FileOutputStream(filePath)) {
-            props.store(out, "Persisted GateBridge Cluster Gateway State for " + name);
+            writer.println("# === BEGIN NODE LIST ===");
+            writer.println(prefix + "nodes=" + String.join(",", nodeKeys));
+            
+            java.util.List<String> staticKeys = new java.util.ArrayList<>(cluster.getStaticNodes());
+            writer.println(prefix + "staticNodes=" + String.join(",", staticKeys));
+            writer.println("# === END NODE LIST ===");
+            writer.println();
+
             DebugUtils.log("DevOps Panel: Saved active configurations state to " + filePath);
         } catch (IOException e) {
             DebugUtils.error("DevOps Panel: Failed to save state file for cluster " + name, e);
@@ -218,6 +236,14 @@ public class ClusterStatePersistence {
         cluster.setTimeoutMs(timeoutMs);
         cluster.setRateLimit(rateLimitRequests, rateLimitDurationSeconds);
 
+        // Load persistedStaticNodes list
+        String staticNodesStr = props.getProperty(prefix + "staticNodes");
+        if (staticNodesStr != null && !staticNodesStr.trim().isEmpty()) {
+            for (String staticKey : staticNodesStr.split(",")) {
+                cluster.getPersistedStaticNodes().add(staticKey.trim());
+            }
+        }
+
         String nodesStr = props.getProperty(prefix + "nodes");
         if (nodesStr != null && !nodesStr.trim().isEmpty()) {
             for (String nodeKey : nodesStr.split(",")) {
@@ -228,6 +254,7 @@ public class ClusterStatePersistence {
                 String host = props.getProperty(nodePrefix + "host");
                 int port = Integer.parseInt(props.getProperty(nodePrefix + "port"));
                 boolean isExternal = Boolean.parseBoolean(props.getProperty(nodePrefix + "isExternal", "false"));
+                boolean isDynamic = Boolean.parseBoolean(props.getProperty(nodePrefix + "isDynamic", "false"));
                 String pingPath = props.getProperty(nodePrefix + "pingPath", "/");
                 String pingHeaderName = props.getProperty(nodePrefix + "pingHeaderName", null);
 
@@ -247,12 +274,12 @@ public class ClusterStatePersistence {
                 ServerNode node = new ServerNode(
                     host, port, NodeStatus.OFFLINE, isExternal,
                     pingProtocol, pingPath, pingHeaderName, null
-                );
+                ).withDynamic(isDynamic);
                 
                 boolean alreadyRegistered = cluster.getCluster().stream()
                     .anyMatch(n -> n.getFullHost().equals(node.getFullHost()));
                 if (!alreadyRegistered) {
-                    cluster.registerServer(node);
+                    cluster.registerLoadedServer(node);
                 }
             }
         }
