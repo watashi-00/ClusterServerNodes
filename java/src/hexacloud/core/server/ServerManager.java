@@ -31,6 +31,7 @@ public class ServerManager implements ServerOperations {
     private boolean tcpProxyEnabled = false;
     private int port = 3000;
     private hexacloud.core.server.HttpEngine httpEngine = hexacloud.core.server.HttpEngine.JDK_DEFAULT;
+    private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
 
     public ServerManager(Cluster cluster, ClusterEventBusManager eventManager) {
         this.cluster = cluster;
@@ -128,6 +129,16 @@ public class ServerManager implements ServerOperations {
         }
     }
 
+    public hexacloud.core.server.PerformanceProfile getPerformanceProfile() {
+        return performanceProfile;
+    }
+
+    public void setPerformanceProfile(hexacloud.core.server.PerformanceProfile performanceProfile) {
+        if (performanceProfile != null) {
+            this.performanceProfile = performanceProfile;
+        }
+    }
+
     public ServerManager registerFilter(hexacloud.core.server.filter.HttpFilter filter) {
         this.customFilters.add(filter);
         return this;
@@ -157,6 +168,7 @@ public class ServerManager implements ServerOperations {
             } else {
                 http = new HttpTransport();
             }
+            http.setPerformanceProfile(this.performanceProfile);
             // HTTP runs on port + 1
             http.listen(port + 1, routeRegistry, cluster, customFilters);
             activeTransports.add(http);

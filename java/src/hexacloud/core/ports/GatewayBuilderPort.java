@@ -100,6 +100,11 @@ public interface GatewayBuilderPort {
     GatewayBuilderPort httpEngine(hexacloud.core.server.HttpEngine engine);
 
     /**
+     * Set the performance profile (STANDARD or MAX_PERFORMANCE).
+     */
+    GatewayBuilderPort performanceProfile(hexacloud.core.server.PerformanceProfile profile);
+
+    /**
      * Set the custom name of this gateway.
      */
     GatewayBuilderPort gatewayName(String name);

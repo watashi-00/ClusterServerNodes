@@ -23,12 +23,9 @@ import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.utils.concurrent.ThreadManager;
 import hexacloud.core.server.filter.HttpFilterChainImpl;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,19 +46,44 @@ public class UndertowHttpTransport implements ServerTransport {
             .connectTimeout(java.time.Duration.ofMillis(5000))
             .build();
 
+    private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
+
+    @Override
+    public void setPerformanceProfile(hexacloud.core.server.PerformanceProfile profile) {
+        if (profile != null) {
+            this.performanceProfile = profile;
+        }
+    }
+
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
-            server = Undertow.builder()
-                    .addHttpListener(port, "0.0.0.0")
-                    .setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, true)
-                    .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, true)
-                    .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, false)
-                    .setServerOption(UndertowOptions.ENABLE_CONNECTOR_STATISTICS, false)
-                    .setIoThreads(Runtime.getRuntime().availableProcessors())
-                    .setWorkerThreads(Runtime.getRuntime().availableProcessors())
-                    .setBufferSize(16384)
-                    .setHandler(new HttpHandler() {
+            Undertow.Builder builder = Undertow.builder()
+                    .addHttpListener(port, "0.0.0.0");
+
+            if (performanceProfile == hexacloud.core.server.PerformanceProfile.MAX_PERFORMANCE) {
+                // Maximized performance profile for container resource utilization
+                builder.setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, true)
+                        .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, true)
+                        .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, false)
+                        .setServerOption(UndertowOptions.ENABLE_CONNECTOR_STATISTICS, false)
+                        .setIoThreads(Runtime.getRuntime().availableProcessors() * 2)
+                        .setWorkerThreads(Runtime.getRuntime().availableProcessors() * 8)
+                        .setBufferSize(65536)
+                        .setDirectBuffers(true);
+            } else {
+                // Standard lightweight profile for normal operations
+                builder.setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, true)
+                        .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, true)
+                        .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, false)
+                        .setServerOption(UndertowOptions.ENABLE_CONNECTOR_STATISTICS, false)
+                        .setIoThreads(Runtime.getRuntime().availableProcessors())
+                        .setWorkerThreads(Runtime.getRuntime().availableProcessors())
+                        .setBufferSize(16384)
+                        .setDirectBuffers(false);
+            }
+
+            server = builder.setHandler(new HttpHandler() {
                         @Override
                         public void handleRequest(HttpServerExchange exchange) throws Exception {
                             // Dispatch immediately from I/O thread to Virtual Thread pool

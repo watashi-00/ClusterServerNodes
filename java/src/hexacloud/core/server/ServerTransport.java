@@ -10,4 +10,5 @@ public interface ServerTransport {
     void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters);
     void stop();
     boolean isRunning();
+    default void setPerformanceProfile(PerformanceProfile profile) {}
 }

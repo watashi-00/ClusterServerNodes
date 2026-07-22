@@ -25,6 +25,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     private String gatewayName;
     private boolean tcpProxyEnabled = false;
     private hexacloud.core.server.HttpEngine httpEngine = hexacloud.core.server.HttpEngine.JDK_DEFAULT;
+    private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
 
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
@@ -161,6 +162,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
         if(this.serverManager == null) {
             this.serverManager = new ServerManager(this.clusterManager.getCluster(), this.clusterEventManager);
             this.serverManager.setHttpEngine(this.httpEngine);
+            this.serverManager.setPerformanceProfile(this.performanceProfile);
             this.serverManager.enableTcpProxy(this.tcpProxyEnabled);
         }
     }
@@ -299,6 +301,17 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     public LocalGatewayAdapter httpEngine(hexacloud.core.server.HttpEngine engine) {
         if (engine != null) {
             this.httpEngine = engine;
+        }
+        return this;
+    }
+
+    @Override
+    public LocalGatewayAdapter performanceProfile(hexacloud.core.server.PerformanceProfile profile) {
+        if (profile != null) {
+            this.performanceProfile = profile;
+            if (this.serverManager != null) {
+                this.serverManager.setPerformanceProfile(profile);
+            }
         }
         return this;
     }

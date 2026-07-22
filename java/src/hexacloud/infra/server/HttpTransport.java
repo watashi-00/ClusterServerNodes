@@ -53,6 +53,15 @@ public class HttpTransport implements ServerTransport {
             .connectTimeout(java.time.Duration.ofMillis(5000))
             .build();
 
+    private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
+
+    @Override
+    public void setPerformanceProfile(hexacloud.core.server.PerformanceProfile profile) {
+        if (profile != null) {
+            this.performanceProfile = profile;
+        }
+    }
+
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
