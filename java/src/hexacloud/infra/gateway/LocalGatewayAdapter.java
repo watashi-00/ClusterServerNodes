@@ -301,6 +301,9 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     public LocalGatewayAdapter httpEngine(hexacloud.core.server.HttpEngine engine) {
         if (engine != null) {
             this.httpEngine = engine;
+            if (this.serverManager != null) {
+                this.serverManager.setHttpEngine(engine);
+            }
         }
         return this;
     }

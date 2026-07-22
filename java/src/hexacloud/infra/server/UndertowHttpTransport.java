@@ -48,6 +48,7 @@ public class UndertowHttpTransport implements ServerTransport {
     private static final HttpString CORS_ALLOW_METHODS = HttpString.tryFromString("Access-Control-Allow-Methods");
     private static final HttpString CORS_ALLOW_HEADERS = HttpString.tryFromString("Access-Control-Allow-Headers");
     private final ExecutorService virtualExecutor = ThreadManager.newVirtualThreadPool();
+    private static final ThreadLocal<FastPrintWriter> FAST_WRITER = ThreadLocal.withInitial(FastPrintWriter::new);
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
             .connectTimeout(java.time.Duration.ofMillis(5000))
@@ -89,62 +90,69 @@ public class UndertowHttpTransport implements ServerTransport {
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
             rebuildFilters(cluster, customFilters);
+            // Configure Default ByteBuffer Pool to avoid pool starvation under high concurrency
+            io.undertow.connector.ByteBufferPool bufferPool = new io.undertow.server.DefaultByteBufferPool(
+                    true, 
+                    16384, 
+                    -1, 
+                    24, 
+                    0
+            );
             Undertow.Builder builder = Undertow.builder()
-                    .addHttpListener(port, "0.0.0.0");
-
+                    .addHttpListener(port, "0.0.0.0")
+                    .setByteBufferPool(bufferPool);
+ 
             if (performanceProfile == hexacloud.core.server.PerformanceProfile.MAX_PERFORMANCE) {
                 // Maximized performance profile for container resource utilization
                 builder.setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, true)
-                        .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, true)
+                        .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, false)
                         .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, false)
                         .setServerOption(UndertowOptions.ENABLE_CONNECTOR_STATISTICS, false)
-                        .setIoThreads(Runtime.getRuntime().availableProcessors() * 2)
-                        .setWorkerThreads(Runtime.getRuntime().availableProcessors() * 8)
-                        .setBufferSize(65536)
-                        .setDirectBuffers(true);
+                        .setSocketOption(org.xnio.Options.BACKLOG, 8192)
+                        .setSocketOption(org.xnio.Options.TCP_NODELAY, true)
+                        .setSocketOption(org.xnio.Options.REUSE_ADDRESSES, true)
+                        .setIoThreads(Math.max(Runtime.getRuntime().availableProcessors(), 2))
+                        .setWorkerThreads(Runtime.getRuntime().availableProcessors() * 8);
             } else {
                 // Standard lightweight profile for normal operations
                 builder.setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, true)
-                        .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, true)
+                        .setServerOption(UndertowOptions.BUFFER_PIPELINED_DATA, false)
                         .setServerOption(UndertowOptions.RECORD_REQUEST_START_TIME, false)
                         .setServerOption(UndertowOptions.ENABLE_CONNECTOR_STATISTICS, false)
-                        .setIoThreads(Runtime.getRuntime().availableProcessors())
-                        .setWorkerThreads(Runtime.getRuntime().availableProcessors())
-                        .setBufferSize(16384)
-                        .setDirectBuffers(false);
+                        .setSocketOption(org.xnio.Options.BACKLOG, 1024)
+                        .setSocketOption(org.xnio.Options.TCP_NODELAY, true)
+                        .setSocketOption(org.xnio.Options.REUSE_ADDRESSES, true)
+                        .setIoThreads(Math.max(Runtime.getRuntime().availableProcessors() / 2, 2))
+                        .setWorkerThreads(Runtime.getRuntime().availableProcessors() * 2);
             }
 
-            server = builder.setHandler(new HttpHandler() {
+             server = builder.setHandler(new HttpHandler() {
                         @Override
                         public void handleRequest(HttpServerExchange exchange) throws Exception {
-                            String path = exchange.getRequestPath();
-                            if (path.startsWith("/clusters/")) {
-                                // Proxy route: dispatch to Virtual Threads
-                                if (exchange.isInIoThread()) {
-                                    exchange.dispatch(virtualExecutor, () -> {
-                                        try {
-                                            processRequest(exchange, registry, cluster, customFilters);
-                                        } catch (Exception e) {
-                                            handleError(exchange, e);
-                                        }
-                                    });
+                            String fastPath = exchange.getRequestPath();
+                            boolean isProxy = fastPath.startsWith("/clusters/");
+                            if (!isProxy && activeFilters.isEmpty()) {
+                                RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(fastPath, path -> {
+                                    String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
+                                    BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
+                                    return new RouteHandlerInfo(handler, routeName);
+                                });
+                                if (routeInfo.handler != null) {
+                                    processRequest(exchange, registry, cluster, customFilters);
                                     return;
                                 }
-                            } else {
-                                // Direct route: run inline on I/O threads in MAX_PERFORMANCE mode to bypass dispatching overhead,
-                                // or dispatch to standard Undertow worker platform threads in STANDARD mode.
-                                if (performanceProfile != hexacloud.core.server.PerformanceProfile.MAX_PERFORMANCE) {
-                                    if (exchange.isInIoThread()) {
-                                        exchange.dispatch(exchange.getConnection().getWorker(), () -> {
-                                            try {
-                                                processRequest(exchange, registry, cluster, customFilters);
-                                            } catch (Exception e) {
-                                                handleError(exchange, e);
-                                            }
-                                        });
-                                        return;
+                            }
+
+                            if (exchange.isInIoThread()) {
+                                java.util.concurrent.Executor executor = exchange.getConnection().getWorker();
+                                exchange.dispatch(executor, () -> {
+                                    try {
+                                        processRequest(exchange, registry, cluster, customFilters);
+                                    } catch (Exception e) {
+                                        handleError(exchange, e);
                                     }
-                                }
+                                });
+                                return;
                             }
                             processRequest(exchange, registry, cluster, customFilters);
                         }
@@ -189,11 +197,17 @@ public class UndertowHttpTransport implements ServerTransport {
                         exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
                     }
                     exchange.setStatusCode(200);
-                    try (PrintWriter out = new PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(exchange.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8)))) {
-                        String query = exchange.getQueryString();
-                        String args = query != null ? query : "";
-                        routeInfo.handler.accept(args, out);
-                    }
+                    
+                    FastPrintWriter out = FAST_WRITER.get();
+                    out.reset();
+                    String query = exchange.getQueryString();
+                    String args = query != null ? query : "";
+                    routeInfo.handler.accept(args, out);
+                    
+                    byte[] responseBytes = out.toBytes();
+                    exchange.getResponseHeaders().put(Headers.CONTENT_LENGTH, String.valueOf(responseBytes.length));
+                    
+                    exchange.getResponseSender().send(java.nio.ByteBuffer.wrap(responseBytes));
                     return;
                 }
             }
@@ -445,6 +459,7 @@ public class UndertowHttpTransport implements ServerTransport {
                 routeHandler.accept(req, res);
             }
             res.flushBuffer();
+            exchange.endExchange();
 
         } catch (Exception e) {
             handleError(exchange, e);
@@ -452,12 +467,15 @@ public class UndertowHttpTransport implements ServerTransport {
     }
 
     private void handleError(HttpServerExchange exchange, Exception e) {
+        System.err.println("UndertowHttpTransport: Exception caught in pipeline: " + e.getMessage());
+        e.printStackTrace(System.err);
         DebugUtils.error("UndertowHttpTransport: Exception caught in pipeline: " + e.getMessage(), e);
         if (!exchange.getResponseHeaders().contains(Headers.CONTENT_TYPE)) {
             exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
         }
         exchange.setStatusCode(500);
         exchange.getResponseSender().send("500 Internal Server Error - Execution failure: " + e.getMessage());
+        exchange.endExchange();
     }
 
     private Double parseHeaderDouble(java.net.http.HttpHeaders headers, String... headerNames) {
@@ -497,6 +515,61 @@ public class UndertowHttpTransport implements ServerTransport {
         RouteHandlerInfo(BiConsumer<String, PrintWriter> handler, String routeName) {
             this.handler = handler;
             this.routeName = routeName;
+        }
+    }
+
+    private static class FastPrintWriter extends java.io.PrintWriter {
+        private static class StringBuilderWriter extends java.io.Writer {
+            final StringBuilder sb = new StringBuilder(512);
+
+            @Override
+            public void write(char[] cbuf, int off, int len) {
+                sb.append(cbuf, off, len);
+            }
+
+            @Override
+            public void write(String str, int off, int len) {
+                sb.append(str, off, off + len);
+            }
+
+            @Override
+            public void write(int c) {
+                sb.append((char)c);
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() {}
+
+            void reset() {
+                sb.setLength(0);
+            }
+
+            byte[] toBytes() {
+                return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            }
+        }
+
+        private final StringBuilderWriter sbw;
+
+        public FastPrintWriter() {
+            this(new StringBuilderWriter());
+        }
+
+        private FastPrintWriter(StringBuilderWriter sbw) {
+            super(sbw);
+            this.sbw = sbw;
+        }
+
+        public void reset() {
+            sbw.reset();
+            clearError();
+        }
+
+        public byte[] toBytes() {
+            return sbw.toBytes();
         }
     }
 }
