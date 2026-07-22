@@ -38,7 +38,7 @@ public class HttpResponseImpl implements HttpResponse {
         if (!committed) {
             setStatus(200);
         }
-        return new PrintWriter(exchange.getResponseBody(), true);
+        return new PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(exchange.getResponseBody(), java.nio.charset.StandardCharsets.UTF_8)));
     }
 
     @Override

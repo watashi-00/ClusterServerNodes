@@ -74,5 +74,10 @@ public class WrappersTest {
         var writer = response.getWriter();
         assertNotNull(writer);
         assertTrue(response.isCommitted());
+
+        writer.println("hello world");
+        // Due to BufferedWriter without auto-flush, responseBody is buffered until flushed
+        writer.flush();
+        assertEquals("hello world" + System.lineSeparator(), responseBody.toString());
     }
 }
