@@ -104,27 +104,18 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
 
     @Override
     public LocalGatewayAdapter registerServer(int port) {
-        if (ClusterStatePersistence.isStateLoaded()) {
-            return this;
-        }
         clusterManager.registerServer(port);
         return this;
     }
 
     @Override
     public LocalGatewayAdapter registerServer(int port, NodeStatus status) {
-        if (ClusterStatePersistence.isStateLoaded()) {
-            return this;
-        }
         clusterManager.registerServer(port, status);
         return this;
     }
 
     @Override
     public LocalGatewayAdapter registerServer(ServerNode node) {
-        if (ClusterStatePersistence.isStateLoaded()) {
-            return this;
-        }
         clusterManager.registerServer(node);
         return this;
     }
@@ -214,6 +205,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     public LocalGatewayAdapter listen(int port) {
         this.port = port;
         ensureServerManagerInitialized();
+        this.clusterManager.getCluster().endBootstrapPhase(); // Transition cluster to runtime
         DebugUtils.log("LocalGatewayAdapter: Starting server listeners on port " + port);
         this.serverManager.listen(port);
         this.running = true;

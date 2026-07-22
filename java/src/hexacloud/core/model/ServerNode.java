@@ -180,12 +180,26 @@ public class ServerNode {
         this.runtime = runtime;
     }
 
+    public boolean isDynamic() {
+        return isDynamic;
+    }
+
+    public ServerNode withDynamic(boolean isDynamic) {
+        ServerNode node = new ServerNode(this.name, this.host, this.port, this.status, this.isExternal,
+                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, isDynamic);
+        node.setLatencyMs(this.latencyMs);
+        node.setCpuUsage(this.cpuUsage);
+        node.setRamUsage(this.ramUsage);
+        node.setRuntime(this.runtime);
+        return node;
+    }
+
     /**
      * Create a new immutable ServerNode instance with an updated status.
      */
     public ServerNode withStatus(NodeStatus newStatus) {
         ServerNode node = new ServerNode(this.name, this.host, this.port, newStatus, this.isExternal,
-                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue);
+                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, this.isDynamic);
         node.setLatencyMs(this.latencyMs);
         node.setCpuUsage(this.cpuUsage);
         node.setRamUsage(this.ramUsage);
@@ -198,7 +212,7 @@ public class ServerNode {
      */
     public ServerNode withPingProtocol(PingProtocol newProtocol) {
         ServerNode node = new ServerNode(this.name, this.host, this.port, this.status, this.isExternal,
-                newProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue);
+                newProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, this.isDynamic);
         node.setLatencyMs(this.latencyMs);
         node.setCpuUsage(this.cpuUsage);
         node.setRamUsage(this.ramUsage);
