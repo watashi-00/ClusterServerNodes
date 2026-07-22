@@ -36,7 +36,7 @@ public class UndertowHttpResponseImpl implements HttpResponse {
             if (!exchange.isResponseStarted()) {
                 exchange.setStatusCode(200);
             }
-            writer = new PrintWriter(exchange.getOutputStream(), true);
+            writer = new PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(exchange.getOutputStream(), java.nio.charset.StandardCharsets.UTF_8)));
         }
         return writer;
     }
