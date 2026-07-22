@@ -109,6 +109,33 @@ public class HttpTransport implements ServerTransport {
                     }
 
                     try {
+                        String fastPath = exchange.getRequestURI().getPath();
+                        boolean isProxy = fastPath.startsWith("/clusters/");
+
+                        // Fast-path for direct custom routes when no filters are active
+                        if (!isProxy && activeFilters.isEmpty()) {
+                            RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(fastPath, path -> {
+                                String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
+                                BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
+                                return new RouteHandlerInfo(handler, routeName);
+                            });
+
+                            if (routeInfo.handler != null) {
+                                if (routeInfo.routeName.equals("GET_NODES_JSON")) {
+                                    exchange.getResponseHeaders().set("Content-Type", "application/json");
+                                } else {
+                                    exchange.getResponseHeaders().set("Content-Type", "text/plain");
+                                }
+                                exchange.sendResponseHeaders(200, 0);
+                                try (PrintWriter out = new PrintWriter(exchange.getResponseBody(), true)) {
+                                    String query = exchange.getRequestURI().getQuery();
+                                    String args = query != null ? query : "";
+                                    routeInfo.handler.accept(args, out);
+                                }
+                                return;
+                            }
+                        }
+
                         // 1. Instantiate Wrappers
                         HttpRequestImpl req = new HttpRequestImpl(exchange);
                         HttpResponseImpl res = new HttpResponseImpl(exchange);

@@ -171,6 +171,33 @@ public class UndertowHttpTransport implements ServerTransport {
         }
 
         try {
+            String fastPath = exchange.getRequestPath();
+            boolean isProxy = fastPath.startsWith("/clusters/");
+
+            // Fast-path for direct custom routes when no filters are active
+            if (!isProxy && activeFilters.isEmpty()) {
+                RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(fastPath, path -> {
+                    String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
+                    BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
+                    return new RouteHandlerInfo(handler, routeName);
+                });
+
+                if (routeInfo.handler != null) {
+                    if (routeInfo.routeName.equals("GET_NODES_JSON")) {
+                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
+                    } else {
+                        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                    }
+                    exchange.setStatusCode(200);
+                    try (PrintWriter out = new PrintWriter(exchange.getOutputStream(), true)) {
+                        String query = exchange.getQueryString();
+                        String args = query != null ? query : "";
+                        routeInfo.handler.accept(args, out);
+                    }
+                    return;
+                }
+            }
+
             // 1. Wrap request and response
             UndertowHttpRequestImpl req = new UndertowHttpRequestImpl(exchange);
             UndertowHttpResponseImpl res = new UndertowHttpResponseImpl(exchange);
