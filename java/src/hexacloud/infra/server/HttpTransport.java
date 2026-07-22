@@ -49,6 +49,7 @@ public class HttpTransport implements ServerTransport {
     private HttpServer server;
     private boolean running = false;
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinIndices = new ConcurrentHashMap<>();
+    private static final ThreadLocal<byte[]> COPY_BUFFER = ThreadLocal.withInitial(() -> new byte[8192]);
     private final ConcurrentHashMap<String, RouteHandlerInfo> routeCache = new ConcurrentHashMap<>();
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
@@ -221,11 +222,7 @@ public class HttpTransport implements ServerTransport {
                                     java.net.http.HttpRequest.BodyPublisher bodyPublisher;
                                     boolean hasBody = "POST".equalsIgnoreCase(method) || "PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method);
                                     if (hasBody) {
-                                        byte[] bodyBytes;
-                                        try (InputStream reqIn = exchange.getRequestBody()) {
-                                            bodyBytes = reqIn.readAllBytes();
-                                        }
-                                        bodyPublisher = java.net.http.HttpRequest.BodyPublishers.ofByteArray(bodyBytes);
+                                        bodyPublisher = java.net.http.HttpRequest.BodyPublishers.ofInputStream(() -> exchange.getRequestBody());
                                     } else {
                                         bodyPublisher = java.net.http.HttpRequest.BodyPublishers.noBody();
                                     }
@@ -280,7 +277,7 @@ public class HttpTransport implements ServerTransport {
                                             exchange.sendResponseHeaders(respCode, 0);
                                             try (InputStream in = proxyResponse.body();
                                                  OutputStream os = exchange.getResponseBody()) {
-                                                byte[] buf = new byte[8192];
+                                                byte[] buf = COPY_BUFFER.get();
                                                 int len;
                                                 while ((len = in.read(buf)) != -1) {
                                                     os.write(buf, 0, len);

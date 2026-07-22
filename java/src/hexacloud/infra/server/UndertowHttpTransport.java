@@ -42,6 +42,8 @@ public class UndertowHttpTransport implements ServerTransport {
     private boolean running = false;
     private final ConcurrentHashMap<String, AtomicInteger> roundRobinIndices = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, RouteHandlerInfo> routeCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, HttpString> headerCache = new ConcurrentHashMap<>(128);
+    private static final ThreadLocal<byte[]> COPY_BUFFER = ThreadLocal.withInitial(() -> new byte[8192]);
     private final ExecutorService virtualExecutor = ThreadManager.newVirtualThreadPool();
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
@@ -285,11 +287,13 @@ public class UndertowHttpTransport implements ServerTransport {
                             if (!exchange.isBlocking()) {
                                 exchange.startBlocking();
                             }
-                            byte[] bodyBytes;
-                            try (InputStream reqIn = exchange.getInputStream()) {
-                                bodyBytes = reqIn.readAllBytes();
-                            }
-                            bodyPublisher = java.net.http.HttpRequest.BodyPublishers.ofByteArray(bodyBytes);
+                            bodyPublisher = java.net.http.HttpRequest.BodyPublishers.ofInputStream(() -> {
+                                try {
+                                    return exchange.getInputStream();
+                                } catch (Exception e) {
+                                    throw new RuntimeException(e);
+                                }
+                            });
                         } else {
                             bodyPublisher = java.net.http.HttpRequest.BodyPublishers.noBody();
                         }
@@ -328,8 +332,9 @@ public class UndertowHttpTransport implements ServerTransport {
                                 if (hName == null || hName.equalsIgnoreCase("Transfer-Encoding") || hName.equalsIgnoreCase("Content-Length") || hName.equalsIgnoreCase("Connection")) {
                                     continue;
                                 }
+                                HttpString cachedHeader = headerCache.computeIfAbsent(hName, HttpString::tryFromString);
                                 for (String val : entry.getValue()) {
-                                    exchange.getResponseHeaders().add(HttpString.tryFromString(hName), val);
+                                    exchange.getResponseHeaders().add(cachedHeader, val);
                                 }
                             }
                         }
@@ -342,7 +347,7 @@ public class UndertowHttpTransport implements ServerTransport {
                             }
                             try (InputStream in = proxyResponse.body();
                                  OutputStream os = exchange.getOutputStream()) {
-                                byte[] buf = new byte[8192];
+                                byte[] buf = COPY_BUFFER.get();
                                 int len;
                                 while ((len = in.read(buf)) != -1) {
                                     os.write(buf, 0, len);
