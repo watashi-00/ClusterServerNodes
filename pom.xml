@@ -6,7 +6,7 @@
 
     <groupId>io.hexacloud</groupId>
     <artifactId>gatebridge-core</artifactId>
-    <version>1.3.0-release</version>
+    <version>1.3.0-release-jdk21</version>
     <packaging>jar</packaging>
 
     <name>GateBridge Core Framework</name>
