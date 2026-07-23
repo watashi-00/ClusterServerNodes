@@ -31,6 +31,7 @@ import hexacloud.core.server.filter.builtin.IpRestrictionFilter;
 import hexacloud.core.server.filter.builtin.RateLimitFilter;
 import hexacloud.core.server.filter.builtin.TokenAuthFilter;
 import hexacloud.core.server.route.RouteRegistry;
+import hexacloud.core.server.route.RouteRule;
 import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.utils.concurrent.ThreadManager;
 import hexacloud.infra.server.filter.HttpRequestImpl;
@@ -109,11 +110,12 @@ public class HttpTransport implements ServerTransport {
 
                     try {
                         String fastPath = exchange.getRequestURI().getPath();
-                        boolean isProxy = fastPath.startsWith("/clusters/");
+                        String fastMatchingPath = fastPath.startsWith("/v1/") ? fastPath.substring(3) : (fastPath.equals("/v1") ? "/" : fastPath);
+                        boolean isProxy = fastMatchingPath.startsWith("/clusters/") || (registry.getRouteRulesList() != null && !registry.getRouteRulesList().isEmpty());
 
                         // Fast-path for direct custom routes when no filters are active
                         if (!isProxy && activeFilters.isEmpty()) {
-                            RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(fastPath, path -> {
+                            RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(fastMatchingPath, path -> {
                                 String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
                                 BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
                                 return new RouteHandlerInfo(handler, routeName);
@@ -143,13 +145,19 @@ public class HttpTransport implements ServerTransport {
                         BiConsumer<HttpRequest, HttpResponse> routeHandler = (r, s) -> {
                             try {
                                 String rawPath = r.getPath();
+                                String matchingPath = rawPath;
+                                if (matchingPath.startsWith("/v1/")) {
+                                    matchingPath = matchingPath.substring(3);
+                                } else if (matchingPath.equals("/v1")) {
+                                    matchingPath = "/";
+                                }
 
-                                if (rawPath.startsWith("/clusters/")) {
-                                    String pathWithoutClusters = rawPath.substring("/clusters/".length());
+                                String targetClusterName = null;
+                                String clusterSubpath = null;
+
+                                if (matchingPath.startsWith("/clusters/")) {
+                                    String pathWithoutClusters = matchingPath.substring("/clusters/".length());
                                     int slashIdx = pathWithoutClusters.indexOf('/');
-                                    String targetClusterName;
-                                    String clusterSubpath;
-
                                     if (slashIdx != -1) {
                                         targetClusterName = pathWithoutClusters.substring(0, slashIdx);
                                         clusterSubpath = pathWithoutClusters.substring(slashIdx);
@@ -157,7 +165,25 @@ public class HttpTransport implements ServerTransport {
                                         targetClusterName = pathWithoutClusters;
                                         clusterSubpath = "/";
                                     }
+                                } else {
+                                    String requestHost = r.getHeader("Host");
+                                    RouteRule matchedRule = null;
+                                    List<RouteRule> rules = registry.getRouteRulesList();
+                                    if (rules != null) {
+                                        for (RouteRule rule : rules) {
+                                            if (rule.matches(requestHost, matchingPath)) {
+                                                matchedRule = rule;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (matchedRule != null) {
+                                        targetClusterName = matchedRule.getClusterName();
+                                        clusterSubpath = matchingPath;
+                                    }
+                                }
 
+                                if (targetClusterName != null) {
                                     Cluster targetCluster = ClusterRegistry.getInstance().getCluster(targetClusterName);
                                     if (targetCluster == null) {
                                         s.setStatus(404);
@@ -199,7 +225,7 @@ public class HttpTransport implements ServerTransport {
                                     }
 
                                     List<ServerNode> activeNodes = targetCluster.getCluster().stream()
-                                            .filter(n -> n != null && n.status() == NodeStatus.ONLINE)
+                                            .filter(n -> n != null && n.status() == NodeStatus.ONLINE && !n.telemetryOnly())
                                             .collect(Collectors.toList());
 
                                     if (activeNodes.isEmpty()) {
@@ -331,7 +357,8 @@ public class HttpTransport implements ServerTransport {
                                     }
 
                                 } else {
-                                    RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(rawPath, path -> {
+                                    final String finalLookupPath = matchingPath;
+                                    RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(finalLookupPath, path -> {
                                         String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
                                         BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
                                         return new RouteHandlerInfo(handler, routeName);

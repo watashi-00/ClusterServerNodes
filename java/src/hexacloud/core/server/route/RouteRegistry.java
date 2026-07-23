@@ -12,6 +12,21 @@ public class RouteRegistry {
 
     private final Map<String, BiConsumer<String, PrintWriter>> routes = new HashMap<>();
     private final java.util.Set<String> publicRoutes = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private final java.util.List<RouteRule> routeRules = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addRouteRule(RouteRule rule) {
+        if (rule != null) {
+            this.routeRules.add(rule);
+        }
+    }
+
+    public java.util.List<RouteRule> getRouteRulesList() {
+        return routeRules;
+    }
+
+    public java.util.List<RouteRule> getRouteRules() {
+        return routeRules;
+    }
 
     public boolean isRoutePublic(String routeName) {
         if (routeName == null) return false;
