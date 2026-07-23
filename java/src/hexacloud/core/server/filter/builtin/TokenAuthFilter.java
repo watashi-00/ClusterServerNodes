@@ -15,6 +15,9 @@ public class TokenAuthFilter implements HttpFilter {
     @Override
     public void doFilter(HttpRequest request, HttpResponse response, HttpFilterChain chain) throws Exception {
         String path = request.getPath();
+        if (path != null && path.startsWith("/v1/")) {
+            path = path.substring(3);
+        }
         String routeName = "";
         if (path != null) {
             if (path.startsWith("/clusters/")) {
