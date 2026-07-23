@@ -16,12 +16,16 @@ public class TokenAuthFilter implements HttpFilter {
     public void doFilter(HttpRequest request, HttpResponse response, HttpFilterChain chain) throws Exception {
         String path = request.getPath();
         String routeName = "";
-        if (path != null && path.startsWith("/clusters/")) {
-            String pathWithoutClusters = path.substring("/clusters/".length());
-            int slashIdx = pathWithoutClusters.indexOf('/');
-            if (slashIdx != -1) {
-                String clusterSubpath = pathWithoutClusters.substring(slashIdx);
-                routeName = clusterSubpath.length() > 1 ? clusterSubpath.substring(1).toUpperCase() : "";
+        if (path != null) {
+            if (path.startsWith("/clusters/")) {
+                String pathWithoutClusters = path.substring("/clusters/".length());
+                int slashIdx = pathWithoutClusters.indexOf('/');
+                if (slashIdx != -1) {
+                    String clusterSubpath = pathWithoutClusters.substring(slashIdx);
+                    routeName = clusterSubpath.length() > 1 ? clusterSubpath.substring(1).toUpperCase() : "";
+                }
+            } else {
+                routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "";
             }
         }
         if (cluster.getRouteRegistry() != null && cluster.getRouteRegistry().isRoutePublic(routeName)) {
