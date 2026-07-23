@@ -70,6 +70,11 @@ public interface GatewayBuilderPort {
     GatewayBuilderPort registerController(hexacloud.core.server.route.RouteController controller);
 
     /**
+     * Map a virtual host and path pattern directly to a target cluster.
+     */
+    GatewayBuilderPort routeHost(String host, String pathPattern, String clusterName);
+
+    /**
      * Register a custom HTTP filter to intercept incoming HTTP traffic.
      */
     GatewayBuilderPort registerFilter(hexacloud.core.server.filter.HttpFilter filter);

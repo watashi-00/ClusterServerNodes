@@ -13,6 +13,7 @@ import hexacloud.infra.network.ThreadPingScheduler;
 import hexacloud.core.utils.common.DebugUtils;
 import hexacloud.core.config.ClusterStatePersistence;
 import hexacloud.core.cluster.ClusterRegistry;
+import hexacloud.core.server.route.RouteRule;
 
 class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
 
@@ -262,6 +263,13 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     public LocalGatewayAdapter registerController(hexacloud.core.server.route.RouteController controller) {
         ensureServerManagerInitialized();
         this.serverManager.registerRouteController(controller);
+        return this;
+    }
+
+    @Override
+    public LocalGatewayAdapter routeHost(String host, String pathPattern, String clusterName) {
+        ensureServerManagerInitialized();
+        this.serverManager.addRouteRule(new RouteRule(host, pathPattern, clusterName));
         return this;
     }
 

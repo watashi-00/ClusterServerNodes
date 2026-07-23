@@ -8,6 +8,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.event.ClusterEventBusManager;
 import hexacloud.core.contracts.ServerOperations;
+import hexacloud.core.server.route.RouteRule;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.ClusterController;
 import hexacloud.core.utils.common.DebugUtils;
@@ -24,6 +25,7 @@ public class ServerManager implements ServerOperations {
     private final RouteRegistry routeRegistry;
     private final List<ServerTransport> activeTransports = new ArrayList<>();
     private final List<hexacloud.core.server.filter.HttpFilter> customFilters = new CopyOnWriteArrayList<>();
+    private final List<RouteRule> routeRules = new CopyOnWriteArrayList<>();
     
     private boolean telnetEnabled = false;
     private boolean httpEnabled = false;
@@ -227,5 +229,13 @@ public class ServerManager implements ServerOperations {
             this.cluster.getRouteRegistry().registerController(controller);
         }
         return this;
+    }
+
+    public void addRouteRule(RouteRule rule) {
+        this.routeRules.add(rule);
+    }
+
+    public List<RouteRule> getRouteRules() {
+        return routeRules;
     }
 }
