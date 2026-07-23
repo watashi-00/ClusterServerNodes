@@ -11,7 +11,7 @@ import hexacloud.core.utils.common.DebugUtils;
 public class RouteRegistry {
 
     private final Map<String, BiConsumer<String, PrintWriter>> routes = new HashMap<>();
-    private final java.util.Set<String> publicRoutes = new java.util.concurrent.ConcurrentHashMap().newKeySet();
+    private final java.util.Set<String> publicRoutes = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public boolean isRoutePublic(String routeName) {
         if (routeName == null) return false;
