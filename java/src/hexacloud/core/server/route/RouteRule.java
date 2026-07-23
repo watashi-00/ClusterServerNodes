@@ -27,6 +27,10 @@ public class RouteRule {
             }
         }
 
+        if (requestPath == null) {
+            return false;
+        }
+
         if (this.pathPattern == null || this.pathPattern.equals("/**") || this.pathPattern.equals("/*")) {
             return true;
         }
@@ -34,10 +38,10 @@ public class RouteRule {
         String pattern = this.pathPattern;
         if (pattern.endsWith("/**")) {
             String prefix = pattern.substring(0, pattern.length() - 3);
-            return requestPath.startsWith(prefix);
+            return requestPath.equals(prefix) || requestPath.equals(prefix + "/") || requestPath.startsWith(prefix + "/");
         } else if (pattern.endsWith("/*")) {
             String prefix = pattern.substring(0, pattern.length() - 2);
-            return requestPath.startsWith(prefix);
+            return requestPath.equals(prefix) || requestPath.equals(prefix + "/") || requestPath.startsWith(prefix + "/");
         }
 
         return requestPath.equals(pattern);
