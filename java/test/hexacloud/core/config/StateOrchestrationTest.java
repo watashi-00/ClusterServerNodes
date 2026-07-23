@@ -104,4 +104,44 @@ public class StateOrchestrationTest {
         
         restartedGateway.stop();
     }
+
+    @Test
+    public void testCustomPersistenceAdapterInjection() {
+        final boolean[] saveCalled = {false};
+        final boolean[] loadCalled = {false};
+        final boolean[] isStateLoadedCalled = {false};
+
+        hexacloud.core.ports.ClusterPersistencePort customAdapter = new hexacloud.core.ports.ClusterPersistencePort() {
+            @Override
+            public void saveState() {
+                saveCalled[0] = true;
+            }
+
+            @Override
+            public void loadState() {
+                loadCalled[0] = true;
+            }
+
+            @Override
+            public boolean isStateLoaded() {
+                isStateLoadedCalled[0] = true;
+                return true;
+            }
+        };
+
+        hexacloud.core.ports.ClusterPersistencePort originalAdapter = ClusterStatePersistence.getPersistenceAdapter();
+        try {
+            ClusterStatePersistence.setPersistenceAdapter(customAdapter);
+
+            ClusterStatePersistence.saveState();
+            ClusterStatePersistence.loadState();
+            ClusterStatePersistence.isStateLoaded();
+
+            assertTrue(saveCalled[0], "Custom saveState should be called");
+            assertTrue(loadCalled[0], "Custom loadState should be called");
+            assertTrue(isStateLoadedCalled[0], "Custom isStateLoaded should be called");
+        } finally {
+            ClusterStatePersistence.setPersistenceAdapter(originalAdapter);
+        }
+    }
 }
