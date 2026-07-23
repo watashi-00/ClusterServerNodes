@@ -63,6 +63,9 @@ public class ServerManager implements ServerOperations {
 
                     if (controller != null) {
                         this.routeRegistry.registerController(controller);
+                        if (this.cluster != null) {
+                            this.cluster.getRouteRegistry().registerController(controller);
+                        }
                         DebugUtils.log("RouteScanner: Auto-discovered and registered controller: " + clazz.getName());
                     }
                 } catch (Exception e) {
@@ -220,6 +223,9 @@ public class ServerManager implements ServerOperations {
      */
     public ServerManager registerRouteController(hexacloud.core.server.route.RouteController controller) {
         this.routeRegistry.registerController(controller);
+        if (this.cluster != null) {
+            this.cluster.getRouteRegistry().registerController(controller);
+        }
         return this;
     }
 }
