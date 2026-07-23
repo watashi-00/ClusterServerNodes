@@ -26,7 +26,6 @@ import hexacloud.core.server.filter.HttpFilterChainImpl;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +51,8 @@ public class UndertowHttpTransport implements ServerTransport {
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
             .connectTimeout(java.time.Duration.ofMillis(5000))
+            //TODO: check this executor
+            // .executor(virtualExecutor)
             .build();
 
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
