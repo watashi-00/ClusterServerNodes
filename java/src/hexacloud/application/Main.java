@@ -26,7 +26,7 @@ public class Main {
     }
 
     public void start() {
-        DebugUtils.setDebugEnabled(false);
+        DebugUtils.setDebugEnabled(true);
         
         GatewayBuilderPort builder = GatewayFactory.createGateway("watashi-cluster")
             .gatewayName("gateway-1")

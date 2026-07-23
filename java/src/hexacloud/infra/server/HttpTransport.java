@@ -52,8 +52,7 @@ public class HttpTransport implements ServerTransport {
     private final java.net.http.HttpClient httpClient = java.net.http.HttpClient.newBuilder()
             .version(java.net.http.HttpClient.Version.HTTP_2)
             .connectTimeout(java.time.Duration.ofMillis(5000))
-            // TODO: verify this executor
-            // .executor(ThreadManager.newVirtualThreadPool())
+            .executor(ThreadManager.newVirtualThreadPool())
             .build();
 
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;

@@ -245,10 +245,10 @@ graph TD
         end
         
         subgraph Events [DemoEventController - Custom Listeners]
-            DevEvent[DeveloperCustomEvent] -->|@Subscribe| H1[onDeveloperEvent]
-            StatusEvent[NodeStatusChanged] -->|@Subscribe| H2[onNodeStatusChanged]
-            TelemEvent[NodeTelemetryUpdated] -->|@Subscribe| H3[onNodeTelemetryUpdated]
-            SubEvent[NodeEventSubmitted] -->|@Subscribe| H4[onNodeEventSubmitted]
+            DevEvent[DeveloperCustomEvent] -->|Subscribe| H1[onDeveloperEvent]
+            StatusEvent[NodeStatusChanged] -->|Subscribe| H2[onNodeStatusChanged]
+            TelemEvent[NodeTelemetryUpdated] -->|Subscribe| H3[onNodeTelemetryUpdated]
+            SubEvent[NodeEventSubmitted] -->|Subscribe| H4[onNodeEventSubmitted]
             
             H1 -->|stdout| Log1["[EVENT] Developer Custom Event Received: ..."]
             H2 -->|stdout| Log2["[EVENT] Node Status Changed -> Host: ..."]
