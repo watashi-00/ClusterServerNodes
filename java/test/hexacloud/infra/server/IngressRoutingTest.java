@@ -1,7 +1,5 @@
 package hexacloud.infra.server;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import hexacloud.core.cluster.Cluster;
 import hexacloud.core.cluster.ClusterRegistry;
@@ -23,11 +21,10 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
+import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -121,7 +118,7 @@ public class IngressRoutingTest {
         jdkTransport.listen(gatewayPort1, registry, testCluster, Collections.emptyList());
 
         // Test /v1/clusters/ingress-test-cluster/api
-        URL url = new URL("http://127.0.0.1:" + gatewayPort1 + "/v1/clusters/ingress-test-cluster/api");
+        URL url = URI.create("http://127.0.0.1:" + gatewayPort1 + "/v1/clusters/ingress-test-cluster/api").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
 
@@ -141,7 +138,7 @@ public class IngressRoutingTest {
         jdkTransport = new HttpTransport();
         jdkTransport.listen(gatewayPort1, registry, testCluster, Collections.emptyList());
 
-        URL url = new URL("http://127.0.0.1:" + gatewayPort1 + "/app/users");
+        URL url = URI.create("http://127.0.0.1:" + gatewayPort1 + "/app/users").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
 
@@ -161,7 +158,7 @@ public class IngressRoutingTest {
         undertowTransport = new UndertowHttpTransport();
         undertowTransport.listen(gatewayPort2, registry, testCluster, Collections.emptyList());
 
-        URL url = new URL("http://127.0.0.1:" + gatewayPort2 + "/app/users");
+        URL url = URI.create("http://127.0.0.1:" + gatewayPort2 + "/app/users").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
 
@@ -186,7 +183,7 @@ public class IngressRoutingTest {
         jdkTransport = new HttpTransport();
         jdkTransport.listen(gatewayPort1, registry, telemetryOnlyCluster, Collections.emptyList());
 
-        URL url = new URL("http://127.0.0.1:" + gatewayPort1 + "/clusters/telemetry-only-cluster/data");
+        URL url = URI.create("http://127.0.0.1:" + gatewayPort1 + "/clusters/telemetry-only-cluster/data").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
 
@@ -206,7 +203,7 @@ public class IngressRoutingTest {
         undertowTransport = new UndertowHttpTransport();
         undertowTransport.listen(gatewayPort2, registry, telemetryOnlyCluster, Collections.emptyList());
 
-        URL url = new URL("http://127.0.0.1:" + gatewayPort2 + "/clusters/telemetry-only-cluster-undertow/data");
+        URL url = URI.create("http://127.0.0.1:" + gatewayPort2 + "/clusters/telemetry-only-cluster-undertow/data").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
 
@@ -227,7 +224,7 @@ public class IngressRoutingTest {
         jdkTransport = new HttpTransport();
         jdkTransport.listen(gatewayPort1, registry, testCluster, Collections.emptyList());
 
-        URL url = new URL("http://127.0.0.1:" + gatewayPort1 + "/test_local");
+        URL url = URI.create("http://127.0.0.1:" + gatewayPort1 + "/test_local").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
 
@@ -253,7 +250,7 @@ public class IngressRoutingTest {
         undertowTransport = new UndertowHttpTransport();
         undertowTransport.listen(gatewayPort2, registry, testCluster, Collections.emptyList());
 
-        URL url = new URL("http://127.0.0.1:" + gatewayPort2 + "/test_local");
+        URL url = URI.create("http://127.0.0.1:" + gatewayPort2 + "/test_local").toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
 
