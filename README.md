@@ -128,7 +128,7 @@ GateBridge leverages **Java 21 Virtual Threads (Loom)** for lightweight asynchro
 * **Fixed Thread Footprint:** The entire JVM stays constrained to exactly **9 platform OS threads** (6 base JVM threads + 3 carrier threads), regardless of how many concurrent WebSocket clients connect or pings are scheduled.
 * **Virtual Schedulers:** Scheduled tasks (like health pings) run on virtual thread executors, yielding the physical CPU core when sleeping (`0% CPU idle footprint`).
 
-### 5. Customizable Route Controllers
+### 5. Customizable Route Controllers & Routing Resolution Flow
 
 Expose new cluster commands and REST/Telnet APIs dynamically. Developers create classes implementing `RouteController` and annotate target handler methods with `@RouteMapping`:
 
@@ -144,7 +144,47 @@ public class MyCustomController implements RouteController {
 
 At startup, GateBridge scans the classpath and registers these mapped commands automatically.
 
-### 6. Custom Events Subsystem
+**Routing & Ingress Route Rules Resolution Flow:**
+This diagram shows how incoming HTTP requests are normalized and resolved with local route precedence to prevent shadowing by Ingress wildcard rules:
+
+```mermaid
+graph TD
+    %% Nodes and Connections
+    Req([HTTP Request]) --> Peel{Starts with /v1/ or /v1?}
+    Peel -->|Yes| Normal[Normalize: Strip Prefix]
+    Peel -->|No| Normal
+    
+    Normal --> LocalCheck{Is Local Route?<br/>registry.getRoutes.containsKey}
+    LocalCheck -->|Yes| ExecLocal[Execute Local Handler]
+    
+    LocalCheck -->|No| LegacyCheck{Starts with /clusters/?}
+    LegacyCheck -->|Yes| LegacyRoute[Extract Target Cluster & Subpath]
+    LegacyCheck -->|No| IngressRules{Match Ingress RouteRules?}
+    
+    IngressRules -->|Yes| IngressRoute[Route to matched Rule Cluster]
+    IngressRules -->|No| Return404[Return 404 Not Found]
+    
+    LegacyRoute --> LB[Round-Robin Balancer]
+    IngressRoute --> LB
+    
+    LB --> Filter{Exclude telemetryOnly<br/>and status != ONLINE?}
+    Filter -->|Yes| Forward[Forward Request to Active ServerNode]
+    Filter -->|No Active Nodes| Return503[Return 503 Service Unavailable]
+
+    %% Styles
+    classDef step fill:#1e1e2e,stroke:#cdd6f4,stroke-width:1px,color:#cdd6f4;
+    classDef decision fill:#313244,stroke:#f5c2e7,stroke-width:2px,color:#cdd6f4;
+    classDef action fill:#313244,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4;
+    classDef error fill:#313244,stroke:#f38ba8,stroke-width:2px,color:#cdd6f4;
+
+    class Req step;
+    class Peel,LocalCheck,LegacyCheck,IngressRules,Filter decision;
+    class Normal,LegacyRoute,IngressRoute,LB action;
+    class ExecLocal,Forward action;
+    class Return404,Return503 error;
+```
+
+### 6. Custom Events Subsystem & Telemetry Event Dispatch Flow
 
 GateBridge supports typed custom events using simple Java `record` declarations:
 
@@ -163,6 +203,34 @@ public class OrderListener implements EventController {
 ```
 
 Listeners are autodiscovered on startup and bound to the global Event Bus.
+
+**Custom Events Subsystem Flow:**
+This diagram shows how custom events are published, intercepted for auditing, and dispatched concurrently to autodiscovered listeners using Loom's lightweight virtual threads:
+
+```mermaid
+graph TD
+    %% Nodes and Connections
+    Producer([Event Producer]) -->|Publish Event| EB[ClusterEventBusManager]
+    
+    subgraph PubSub [Asynchronous Event Dispatcher]
+        EB -->|1. Intercept Event| Interceptors[Global Event Interceptors]
+        EB -->|2. Concurrent Dispatch| VT[Loom Virtual Thread Executor]
+        
+        VT -->|Invoke @Subscribe| HandlerA[EventController A Handler]
+        VT -->|Invoke @Subscribe| HandlerB[EventController B Handler]
+    end
+
+    Interceptors -->|Audit Log / Metrics| Audit[(Audit Log / Console)]
+
+    %% Styles
+    classDef step fill:#1e1e2e,stroke:#cdd6f4,stroke-width:1px,color:#cdd6f4;
+    classDef processor fill:#313244,stroke:#f5c2e7,stroke-width:2px,color:#cdd6f4;
+    classDef action fill:#313244,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4;
+
+    class Producer step;
+    class EB,VT processor;
+    class Interceptors,HandlerA,HandlerB,Audit action;
+```
 
 ### 7. Dynamic Autodiscovery Engine (Zero Configuration)
 
