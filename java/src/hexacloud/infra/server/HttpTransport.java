@@ -57,6 +57,7 @@ public class HttpTransport implements ServerTransport {
 
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
     private final List<HttpFilter> activeFilters = new CopyOnWriteArrayList<>();
+    private hexacloud.core.ports.SslContextPort sslContextPort;
 
     private void rebuildFilters(Cluster cluster, List<HttpFilter> customFilters) {
         activeFilters.clear();
@@ -87,12 +88,24 @@ public class HttpTransport implements ServerTransport {
         }
     }
 
+    public void setSslContext(hexacloud.core.ports.SslContextPort sslContextPort) {
+        this.sslContextPort = sslContextPort;
+    }
+
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
             rebuildFilters(cluster, customFilters);
             DebugUtils.log("HTTP Transport (JDK) starting on port " + port + " with profile: " + performanceProfile);
-            server = HttpServer.create(new InetSocketAddress(port), 2048);
+            if (sslContextPort != null && sslContextPort.isSslEnabled()) {
+                com.sun.net.httpserver.HttpsServer httpsServer = com.sun.net.httpserver.HttpsServer.create(
+                    new java.net.InetSocketAddress(port), 2048
+                );
+                httpsServer.setHttpsConfigurator(new com.sun.net.httpserver.HttpsConfigurator(sslContextPort.getSslContext()));
+                server = httpsServer;
+            } else {
+                server = com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(port), 2048);
+            }
             server.setExecutor(ThreadManager.newVirtualThreadPool());
             server.createContext("/", new HttpHandler() {
                 @Override

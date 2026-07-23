@@ -34,6 +34,7 @@ public class ServerManager implements ServerOperations {
     private int port = 3000;
     private hexacloud.core.server.HttpEngine httpEngine = hexacloud.core.server.HttpEngine.JDK_DEFAULT;
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
+    private hexacloud.core.ports.SslContextPort sslContextPort;
 
     public ServerManager(Cluster cluster, ClusterEventBusManager eventManager) {
         this.cluster = cluster;
@@ -144,6 +145,14 @@ public class ServerManager implements ServerOperations {
         }
     }
 
+    public hexacloud.core.ports.SslContextPort getSslContext() {
+        return sslContextPort;
+    }
+
+    public void setSslContext(hexacloud.core.ports.SslContextPort sslContextPort) {
+        this.sslContextPort = sslContextPort;
+    }
+
     public ServerManager registerFilter(hexacloud.core.server.filter.HttpFilter filter) {
         this.customFilters.add(filter);
         return this;
@@ -169,9 +178,13 @@ public class ServerManager implements ServerOperations {
         if(httpEnabled) {
             ServerTransport http;
             if (httpEngine == hexacloud.core.server.HttpEngine.UNDERTOW) {
-                http = new UndertowHttpTransport();
+                UndertowHttpTransport undertowHttp = new UndertowHttpTransport();
+                undertowHttp.setSslContext(this.sslContextPort);
+                http = undertowHttp;
             } else {
-                http = new HttpTransport();
+                HttpTransport jdkHttp = new HttpTransport();
+                jdkHttp.setSslContext(this.sslContextPort);
+                http = jdkHttp;
             }
             http.setPerformanceProfile(this.performanceProfile);
             // HTTP runs on port + 1

@@ -27,6 +27,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     private boolean tcpProxyEnabled = false;
     private hexacloud.core.server.HttpEngine httpEngine = hexacloud.core.server.HttpEngine.JDK_DEFAULT;
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
+    private hexacloud.core.ports.SslContextPort sslContextPort;
 
     public LocalGatewayAdapter(String clusterName) {
         DebugUtils.log("Creating LocalGatewayAdapter for cluster: " + clusterName);
@@ -77,6 +78,12 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     @Override
     public LocalGatewayAdapter port(int port) {
         this.port = port;
+        return this;
+    }
+
+    @Override
+    public LocalGatewayAdapter sslContext(hexacloud.core.ports.SslContextPort sslContextPort) {
+        this.sslContextPort = sslContextPort;
         return this;
     }
 
@@ -210,6 +217,7 @@ class LocalGatewayAdapter implements GatewayBuilderPort, RunningGatewayPort {
     public LocalGatewayAdapter listen(int port) {
         this.port = port;
         ensureServerManagerInitialized();
+        this.serverManager.setSslContext(this.sslContextPort);
         this.clusterManager.getCluster().endBootstrapPhase(); // Transition cluster to runtime
         DebugUtils.log("LocalGatewayAdapter: Starting server listeners on port " + port);
         this.serverManager.listen(port);

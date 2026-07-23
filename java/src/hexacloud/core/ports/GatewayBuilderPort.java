@@ -135,4 +135,9 @@ public interface GatewayBuilderPort {
      * Enable or disable Layer 4 TCP proxy load balancing.
      */
     GatewayBuilderPort enableTcpProxy(boolean enabled);
+
+    /**
+     * Configure an SSL/TLS context provider for HTTPS/TLS termination.
+     */
+    GatewayBuilderPort sslContext(hexacloud.core.ports.SslContextPort sslContextPort);
 }

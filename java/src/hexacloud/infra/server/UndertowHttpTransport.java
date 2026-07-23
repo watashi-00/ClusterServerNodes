@@ -57,6 +57,7 @@ public class UndertowHttpTransport implements ServerTransport {
 
     private hexacloud.core.server.PerformanceProfile performanceProfile = hexacloud.core.server.PerformanceProfile.STANDARD;
     private final List<HttpFilter> activeFilters = new CopyOnWriteArrayList<>();
+    private hexacloud.core.ports.SslContextPort sslContextPort;
 
     private void rebuildFilters(Cluster cluster, List<HttpFilter> customFilters) {
         activeFilters.clear();
@@ -87,6 +88,10 @@ public class UndertowHttpTransport implements ServerTransport {
         }
     }
 
+    public void setSslContext(hexacloud.core.ports.SslContextPort sslContextPort) {
+        this.sslContextPort = sslContextPort;
+    }
+
     @Override
     public void listen(int port, RouteRegistry registry, Cluster cluster, List<HttpFilter> customFilters) {
         try {
@@ -102,6 +107,10 @@ public class UndertowHttpTransport implements ServerTransport {
             Undertow.Builder builder = Undertow.builder()
                     .addHttpListener(port, "0.0.0.0")
                     .setByteBufferPool(bufferPool);
+            
+            if (sslContextPort != null && sslContextPort.isSslEnabled()) {
+                builder.addHttpsListener(sslContextPort.getSslPort(), "0.0.0.0", sslContextPort.getSslContext());
+            }
  
             if (performanceProfile == hexacloud.core.server.PerformanceProfile.MAX_PERFORMANCE) {
                 // Maximized performance profile for container resource utilization
