@@ -10,6 +10,7 @@ public class UndertowHttpResponseImpl implements HttpResponse {
 
     private final HttpServerExchange exchange;
     private PrintWriter writer;
+    private boolean statusSet = false;
 
     public UndertowHttpResponseImpl(HttpServerExchange exchange) {
         this.exchange = exchange;
@@ -23,6 +24,7 @@ public class UndertowHttpResponseImpl implements HttpResponse {
     @Override
     public void setStatus(int statusCode) {
         exchange.setStatusCode(statusCode);
+        statusSet = true;
     }
 
     @Override
@@ -33,7 +35,7 @@ public class UndertowHttpResponseImpl implements HttpResponse {
     @Override
     public PrintWriter getWriter() throws Exception {
         if (writer == null) {
-            if (!exchange.isResponseStarted()) {
+            if (!statusSet && !exchange.isResponseStarted()) {
                 exchange.setStatusCode(200);
             }
             if (!exchange.isBlocking()) {

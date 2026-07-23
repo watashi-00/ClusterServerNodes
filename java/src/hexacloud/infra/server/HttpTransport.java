@@ -111,18 +111,32 @@ public class HttpTransport implements ServerTransport {
                     try {
                         String fastPath = exchange.getRequestURI().getPath();
                         String fastMatchingPath = fastPath.startsWith("/v1/") ? fastPath.substring(3) : (fastPath.equals("/v1") ? "/" : fastPath);
-                        boolean isProxy = fastMatchingPath.startsWith("/clusters/") || (registry.getRouteRulesList() != null && !registry.getRouteRulesList().isEmpty());
-
-                        // Fast-path for direct custom routes when no filters are active
-                        if (!isProxy && activeFilters.isEmpty()) {
-                            RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(fastMatchingPath, path -> {
+                        
+                        RouteHandlerInfo fastRouteInfo = null;
+                        boolean isProxy = false;
+                        if (fastMatchingPath.startsWith("/clusters/")) {
+                            isProxy = true;
+                        } else if (registry.getRouteRulesList() != null && !registry.getRouteRulesList().isEmpty()) {
+                            fastRouteInfo = routeCache.computeIfAbsent(fastMatchingPath, path -> {
                                 String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
                                 BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
                                 return new RouteHandlerInfo(handler, routeName);
                             });
-
-                            if (routeInfo.handler != null) {
-                                if (routeInfo.routeName.equals("GET_NODES_JSON")) {
+                            isProxy = fastRouteInfo.handler == null;
+                        }
+ 
+                        // Fast-path for direct custom routes when no filters are active
+                        if (!isProxy && activeFilters.isEmpty()) {
+                            if (fastRouteInfo == null) {
+                                fastRouteInfo = routeCache.computeIfAbsent(fastMatchingPath, path -> {
+                                    String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
+                                    BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
+                                    return new RouteHandlerInfo(handler, routeName);
+                                });
+                            }
+ 
+                            if (fastRouteInfo.handler != null) {
+                                if (fastRouteInfo.routeName.equals("GET_NODES_JSON")) {
                                     exchange.getResponseHeaders().set("Content-Type", "application/json");
                                 } else {
                                     exchange.getResponseHeaders().set("Content-Type", "text/plain");
@@ -131,7 +145,7 @@ public class HttpTransport implements ServerTransport {
                                 try (PrintWriter out = new PrintWriter(new java.io.BufferedWriter(new java.io.OutputStreamWriter(exchange.getResponseBody(), java.nio.charset.StandardCharsets.UTF_8)))) {
                                     String query = exchange.getRequestURI().getQuery();
                                     String args = query != null ? query : "";
-                                    routeInfo.handler.accept(args, out);
+                                    fastRouteInfo.handler.accept(args, out);
                                 }
                                 return;
                             }
@@ -166,20 +180,23 @@ public class HttpTransport implements ServerTransport {
                                         clusterSubpath = "/";
                                     }
                                 } else {
-                                    String requestHost = r.getHeader("Host");
-                                    RouteRule matchedRule = null;
-                                    List<RouteRule> rules = registry.getRouteRulesList();
-                                    if (rules != null) {
-                                        for (RouteRule rule : rules) {
-                                            if (rule.matches(requestHost, matchingPath)) {
-                                                matchedRule = rule;
-                                                break;
+                                    String routeName = matchingPath.length() > 1 ? matchingPath.substring(1).toUpperCase() : "GET_NODES";
+                                    if (!registry.getRoutes().containsKey(routeName)) {
+                                        String requestHost = r.getHeader("Host");
+                                        RouteRule matchedRule = null;
+                                        List<RouteRule> rules = registry.getRouteRulesList();
+                                        if (rules != null) {
+                                            for (RouteRule rule : rules) {
+                                                if (rule.matches(requestHost, matchingPath)) {
+                                                    matchedRule = rule;
+                                                    break;
+                                                }
                                             }
                                         }
-                                    }
-                                    if (matchedRule != null) {
-                                        targetClusterName = matchedRule.getClusterName();
-                                        clusterSubpath = matchingPath;
+                                        if (matchedRule != null) {
+                                            targetClusterName = matchedRule.getClusterName();
+                                            clusterSubpath = matchingPath;
+                                        }
                                     }
                                 }
 

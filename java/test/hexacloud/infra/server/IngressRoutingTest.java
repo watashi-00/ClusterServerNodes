@@ -9,6 +9,9 @@ import hexacloud.core.model.NodeStatus;
 import hexacloud.core.model.ServerNode;
 import hexacloud.core.server.route.RouteRegistry;
 import hexacloud.core.server.route.RouteRule;
+import hexacloud.core.server.route.RouteController;
+import hexacloud.core.server.route.RouteMapping;
+import java.io.PrintWriter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -188,5 +191,77 @@ public class IngressRoutingTest {
         conn.setRequestMethod("GET");
 
         assertEquals(503, conn.getResponseCode());
+    }
+
+    @Test
+    public void testTelemetryOnlyNodesExcludedUndertowTransport() throws Exception {
+        RouteRegistry registry = new RouteRegistry();
+        Cluster telemetryOnlyCluster = new Cluster("telemetry-only-cluster-undertow");
+        telemetryOnlyCluster.setRequireToken(false);
+        telemetryOnlyCluster.setRoutingMode(Cluster.RoutingMode.HYBRID);
+        ServerNode node = new ServerNode("node-t", "http://127.0.0.1", backendPort2, NodeStatus.ONLINE, false, hexacloud.core.model.PingProtocol.HTTP, "/", null, null, false, true);
+        telemetryOnlyCluster.registerServer(node);
+        ClusterRegistry.getInstance().registerCluster(telemetryOnlyCluster);
+
+        undertowTransport = new UndertowHttpTransport();
+        undertowTransport.listen(gatewayPort2, registry, telemetryOnlyCluster, Collections.emptyList());
+
+        URL url = new URL("http://127.0.0.1:" + gatewayPort2 + "/clusters/telemetry-only-cluster-undertow/data");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+
+        assertEquals(503, conn.getResponseCode());
+    }
+
+    @Test
+    public void testLocalRoutePriorityJdkTransport() throws Exception {
+        RouteRegistry registry = new RouteRegistry();
+        registry.registerController(new RouteController() {
+            @RouteMapping("TEST_LOCAL")
+            public void testLocal(String args, PrintWriter out) {
+                out.print("LOCAL RESPONSE");
+            }
+        });
+        registry.addRouteRule(new RouteRule("127.0.0.1", "/**", "ingress-test-cluster"));
+
+        jdkTransport = new HttpTransport();
+        jdkTransport.listen(gatewayPort1, registry, testCluster, Collections.emptyList());
+
+        URL url = new URL("http://127.0.0.1:" + gatewayPort1 + "/test_local");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+
+        assertEquals(200, conn.getResponseCode());
+        String body;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            body = reader.lines().collect(Collectors.joining("\n"));
+        }
+        assertEquals("LOCAL RESPONSE", body);
+    }
+
+    @Test
+    public void testLocalRoutePriorityUndertowTransport() throws Exception {
+        RouteRegistry registry = new RouteRegistry();
+        registry.registerController(new RouteController() {
+            @RouteMapping("TEST_LOCAL")
+            public void testLocal(String args, PrintWriter out) {
+                out.print("LOCAL RESPONSE");
+            }
+        });
+        registry.addRouteRule(new RouteRule("127.0.0.1", "/**", "ingress-test-cluster"));
+
+        undertowTransport = new UndertowHttpTransport();
+        undertowTransport.listen(gatewayPort2, registry, testCluster, Collections.emptyList());
+
+        URL url = new URL("http://127.0.0.1:" + gatewayPort2 + "/test_local");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+
+        assertEquals(200, conn.getResponseCode());
+        String body;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+            body = reader.lines().collect(Collectors.joining("\n"));
+        }
+        assertEquals("LOCAL RESPONSE", body);
     }
 }

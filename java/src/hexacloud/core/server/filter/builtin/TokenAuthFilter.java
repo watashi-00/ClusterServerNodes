@@ -15,8 +15,12 @@ public class TokenAuthFilter implements HttpFilter {
     @Override
     public void doFilter(HttpRequest request, HttpResponse response, HttpFilterChain chain) throws Exception {
         String path = request.getPath();
-        if (path != null && path.startsWith("/v1/")) {
-            path = path.substring(3);
+        if (path != null) {
+            if (path.startsWith("/v1/")) {
+                path = path.substring(3);
+            } else if (path.equals("/v1")) {
+                path = "/";
+            }
         }
         String routeName = "";
         if (path != null) {

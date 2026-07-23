@@ -17,8 +17,8 @@ public class RouteRule {
 
     public boolean matches(String requestHost, String requestPath) {
         String matchedHost = requestHost;
-        if (matchedHost != null && matchedHost.contains(":")) {
-            matchedHost = matchedHost.split(":")[0];
+        if (matchedHost != null) {
+            matchedHost = matchedHost.replaceFirst(":\\d+$", "");
         }
 
         if (this.host != null && !this.host.equals("*")) {
@@ -41,7 +41,14 @@ public class RouteRule {
             return requestPath.equals(prefix) || requestPath.equals(prefix + "/") || requestPath.startsWith(prefix + "/");
         } else if (pattern.endsWith("/*")) {
             String prefix = pattern.substring(0, pattern.length() - 2);
-            return requestPath.equals(prefix) || requestPath.equals(prefix + "/") || requestPath.startsWith(prefix + "/");
+            if (requestPath.equals(prefix) || requestPath.equals(prefix + "/")) {
+                return true;
+            }
+            if (requestPath.startsWith(prefix + "/")) {
+                String remainder = requestPath.substring(prefix.length() + 1);
+                return !remainder.contains("/");
+            }
+            return false;
         }
 
         return requestPath.equals(pattern);

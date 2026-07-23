@@ -133,14 +133,30 @@ public class UndertowHttpTransport implements ServerTransport {
                          public void handleRequest(HttpServerExchange exchange) throws Exception {
                              String fastPath = exchange.getRequestPath();
                              String fastMatchingPath = fastPath.startsWith("/v1/") ? fastPath.substring(3) : (fastPath.equals("/v1") ? "/" : fastPath);
-                             boolean isProxy = fastMatchingPath.startsWith("/clusters/") || (registry.getRouteRulesList() != null && !registry.getRouteRulesList().isEmpty());
-                             if (!isProxy && activeFilters.isEmpty()) {
-                                 RouteHandlerInfo routeInfo = routeCache.computeIfAbsent(fastMatchingPath, path -> {
+                             
+                             RouteHandlerInfo fastRouteInfo = null;
+                             boolean isProxy = false;
+                             if (fastMatchingPath.startsWith("/clusters/")) {
+                                 isProxy = true;
+                             } else if (registry.getRouteRulesList() != null && !registry.getRouteRulesList().isEmpty()) {
+                                 fastRouteInfo = routeCache.computeIfAbsent(fastMatchingPath, path -> {
                                      String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
                                      BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
                                      return new RouteHandlerInfo(handler, routeName);
                                  });
-                                 if (routeInfo.handler != null) {
+                                 isProxy = fastRouteInfo.handler == null;
+                             }
+
+                             // Fast-path for direct custom routes when no filters are active
+                             if (!isProxy && activeFilters.isEmpty()) {
+                                 if (fastRouteInfo == null) {
+                                     fastRouteInfo = routeCache.computeIfAbsent(fastMatchingPath, path -> {
+                                         String routeName = path.length() > 1 ? path.substring(1).toUpperCase() : "GET_NODES";
+                                         BiConsumer<String, PrintWriter> handler = registry.getRoutes().get(routeName);
+                                         return new RouteHandlerInfo(handler, routeName);
+                                     });
+                                 }
+                                 if (fastRouteInfo.handler != null) {
                                      processRequest(exchange, registry, cluster, customFilters);
                                      return;
                                  }
@@ -248,20 +264,23 @@ public class UndertowHttpTransport implements ServerTransport {
                              clusterSubpath = "/";
                          }
                      } else {
-                         String requestHost = r.getHeader("Host");
-                         RouteRule matchedRule = null;
-                         List<RouteRule> rules = registry.getRouteRulesList();
-                         if (rules != null) {
-                             for (RouteRule rule : rules) {
-                                 if (rule.matches(requestHost, matchingPath)) {
-                                     matchedRule = rule;
-                                     break;
+                         String routeName = matchingPath.length() > 1 ? matchingPath.substring(1).toUpperCase() : "GET_NODES";
+                         if (!registry.getRoutes().containsKey(routeName)) {
+                             String requestHost = r.getHeader("Host");
+                             RouteRule matchedRule = null;
+                             List<RouteRule> rules = registry.getRouteRulesList();
+                             if (rules != null) {
+                                 for (RouteRule rule : rules) {
+                                     if (rule.matches(requestHost, matchingPath)) {
+                                         matchedRule = rule;
+                                         break;
+                                     }
                                  }
                              }
-                         }
-                         if (matchedRule != null) {
-                             targetClusterName = matchedRule.getClusterName();
-                             clusterSubpath = matchingPath;
+                             if (matchedRule != null) {
+                                 targetClusterName = matchedRule.getClusterName();
+                                 clusterSubpath = matchingPath;
+                             }
                          }
                      }
 
