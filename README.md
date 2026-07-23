@@ -232,6 +232,43 @@ graph TD
     class Interceptors,HandlerA,HandlerB,Audit action;
 ```
 
+**Showcase Application Custom Routes and Listeners Flow:**
+This diagram illustrates the custom event listeners and custom routes defined in the reference [MinimalApplication.java](file:///home/watashi/Projects/Java-framework/gatebridge/gatebridge/java/src/hexacloud/application/MinimalApplication.java) showcase:
+
+```mermaid
+graph TD
+    %% Nodes and Connections
+    subgraph CustomApp [Minimal Application Demo Showcase]
+        subgraph Routes [DemoRouteController - Custom Routes]
+            HELLO[Route: HELLO] -->|Returns| HelloResp["HELLO FROM MINIMAL APPLICATION ROUTE!"]
+            SYSINFO[Route: SYSTEM_INFO] -->|Returns| SysInfoResp["GateBridge Status: ACTIVE + CPU Info"]
+        end
+        
+        subgraph Events [DemoEventController - Custom Listeners]
+            DevEvent[DeveloperCustomEvent] -->|@Subscribe| H1[onDeveloperEvent]
+            StatusEvent[NodeStatusChanged] -->|@Subscribe| H2[onNodeStatusChanged]
+            TelemEvent[NodeTelemetryUpdated] -->|@Subscribe| H3[onNodeTelemetryUpdated]
+            SubEvent[NodeEventSubmitted] -->|@Subscribe| H4[onNodeEventSubmitted]
+            
+            H1 -->|stdout| Log1["[EVENT] Developer Custom Event Received: ..."]
+            H2 -->|stdout| Log2["[EVENT] Node Status Changed -> Host: ..."]
+            H3 -->|stdout| Log3["[EVENT] Telemetry Updated for Node: ..."]
+            H4 -->|stdout| Log4["[EVENT] Custom Node Event -> Host: ..."]
+        end
+    end
+
+    %% Styles
+    classDef step fill:#1e1e2e,stroke:#cdd6f4,stroke-width:1px,color:#cdd6f4;
+    classDef custom fill:#313244,stroke:#f5c2e7,stroke-width:2px,color:#cdd6f4;
+    classDef output fill:#313244,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4;
+
+    class HELLO,SYSINFO,DevEvent,StatusEvent,TelemEvent,SubEvent custom;
+    class H1,H2,H3,H4 custom;
+    class HelloResp,SysInfoResp,Log1,Log2,Log3,Log4 output;
+    class CustomApp,Routes,Events step;
+```
+
+
 ### 7. Dynamic Autodiscovery Engine (Zero Configuration)
 
 Eliminates manual bootstrapping:
