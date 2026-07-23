@@ -28,6 +28,11 @@ public interface NodeBuilderPort {
     NodeBuilderPort external(boolean external);
     
     /**
+     * Set whether this node is telemetry-only (ignored for load-balancing).
+     */
+    NodeBuilderPort telemetryOnly(boolean value);
+
+    /**
      * Register the node in the cluster and return the parent GatewayBuilderPort for fluent chaining.
      */
     GatewayBuilderPort register();

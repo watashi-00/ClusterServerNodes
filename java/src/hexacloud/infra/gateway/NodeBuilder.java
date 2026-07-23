@@ -17,6 +17,7 @@ public class NodeBuilder implements NodeBuilderPort {
     private String pingHeaderName = null;
     private String pingHeaderValue = null;
     private boolean isExternal = false;
+    private boolean telemetryOnly = false;
 
     public NodeBuilder(hexacloud.core.ports.GatewayBuilderPort parent, Cluster cluster, String host, int port) {
         this(parent, cluster, null, host, port);
@@ -62,10 +63,17 @@ public class NodeBuilder implements NodeBuilderPort {
     }
 
     @Override
+    public NodeBuilderPort telemetryOnly(boolean value) {
+        this.telemetryOnly = value;
+        return this;
+    }
+
+    @Override
     public hexacloud.core.ports.GatewayBuilderPort register() {
         ServerNode node = new ServerNode(
             name, host, port, NodeStatus.OFFLINE, isExternal,
-            pingEnabled, pingPath, pingHeaderName, pingHeaderValue
+            pingEnabled ? hexacloud.core.model.PingProtocol.HTTP : hexacloud.core.model.PingProtocol.NONE,
+            pingPath, pingHeaderName, pingHeaderValue, false, telemetryOnly
         );
         cluster.registerServer(node);
         return parent;

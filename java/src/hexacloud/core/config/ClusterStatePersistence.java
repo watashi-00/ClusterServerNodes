@@ -101,6 +101,7 @@ public class ClusterStatePersistence {
                 writer.println(escapeKey(nodePrefix + "port") + "=" + node.port());
                 writer.println(escapeKey(nodePrefix + "isExternal") + "=" + node.isExternal());
                 writer.println(escapeKey(nodePrefix + "isDynamic") + "=" + node.isDynamic());
+                writer.println(escapeKey(nodePrefix + "telemetryOnly") + "=" + node.telemetryOnly());
                 writer.println(escapeKey(nodePrefix + "pingEnabled") + "=" + node.pingEnabled());
                 writer.println(escapeKey(nodePrefix + "pingProtocol") + "=" + node.pingProtocol().name());
                 writer.println(escapeKey(nodePrefix + "pingPath") + "=" + node.pingPath());
@@ -259,6 +260,7 @@ public class ClusterStatePersistence {
                 int port = Integer.parseInt(props.getProperty(nodePrefix + "port"));
                 boolean isExternal = Boolean.parseBoolean(props.getProperty(nodePrefix + "isExternal", "false"));
                 boolean isDynamic = Boolean.parseBoolean(props.getProperty(nodePrefix + "isDynamic", "false"));
+                boolean telemetryOnly = Boolean.parseBoolean(props.getProperty(nodePrefix + "telemetryOnly", "false"));
                 String pingPath = props.getProperty(nodePrefix + "pingPath", "/");
                 String pingHeaderName = props.getProperty(nodePrefix + "pingHeaderName", null);
 
@@ -276,9 +278,9 @@ public class ClusterStatePersistence {
                 }
 
                 ServerNode node = new ServerNode(
-                    host, port, NodeStatus.OFFLINE, isExternal,
-                    pingProtocol, pingPath, pingHeaderName, null
-                ).withDynamic(isDynamic);
+                    nodeKey, host, port, NodeStatus.OFFLINE, isExternal,
+                    pingProtocol, pingPath, pingHeaderName, null, isDynamic, telemetryOnly
+                );
                 
                 boolean alreadyRegistered = cluster.getCluster().stream()
                     .anyMatch(n -> n.getFullHost().equals(node.getFullHost()));

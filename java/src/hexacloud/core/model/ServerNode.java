@@ -15,6 +15,7 @@ public class ServerNode {
     private final String pingHeaderName;
     private final String pingHeaderValue;
     private final boolean isDynamic;
+    private final boolean telemetryOnly;
 
     private int latencyMs = 0;
     private double cpuUsage = 0.0;
@@ -22,10 +23,10 @@ public class ServerNode {
     private String runtime = "";
 
     /**
-     * Primary constructor including node name and isDynamic flag.
+     * Primary constructor including node name, isDynamic, and telemetryOnly flags.
      */
     public ServerNode(String name, String host, int port, NodeStatus status, boolean isExternal,
-                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue, boolean isDynamic) {
+                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue, boolean isDynamic, boolean telemetryOnly) {
         this.name = name != null && !name.isEmpty() ? name : (host + ":" + port);
         this.host = host;
         this.port = port;
@@ -36,6 +37,15 @@ public class ServerNode {
         this.pingHeaderName = pingHeaderName;
         this.pingHeaderValue = pingHeaderValue;
         this.isDynamic = isDynamic;
+        this.telemetryOnly = telemetryOnly;
+    }
+
+    /**
+     * Constructor including node name and isDynamic flag.
+     */
+    public ServerNode(String name, String host, int port, NodeStatus status, boolean isExternal,
+                      PingProtocol pingProtocol, String pingPath, String pingHeaderName, String pingHeaderValue, boolean isDynamic) {
+        this(name, host, port, status, isExternal, pingProtocol, pingPath, pingHeaderName, pingHeaderValue, isDynamic, false);
     }
 
     /**
@@ -184,9 +194,13 @@ public class ServerNode {
         return isDynamic;
     }
 
+    public boolean telemetryOnly() {
+        return telemetryOnly;
+    }
+
     public ServerNode withDynamic(boolean isDynamic) {
         ServerNode node = new ServerNode(this.name, this.host, this.port, this.status, this.isExternal,
-                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, isDynamic);
+                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, isDynamic, this.telemetryOnly);
         node.setLatencyMs(this.latencyMs);
         node.setCpuUsage(this.cpuUsage);
         node.setRamUsage(this.ramUsage);
@@ -199,7 +213,7 @@ public class ServerNode {
      */
     public ServerNode withStatus(NodeStatus newStatus) {
         ServerNode node = new ServerNode(this.name, this.host, this.port, newStatus, this.isExternal,
-                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, this.isDynamic);
+                this.pingProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, this.isDynamic, this.telemetryOnly);
         node.setLatencyMs(this.latencyMs);
         node.setCpuUsage(this.cpuUsage);
         node.setRamUsage(this.ramUsage);
@@ -212,7 +226,7 @@ public class ServerNode {
      */
     public ServerNode withPingProtocol(PingProtocol newProtocol) {
         ServerNode node = new ServerNode(this.name, this.host, this.port, this.status, this.isExternal,
-                newProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, this.isDynamic);
+                newProtocol, this.pingPath, this.pingHeaderName, this.pingHeaderValue, this.isDynamic, this.telemetryOnly);
         node.setLatencyMs(this.latencyMs);
         node.setCpuUsage(this.cpuUsage);
         node.setRamUsage(this.ramUsage);
