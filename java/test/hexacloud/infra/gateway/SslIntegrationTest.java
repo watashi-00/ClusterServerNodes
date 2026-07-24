@@ -2,10 +2,8 @@ package hexacloud.infra.gateway;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import hexacloud.core.ports.GatewayBuilderPort;
 import hexacloud.core.ports.SslContextPort;
 import hexacloud.core.server.ServerManager;
-import hexacloud.core.server.ServerTransport;
 import hexacloud.infra.server.HttpTransport;
 import hexacloud.infra.server.UndertowHttpTransport;
 import javax.net.ssl.SSLContext;
